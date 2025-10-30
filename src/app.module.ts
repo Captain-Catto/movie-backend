@@ -94,6 +94,7 @@ import { PersonCreditsCache } from "./entities/person-credits-cache.entity";
           configService.get("NODE_ENV") === "production"
             ? { rejectUnauthorized: false }
             : false,
+        timezone: "UTC",
       }),
       inject: [ConfigService],
     }),
