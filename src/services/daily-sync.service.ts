@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { TMDBService, TMDBMovie, TMDBTVSeries } from "./tmdb.service";
+import { TMDBService } from "./tmdb.service";
+import { TMDBMovie, TMDBTVSeries } from "../interfaces/tmdb-api.interface";
 import { MovieRepository } from "../repositories/movie.repository";
 import { TVSeriesRepository } from "../repositories/tv-series.repository";
 import { Movie } from "../entities/movie.entity";

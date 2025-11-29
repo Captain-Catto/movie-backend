@@ -13,12 +13,12 @@ import {
   HttpStatus,
   ParseIntPipe,
 } from "@nestjs/common";
+import { CommentService } from "../services/comment.service";
 import {
-  CommentService,
   CreateCommentDto,
   UpdateCommentDto,
   ReportCommentDto,
-} from "../services/comment.service";
+} from "../dto/comment.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ApiResponse } from "../interfaces/api.interface";
 

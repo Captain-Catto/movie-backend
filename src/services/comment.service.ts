@@ -28,50 +28,12 @@ import {
 import { UserRole } from "../entities/user.entity";
 import { NotificationService } from "./notification.service";
 import { NotificationType } from "../entities/notification-template.entity";
-
-export interface CreateCommentDto {
-  content: string;
-  movieId?: number;
-  tvId?: number;
-  parentId?: number;
-}
-
-export interface UpdateCommentDto {
-  content: string;
-}
-
-export interface CommentResponseDto {
-  id: number;
-  content: string;
-  movieId?: number;
-  tvId?: number;
-  parentId?: number;
-  isHidden: boolean;
-  likeCount: number;
-  dislikeCount: number;
-  replyCount: number;
-  createdAt: Date;
-  updatedAt: Date;
-  user: {
-    id: number;
-    name: string;
-    image?: string;
-  };
-  userLike?: boolean | null; // User's like status
-  canEdit?: boolean;
-  canDelete?: boolean;
-  isFiltered?: boolean;
-  mentions?: Array<{
-    id: number;
-    name: string;
-    image?: string | null;
-  }>;
-}
-
-export interface ReportCommentDto {
-  reason: ReportReason;
-  description?: string;
-}
+import {
+  CreateCommentDto,
+  UpdateCommentDto,
+  CommentResponseDto,
+  ReportCommentDto,
+} from "../dto/comment.dto";
 
 @Injectable()
 export class CommentService {
