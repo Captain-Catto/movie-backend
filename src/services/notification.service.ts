@@ -129,7 +129,22 @@ export class NotificationService {
   }
 
   async markAllAsRead(userId: number): Promise<void> {
-    await this.userStateRepository.markAllAsRead(userId);
+    // Get user's roles to determine applicable templates
+    const userRoles = await this.getUserRoles(userId);
+
+    // Get all applicable template IDs
+    const { templates } = await this.templateRepository.findForUser(
+      userId,
+      userRoles,
+      { limit: 1000 } // Get all applicable templates
+    );
+
+    const templateIds = templates.map((t) => t.id);
+
+    // Mark all applicable templates as read (create states if needed)
+    if (templateIds.length > 0) {
+      await this.userStateRepository.markAllAsRead(userId, templateIds);
+    }
   }
 
   async getUserStats(userId: number): Promise<NotificationStatsDto> {

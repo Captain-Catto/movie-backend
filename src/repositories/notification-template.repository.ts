@@ -174,17 +174,46 @@ export class UserNotificationStateRepository {
     return await this.repository.save(state);
   }
 
-  async markAllAsRead(userId: number): Promise<void> {
-    // This is more complex in template system - we'd need to get all applicable templates first
-    // For now, update existing states and let unread count calculation handle the rest
+  async markAllAsRead(userId: number, templateIds: number[]): Promise<void> {
+    if (templateIds.length === 0) return;
+
+    const now = new Date();
+
+    // Step 1: Update existing states with readAt: null to READ
     await this.repository.update(
       { userId, readAt: null },
       {
         state: NotificationState.READ,
-        readAt: new Date(),
-        updatedAt: new Date(),
+        readAt: now,
+        updatedAt: now,
       }
     );
+
+    // Step 2: Get existing state template IDs
+    const existingStates = await this.repository.find({
+      where: { userId },
+      select: ['templateId'],
+    });
+    const existingTemplateIds = existingStates.map((s) => s.templateId);
+
+    // Step 3: Find missing template IDs (templates user hasn't interacted with)
+    const missingTemplateIds = templateIds.filter(
+      (id) => !existingTemplateIds.includes(id)
+    );
+
+    // Step 4: Bulk insert states for missing templates
+    if (missingTemplateIds.length > 0) {
+      const newStates = missingTemplateIds.map((templateId) => ({
+        userId,
+        templateId,
+        state: NotificationState.READ,
+        readAt: now,
+        createdAt: now,
+        updatedAt: now,
+      }));
+
+      await this.repository.insert(newStates);
+    }
   }
 
   async getUnreadCount(
