@@ -21,7 +21,11 @@ interface AuthenticatedSocket extends Socket {
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: [
+      "https://movie.lequangtridat.com",
+      "http://movie.lequangtridat.com",
+      "http://localhost:3000"
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
