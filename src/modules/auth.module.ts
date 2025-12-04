@@ -5,12 +5,14 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import type { StringValue } from "ms";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../entities/user.entity";
+import { RefreshToken } from "../entities/refresh-token.entity";
 import { AuthController } from "../controllers/auth.controller";
 import { AuthService } from "../services/auth.service";
 import { UserRepository } from "../repositories/user.repository";
+import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
 import { JwtStrategy } from "../auth/jwt.strategy";
 
-const DEFAULT_JWT_EXPIRES_IN: StringValue = "7d";
+const DEFAULT_JWT_EXPIRES_IN: StringValue = "15m";
 
 const resolveJwtExpiresIn = (
   raw: string | undefined
@@ -25,7 +27,7 @@ const resolveJwtExpiresIn = (
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, RefreshToken]),
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -41,7 +43,7 @@ const resolveJwtExpiresIn = (
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserRepository, JwtStrategy],
-  exports: [AuthService, UserRepository, JwtStrategy],
+  providers: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy],
+  exports: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy],
 })
 export class AuthModule {}

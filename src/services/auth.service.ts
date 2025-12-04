@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UserRepository } from "../repositories/user.repository";
+import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
 import { User } from "../entities/user.entity";
 import { RegisterDto, LoginDto } from "../dto/auth.dto";
 import { UserResponse } from "../interfaces/user.interface";
@@ -13,12 +14,13 @@ import { UserResponse } from "../interfaces/user.interface";
 export class AuthService {
   constructor(
     private userRepository: UserRepository,
-    private jwtService: JwtService
+    private jwtService: JwtService,
+    private refreshTokenRepository: RefreshTokenRepository
   ) {}
 
   async register(
     registerDto: RegisterDto
-  ): Promise<{ user: UserResponse; token: string }> {
+  ): Promise<{ user: UserResponse; token: string; refreshToken: string }> {
     const { email, password, name } = registerDto;
 
     // Check if user already exists
@@ -31,10 +33,10 @@ export class AuthService {
     const user = await this.userRepository.create({
       email,
       password,
-      name: name || email.split("@")[0], // Use email prefix as default name
+      name: name || email.split("@")[0],
     });
 
-    // Generate JWT token with role
+    // Generate JWT access token (15m)
     const payload = {
       sub: user.id,
       email: user.email,
@@ -43,18 +45,22 @@ export class AuthService {
     };
     const token = this.jwtService.sign(payload);
 
+    // Generate refresh token (30d)
+    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(user.id, 30);
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
     return {
       user: userWithoutPassword,
       token,
+      refreshToken: refreshTokenEntity.token,
     };
   }
 
   async login(
     loginDto: LoginDto
-  ): Promise<{ user: UserResponse; token: string }> {
+  ): Promise<{ user: UserResponse; token: string; refreshToken: string }> {
     const { email, password } = loginDto;
 
     // Find user by email
@@ -81,7 +87,7 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    // Generate JWT token with role
+    // Generate JWT access token (15m)
     const payload = {
       sub: user.id,
       email: user.email,
@@ -90,12 +96,16 @@ export class AuthService {
     };
     const token = this.jwtService.sign(payload);
 
+    // Generate refresh token (30d)
+    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(user.id, 30);
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
     return {
       user: userWithoutPassword,
       token,
+      refreshToken: refreshTokenEntity.token,
     };
   }
 
@@ -103,12 +113,51 @@ export class AuthService {
     return this.userRepository.findById(userId);
   }
 
+  async refreshAccessToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
+    const refreshTokenEntity = await this.refreshTokenRepository.findByToken(refreshToken);
+
+    if (!refreshTokenEntity) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (refreshTokenEntity.isRevoked) {
+      throw new UnauthorizedException('Refresh token has been revoked');
+    }
+
+    if (new Date() > refreshTokenEntity.expiresAt) {
+      throw new UnauthorizedException('Refresh token has expired');
+    }
+
+    const user = await this.userRepository.findById(refreshTokenEntity.userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Generate new access token
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    };
+    const newAccessToken = this.jwtService.sign(payload);
+
+    // Generate new refresh token and revoke old one
+    await this.refreshTokenRepository.revokeToken(refreshToken);
+    const newRefreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(user.id, 30);
+
+    return {
+      token: newAccessToken,
+      refreshToken: newRefreshTokenEntity.token,
+    };
+  }
+
   async validateGoogleUser(googleData: {
     email: string;
     name: string;
     image?: string;
     googleId: string;
-  }): Promise<{ user: UserResponse; token: string }> {
+  }): Promise<{ user: UserResponse; token: string; refreshToken: string }> {
     const { email, name, image, googleId } = googleData;
 
     // Validate required fields
@@ -155,7 +204,7 @@ export class AuthService {
       }
     }
 
-    // Generate JWT token with role
+    // Generate JWT access token (15m)
     const payload = {
       sub: user.id,
       email: user.email,
@@ -165,12 +214,20 @@ export class AuthService {
     };
     const token = this.jwtService.sign(payload);
 
+    // Generate refresh token (30d)
+    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(user.id, 30);
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
     return {
       user: userWithoutPassword,
       token,
+      refreshToken: refreshTokenEntity.token,
     };
+  }
+
+  async revokeRefreshToken(refreshToken: string): Promise<void> {
+    await this.refreshTokenRepository.revokeToken(refreshToken);
   }
 }

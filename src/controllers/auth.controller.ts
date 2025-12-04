@@ -144,11 +144,47 @@ export class AuthController {
     };
   }
 
+  @Post("refresh")
+  @HttpCode(HttpStatus.OK)
+  async refreshToken(@Body("refreshToken") refreshToken: string): Promise<ApiResponse> {
+    if (!refreshToken) {
+      return {
+        success: false,
+        message: "Refresh token is required",
+        error: "Missing refresh token",
+      };
+    }
+
+    try {
+      const result = await this.authService.refreshAccessToken(refreshToken);
+
+      return {
+        success: true,
+        message: "Token refreshed successfully",
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Token refresh failed",
+        error: error.message,
+      };
+    }
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post("logout")
   @HttpCode(HttpStatus.OK)
-  async logout(): Promise<ApiResponse> {
-    // For JWT, logout is handled client-side by removing token
+  async logout(@Body("refreshToken") refreshToken?: string): Promise<ApiResponse> {
+    // Revoke refresh token if provided
+    if (refreshToken) {
+      try {
+        await this.authService.revokeRefreshToken(refreshToken);
+      } catch (error) {
+        console.error("Error revoking refresh token:", error);
+      }
+    }
+
     return {
       success: true,
       message: "Logged out successfully",

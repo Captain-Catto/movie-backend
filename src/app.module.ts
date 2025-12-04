@@ -44,6 +44,7 @@ import {
 import { Recommendation } from "./entities/recommendation.entity";
 import { PersonCache } from "./entities/person-cache.entity";
 import { PersonCreditsCache } from "./entities/person-credits-cache.entity";
+import { RefreshToken } from "./entities/refresh-token.entity";
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { PersonCreditsCache } from "./entities/person-credits-cache.entity";
           CommentMention,
           BannedWord,
           CommentReport,
+          RefreshToken,
         ],
         synchronize:
           configService.get("TYPEORM_SYNCHRONIZE") === "true" ||
