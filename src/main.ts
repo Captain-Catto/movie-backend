@@ -4,7 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
 import "reflect-metadata";
 
-process.env.TZ = 'UTC';
+process.env.TZ = "UTC";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -30,7 +30,7 @@ async function bootstrap() {
     origin: [
       "https://movie.lequangtridat.com",
       "http://movie.lequangtridat.com",
-      "http://localhost:3000", // For local development
+      "http://localhost:3000",
     ],
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     credentials: true,
