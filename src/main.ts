@@ -4,10 +4,14 @@ import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
 import "reflect-metadata";
 
+process.env.TZ = 'UTC';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const logger = new Logger("Bootstrap");
+
+  logger.log(`⏰ Timezone: ${process.env.TZ}`);
 
   // Global validation pipe
   app.useGlobalPipes(
