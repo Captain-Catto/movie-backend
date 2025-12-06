@@ -69,10 +69,7 @@ export class TMDBService {
         return config;
       },
       (error) => {
-        this.logger.error("TMDB Request setup error:", {
-          message: error.message,
-          url: error.config?.url,
-        });
+        this.logger.error("TMDB Request setup error:", error.message);
         return Promise.reject(error);
       }
     );
@@ -96,15 +93,15 @@ export class TMDBService {
         const retryCount = (config as any)?.retryCount || 0;
         const maxRetries = 3;
 
-        // Enhanced logging
+        // Enhanced logging (compact format)
         this.logger.error("TMDB API Error:", {
           status: error.response?.status,
           statusText: error.response?.statusText,
           url: config?.url,
-          method: config?.method,
+          method: config?.method?.toUpperCase(),
           retryCount,
           message: error.message,
-          responseData: error.response?.data,
+          data: error.response?.data,
         });
 
         // Rate limiting (429) - exponential backoff
@@ -159,22 +156,15 @@ export class TMDBService {
           if (error.response.status === 401) {
             this.logger.error("TMDB API Authentication failed - check API key");
           } else if (error.response.status === 404) {
-            this.logger.warn("TMDB API endpoint not found:", config?.url);
+            this.logger.warn(`TMDB API 404: ${config?.url}`);
           } else {
-            this.logger.warn("TMDB API client error:", {
-              status: error.response.status,
-              url: config?.url,
-              data: error.response.data,
-            });
+            this.logger.warn(`TMDB API ${error.response.status}: ${config?.url}`);
           }
         }
 
         // Max retries exceeded
         if (retryCount >= maxRetries) {
-          this.logger.error(
-            `Max retries (${maxRetries}) exceeded for TMDB API request:`,
-            config?.url
-          );
+          this.logger.error(`Max retries (${maxRetries}) exceeded: ${config?.url}`);
         }
 
         return Promise.reject(error);
@@ -280,7 +270,7 @@ export class TMDBService {
         total_results: response.data.total_results,
       };
     } catch (error) {
-      this.logger.error("Error fetching popular movies:", error);
+      this.logger.error("Error fetching popular movies:", error.message);
       throw error;
     }
   }
@@ -312,7 +302,7 @@ export class TMDBService {
         total_results: response.data.total_results,
       };
     } catch (error) {
-      this.logger.error("Error fetching now playing movies:", error);
+      this.logger.error("Error fetching now playing movies:", error.message);
       throw error;
     }
   }

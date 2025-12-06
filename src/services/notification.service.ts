@@ -298,6 +298,7 @@ export class NotificationService {
       targetValue: dto.userId.toString(),
       senderId,
       expiresAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+      metadata: dto.metadata,
     });
 
     // Create analytics record

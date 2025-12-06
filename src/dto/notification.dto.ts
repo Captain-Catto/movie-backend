@@ -113,6 +113,9 @@ export class CreateUserNotificationDto {
   @IsDateString()
   @IsOptional()
   scheduledAt?: string;
+
+  @IsOptional()
+  metadata?: Record<string, any>;
 }
 
 export class GetNotificationsQueryDto {

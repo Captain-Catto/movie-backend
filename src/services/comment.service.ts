@@ -54,6 +54,8 @@ export class CommentService {
     dto: CreateCommentDto,
     userId: number
   ): Promise<CommentResponseDto> {
+    let parentComment: Comment | null = null;
+
     // Validate content
     const lengthValidation = this.contentFilterService.validateCommentLength(
       dto.content
@@ -85,7 +87,7 @@ export class CommentService {
 
     // Validate parent comment exists if this is a reply
     if (dto.parentId) {
-      const parentComment = await this.commentRepository.findById(dto.parentId);
+      parentComment = await this.commentRepository.findById(dto.parentId);
       if (!parentComment) {
         throw new NotFoundException("Parent comment not found");
       }
@@ -111,6 +113,38 @@ export class CommentService {
     // Increment parent comment's reply count if this is a reply
     if (dto.parentId) {
       await this.commentRepository.incrementReplyCount(dto.parentId);
+    }
+
+    // Notify parent comment owner about the new reply
+    if (parentComment && parentComment.userId !== userId) {
+      const replierName = comment.user?.name || "Người dùng";
+      const preview =
+        filterResult.filteredContent.length > 160
+          ? `${filterResult.filteredContent.slice(0, 157)}...`
+          : filterResult.filteredContent;
+
+      try {
+        await this.notificationService.createUserNotification(
+          {
+            userId: parentComment.userId,
+            title: `${replierName} đã trả lời bình luận của bạn`,
+            message: preview,
+            type: NotificationType.INFO,
+            metadata: {
+              commentId: comment.id,
+              parentId: parentComment.id,
+              movieId: comment.movieId,
+              tvId: comment.tvId,
+            },
+          },
+          userId
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to send reply notification to user ${parentComment.userId}`,
+          error instanceof Error ? error.stack : String(error)
+        );
+      }
     }
 
     // If flagged, create an automatic report
