@@ -148,11 +148,7 @@ export class DataSyncService {
     try {
       this.logger.log(`Starting trending sync with language: ${language}...`);
 
-      const existing = await this.trendingRepository.findAll(
-        1,
-        1000,
-        true
-      );
+      const existing = await this.trendingRepository.findAll(1, 1000, true);
       const hiddenStateMap = new Map<string, TrendingHiddenState>();
       existing.data.forEach((entry) => {
         hiddenStateMap.set(`${entry.tmdbId}:${entry.mediaType}`, {
@@ -165,20 +161,39 @@ export class DataSyncService {
       // Clear existing trending data as it changes frequently
       await this.trendingRepository.clearAll();
 
-      const trendingItems = await this.tmdbService.getTrending(
-        "all",
-        "week",
-        language
-      );
+      const maxPages = 5; // limit to avoid rate limit, TMDB returns ~20 per page
+      let totalSynced = 0;
 
-      for (const item of trendingItems) {
-        const mediaType =
-          item.media_type === "movie" ? MediaType.MOVIE : MediaType.TV;
-        const hiddenState = hiddenStateMap.get(`${item.id}:${mediaType}`);
-        await this.syncTrendingItem(item, mediaType, hiddenState);
+      for (let page = 1; page <= maxPages; page++) {
+        const trendingItems = await this.tmdbService.getTrending(
+          "all",
+          "week",
+          language,
+          page
+        );
+
+        if (!trendingItems?.length) {
+          this.logger.log(`No trending items returned at page ${page}, stopping.`);
+          break;
+        }
+
+        this.logger.log(
+          `Syncing trending page ${page} with ${trendingItems.length} items`
+        );
+
+        for (const item of trendingItems) {
+          const mediaType =
+            item.media_type === "movie" ? MediaType.MOVIE : MediaType.TV;
+          const hiddenState = hiddenStateMap.get(`${item.id}:${mediaType}`);
+          await this.syncTrendingItem(item, mediaType, hiddenState);
+          totalSynced++;
+        }
+
+        // brief delay to respect TMDB limits
+        await this.delay(400);
       }
 
-      this.logger.log("Trending sync completed");
+      this.logger.log(`Trending sync completed. Synced ${totalSynced} items.`);
     } catch (error) {
       this.logger.error("Error syncing trending:", error);
     }

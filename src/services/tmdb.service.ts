@@ -435,13 +435,14 @@ export class TMDBService {
   async getTrending(
     mediaType: "all" | "movie" | "tv" = "all",
     timeWindow: "day" | "week" = "week",
-    language: string = "en-US"
+    language: string = "en-US",
+    page: number = 1
   ): Promise<TMDBTrending[]> {
     try {
       const response = await this.axiosInstance.get(
         `/trending/${mediaType}/${timeWindow}`,
         {
-          params: { language },
+          params: { language, page },
         }
       );
       return response.data.results;
