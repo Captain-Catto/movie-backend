@@ -9,6 +9,7 @@ export interface NotificationGatewayInterface {
       message: string;
       type: NotificationType;
       createdAt: Date;
+      metadata?: Record<string, any>;
     }
   ): Promise<boolean>;
 
@@ -18,6 +19,7 @@ export interface NotificationGatewayInterface {
     message: string;
     type: NotificationType;
     createdAt: Date;
+    metadata?: Record<string, any>;
   }): Promise<void>;
 
   sendNotificationToRole(
@@ -28,6 +30,7 @@ export interface NotificationGatewayInterface {
       message: string;
       type: NotificationType;
       createdAt: Date;
+      metadata?: Record<string, any>;
     }
   ): Promise<void>;
 }

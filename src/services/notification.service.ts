@@ -316,6 +316,7 @@ export class NotificationService {
         message: template.message,
         type: template.type,
         createdAt: template.createdAt,
+        metadata: template.metadata,
       };
 
       try {

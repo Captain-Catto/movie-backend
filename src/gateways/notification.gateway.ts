@@ -183,6 +183,7 @@ export class NotificationGateway
       message: string;
       type: NotificationType;
       createdAt: Date;
+      metadata?: Record<string, any>;
     }
   ) {
     const socketId = this.connectedUsers.get(userId);
