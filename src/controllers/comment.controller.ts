@@ -18,9 +18,10 @@ import {
   CreateCommentDto,
   UpdateCommentDto,
   ReportCommentDto,
-} from "../dto/comment.dto";
+  } from "../dto/comment.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ApiResponse } from "../interfaces/api.interface";
+import { UnauthorizedException } from "@nestjs/common";
 
 @Controller("comments")
 export class CommentController {
@@ -174,15 +175,17 @@ export class CommentController {
 
   // ✅ CREATE NEW COMMENT (TEMPORARY - NO AUTH FOR TESTING)
   @Post()
-  // @UseGuards(JwtAuthGuard) // Commented out for testing
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async createComment(
     @Body() dto: CreateCommentDto,
     @Request() req?
   ): Promise<ApiResponse> {
     try {
-      // Use dummy user ID for testing when no auth
-      const userId = req?.user?.id || 1;
+      const userId = req?.user?.id;
+      if (!userId) {
+        throw new UnauthorizedException("User not authenticated");
+      }
       const comment = await this.commentService.createComment(dto, userId);
 
       return {
