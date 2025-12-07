@@ -48,6 +48,11 @@ export class RecentSearchRepository {
     await this.repository.delete({ userId });
   }
 
+  async deleteById(id: number, userId: number): Promise<void> {
+    // Delete only if it belongs to the user (security check)
+    await this.repository.delete({ id, userId });
+  }
+
   async deleteOldSearches(
     userId: number,
     keepCount: number = 20

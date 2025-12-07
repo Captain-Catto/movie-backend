@@ -31,4 +31,8 @@ export class RecentSearchService {
   async clearUserSearches(userId: number): Promise<void> {
     await this.recentSearchRepository.deleteByUserId(userId);
   }
+
+  async deleteSearch(userId: number, searchId: number): Promise<void> {
+    await this.recentSearchRepository.deleteById(searchId, userId);
+  }
 }

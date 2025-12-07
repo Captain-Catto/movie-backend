@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
+  Param,
   Query,
   Body,
   HttpStatus,
@@ -135,6 +137,73 @@ export class SearchController {
       return {
         success: false,
         message: "Failed to save search",
+        error: error.message,
+      };
+    }
+  }
+
+  @Delete("recent")
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async clearRecentSearches(@Req() req: any): Promise<ApiResponse> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return {
+          success: false,
+          message: "User not authenticated",
+        };
+      }
+
+      await this.recentSearchService.clearUserSearches(userId);
+
+      return {
+        success: true,
+        message: "Recent searches cleared successfully",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to clear recent searches",
+        error: error.message,
+      };
+    }
+  }
+
+  @Delete("recent/:id")
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async deleteRecentSearch(
+    @Req() req: any,
+    @Param("id") id: string
+  ): Promise<ApiResponse> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return {
+          success: false,
+          message: "User not authenticated",
+        };
+      }
+
+      const searchId = parseInt(id, 10);
+      if (isNaN(searchId)) {
+        return {
+          success: false,
+          message: "Invalid search ID",
+        };
+      }
+
+      await this.recentSearchService.deleteSearch(userId, searchId);
+
+      return {
+        success: true,
+        message: "Search deleted successfully",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to delete search",
         error: error.message,
       };
     }
