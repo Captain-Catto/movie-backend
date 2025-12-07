@@ -9,6 +9,7 @@ export class ContentService {
   private readonly logger = new Logger(ContentService.name);
   private readonly tmdbApiKey = process.env.TMDB_API_KEY;
   private readonly tmdbBaseUrl = "https://api.themoviedb.org/3";
+  private readonly isBearerToken = this.tmdbApiKey?.includes(".") ?? false;
 
   constructor(
     @InjectRepository(Movie)
@@ -16,6 +17,32 @@ export class ContentService {
     @InjectRepository(TVSeries)
     private readonly tvRepository: Repository<TVSeries>
   ) {}
+
+  private buildTmdbRequest(
+    path: string,
+    language: string = "en-US"
+  ): { url: string; options?: RequestInit } {
+    const url = new URL(`${this.tmdbBaseUrl}${path}`);
+    url.searchParams.append("language", language);
+
+    if (this.tmdbApiKey) {
+      if (this.isBearerToken) {
+        return {
+          url: url.toString(),
+          options: {
+            headers: {
+              Authorization: `Bearer ${this.tmdbApiKey}`,
+              Accept: "application/json",
+            },
+          },
+        };
+      }
+
+      url.searchParams.append("api_key", this.tmdbApiKey);
+    }
+
+    return { url: url.toString() };
+  }
 
   /**
    * Ensure movie exists in database, fetch from TMDB if not
@@ -32,9 +59,8 @@ export class ContentService {
 
     // Fetch from TMDB API
     try {
-      const response = await fetch(
-        `${this.tmdbBaseUrl}/movie/${tmdbId}?api_key=${this.tmdbApiKey}&language=en-US`
-      );
+      const { url, options } = this.buildTmdbRequest(`/movie/${tmdbId}`);
+      const response = await fetch(url, options);
 
       if (!response.ok) {
         throw new Error(`TMDB API error: ${response.status}`);
@@ -88,9 +114,8 @@ export class ContentService {
 
     // Fetch from TMDB API
     try {
-      const response = await fetch(
-        `${this.tmdbBaseUrl}/tv/${tmdbId}?api_key=${this.tmdbApiKey}&language=en-US`
-      );
+      const { url, options } = this.buildTmdbRequest(`/tv/${tmdbId}`);
+      const response = await fetch(url, options);
 
       if (!response.ok) {
         throw new Error(`TMDB API error: ${response.status}`);

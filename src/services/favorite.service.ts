@@ -52,4 +52,22 @@ export class FavoriteService {
   ) {
     return this.favoriteRepository.delete(userId, contentId, contentType);
   }
+
+  /**
+   * Get only favorite IDs for a user - lightweight for initial load
+   */
+  async getUserFavoriteIds(userId: number) {
+    return this.favoriteRepository.findIdsByUserId(userId);
+  }
+
+  /**
+   * Check if specific item is favorited by user
+   */
+  async checkIsFavorite(
+    userId: number,
+    contentId: string,
+    contentType: "movie" | "tv"
+  ): Promise<boolean> {
+    return this.favoriteRepository.checkExists(userId, contentId, contentType);
+  }
 }

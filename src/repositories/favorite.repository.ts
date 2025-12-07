@@ -23,12 +23,12 @@ export class FavoriteRepository {
       .leftJoin(
         "movies",
         "m",
-        "f.content_id = m.\"tmdbId\"::text AND f.content_type = 'movie'"
+        "CAST(f.content_id AS INTEGER) = m.\"tmdbId\" AND f.content_type = 'movie'"
       )
       .leftJoin(
         "tv_series",
         "t",
-        "f.content_id = t.\"tmdbId\"::text AND f.content_type = 'tv'"
+        "CAST(f.content_id AS INTEGER) = t.\"tmdbId\" AND f.content_type = 'tv'"
       )
       .select([
         "f.id as id",
@@ -104,5 +104,39 @@ export class FavoriteRepository {
       contentId,
       contentType,
     });
+  }
+
+  /**
+   * Fetch only IDs for a user - lightweight query for initial load
+   * Returns array of {contentId, contentType} without JOINs
+   */
+  async findIdsByUserId(userId: number): Promise<Array<{ contentId: string; contentType: string }>> {
+    const results = await this.repository
+      .createQueryBuilder("f")
+      .select(["f.content_id as contentId", "f.content_type as contentType"])
+      .where("f.user_id = :userId", { userId })
+      .orderBy("f.created_at", "DESC")
+      .getRawMany();
+
+    return results;
+  }
+
+  /**
+   * Fast check if a specific item is favorited by user
+   * Uses EXISTS query for maximum performance
+   */
+  async checkExists(
+    userId: number,
+    contentId: string,
+    contentType: "movie" | "tv"
+  ): Promise<boolean> {
+    const count = await this.repository
+      .createQueryBuilder("f")
+      .where("f.user_id = :userId", { userId })
+      .andWhere("f.content_id = :contentId", { contentId })
+      .andWhere("f.content_type = :contentType", { contentType })
+      .getCount();
+
+    return count > 0;
   }
 }

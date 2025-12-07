@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import {
   TMDBMovie,
   TMDBTVSeries,
@@ -30,6 +30,7 @@ export class TMDBService {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly enableDebugLogs: boolean;
+  private readonly isBearerToken: boolean;
 
   constructor(private configService: ConfigService) {
     this.apiKey = this.configService.get<string>("TMDB_API_KEY");
@@ -37,14 +38,28 @@ export class TMDBService {
     this.enableDebugLogs =
       (this.configService.get<string>("TMDB_DEBUG_LOGS") || "").toLowerCase() ===
       "true";
+    this.isBearerToken = this.apiKey?.includes(".") ?? false;
 
-    this.axiosInstance = axios.create({
+    const axiosConfig: AxiosRequestConfig = {
       baseURL: this.baseUrl,
       timeout: 10000,
-      params: {
-        api_key: this.apiKey,
-      },
-    });
+    };
+
+    // TMDB v3 uses `api_key` query param, v4 uses Bearer token.
+    if (this.apiKey) {
+      if (this.isBearerToken) {
+        axiosConfig.headers = {
+          Authorization: `Bearer ${this.apiKey}`,
+          Accept: "application/json",
+        };
+      } else {
+        axiosConfig.params = {
+          api_key: this.apiKey,
+        };
+      }
+    }
+
+    this.axiosInstance = axios.create(axiosConfig);
 
     this.setupInterceptors();
   }

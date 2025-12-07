@@ -61,4 +61,39 @@ export class FavoriteController {
       success: true,
     };
   }
+
+  /**
+   * Get only favorite IDs - lightweight endpoint for initial load
+   * Returns array of {contentId, contentType} without full movie/TV data
+   */
+  @Get("ids")
+  async getUserFavoriteIds(@GetUser("id") userId: number) {
+    const ids = await this.favoriteService.getUserFavoriteIds(userId);
+    return {
+      ids,
+      total: ids.length,
+    };
+  }
+
+  /**
+   * Check if specific item is in user's favorites
+   * Fast boolean check without fetching all favorites
+   */
+  @Get("check/:contentId/:contentType")
+  async checkIsFavorite(
+    @GetUser("id") userId: number,
+    @Param("contentId") contentId: string,
+    @Param("contentType") contentType: "movie" | "tv"
+  ) {
+    const isFavorite = await this.favoriteService.checkIsFavorite(
+      userId,
+      contentId,
+      contentType
+    );
+    return {
+      isFavorite,
+      contentId,
+      contentType,
+    };
+  }
 }
