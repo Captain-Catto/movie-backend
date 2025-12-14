@@ -181,6 +181,24 @@ export class TVSeriesRepository {
     page: number = 1,
     limit: number = 24
   ): Promise<PaginatedResult<TVSeries>> {
+    try {
+      // Try optimized search with pg_trgm extension
+      return await this.searchOptimized(query, page, limit);
+    } catch (error) {
+      // Fallback to basic LIKE search if pg_trgm not available
+      console.warn(
+        "⚠️ Optimized search failed, falling back to LIKE search. Please run migration 008_add_search_optimization.sql",
+        error.message
+      );
+      return await this.searchFallback(query, page, limit);
+    }
+  }
+
+  private async searchOptimized(
+    query: string,
+    page: number,
+    limit: number
+  ): Promise<PaginatedResult<TVSeries>> {
     // Similarity threshold for fuzzy matching (trigram)
     const SIMILARITY_THRESHOLD = 0.3;
 
@@ -225,6 +243,33 @@ export class TVSeriesRepository {
       .take(limit);
 
     const [tvSeries, total] = await qb.getManyAndCount();
+
+    return {
+      data: tvSeries,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  private async searchFallback(
+    query: string,
+    page: number,
+    limit: number
+  ): Promise<PaginatedResult<TVSeries>> {
+    // Fallback to simple LIKE search (only title and originalTitle, NOT overview)
+    const [tvSeries, total] = await this.repository.findAndCount({
+      where: [
+        { title: Like(`%${query}%`), isBlocked: false },
+        { originalTitle: Like(`%${query}%`), isBlocked: false },
+      ],
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { popularity: "DESC" },
+    });
 
     return {
       data: tvSeries,
