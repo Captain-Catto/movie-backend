@@ -52,6 +52,52 @@ export class AdminSyncController {
     );
 
     try {
+      // Fire-and-forget: Run sync in background without waiting
+      this.runSyncInBackground(target, date, batchSize, startFromBatch).catch(
+        (error) => {
+          this.logger.error(
+            `❌ Background sync failed for target ${target}:`,
+            error.stack || error.message
+          );
+        }
+      );
+
+      // Return immediately to avoid timeout
+      return {
+        success: true,
+        message: `Sync task for "${target}" has been queued and is running in background`,
+        data: {
+          target,
+          date: date || null,
+          batchSize,
+          startFromBatch,
+          status: "running",
+          note: "Check server logs for progress. This may take several minutes.",
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `❌ Failed to queue sync task for target ${target}:`,
+        error.stack || error.message
+      );
+      return {
+        success: false,
+        message: "Failed to queue sync task",
+        error: error.message,
+      };
+    }
+  }
+
+  private async runSyncInBackground(
+    target: string,
+    date: string | undefined,
+    batchSize: number,
+    startFromBatch: number
+  ): Promise<void> {
+    const startTime = Date.now();
+    this.logger.log(`🚀 Starting background sync for target: ${target}`);
+
+    try {
       switch (target) {
         case "movies": {
           const syncDate = date ? new Date(date) : new Date();
@@ -90,26 +136,17 @@ export class AdminSyncController {
         }
       }
 
-      return {
-        success: true,
-        message: `Sync task for "${target}" started successfully`,
-        data: {
-          target,
-          date: date || null,
-          batchSize,
-          startFromBatch,
-        },
-      };
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      this.logger.log(
+        `✅ Background sync completed for "${target}" in ${duration}s`
+      );
     } catch (error) {
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       this.logger.error(
-        `❌ Admin sync failed for target ${target}:`,
+        `❌ Background sync failed for "${target}" after ${duration}s:`,
         error.stack || error.message
       );
-      return {
-        success: false,
-        message: "Failed to start sync task",
-        error: error.message,
-      };
+      throw error;
     }
   }
 

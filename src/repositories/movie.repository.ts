@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, Like } from "typeorm";
+import { Repository, Like, Brackets } from "typeorm";
 import { Movie } from "../entities/movie.entity";
 import { PaginatedResult } from "../interfaces/api.interface";
 
@@ -221,15 +221,50 @@ export class MovieRepository {
     page: number = 1,
     limit: number = 24
   ): Promise<PaginatedResult<Movie>> {
-    const [movies, total] = await this.repository.findAndCount({
-      where: [
-        { title: Like(`%${query}%`), isBlocked: false },
-        { overview: Like(`%${query}%`), isBlocked: false },
-      ],
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { popularity: "DESC" },
-    });
+    // Similarity threshold for fuzzy matching (trigram)
+    const SIMILARITY_THRESHOLD = 0.3;
+
+    // Weighted hybrid search query:
+    // - FTS (Full-Text Search) for exact word matches = 100 points
+    // - Trigram similarity for typo tolerance = similarity * 50 points
+    // - Popularity boost = popularity / 100
+    // - Rating boost = voteAverage * 2
+    const qb = this.repository
+      .createQueryBuilder("movie")
+      .select("movie")
+      .addSelect(
+        `(CASE
+          WHEN to_tsvector('simple', COALESCE(movie.title, '') || ' ' || COALESCE(movie."originalTitle", '')) @@ plainto_tsquery('simple', :query)
+          THEN 100
+          ELSE GREATEST(
+            similarity(movie.title, :query),
+            similarity(COALESCE(movie."originalTitle", ''), :query)
+          ) * 50
+        END) + (movie.popularity / 100) + (movie."voteAverage" * 2)`,
+        "search_rank"
+      )
+      .where(
+        new Brackets((qb) => {
+          qb.where(
+            `to_tsvector('simple', COALESCE(movie.title, '') || ' ' || COALESCE(movie."originalTitle", '')) @@ plainto_tsquery('simple', :query)`,
+            { query }
+          )
+            .orWhere("similarity(movie.title, :query) > :threshold", {
+              query,
+              threshold: SIMILARITY_THRESHOLD,
+            })
+            .orWhere(
+              'similarity(COALESCE(movie."originalTitle", \'\'), :query) > :threshold',
+              { query, threshold: SIMILARITY_THRESHOLD }
+            );
+        })
+      )
+      .andWhere("movie.isBlocked = false")
+      .orderBy("search_rank", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [movies, total] = await qb.getManyAndCount();
 
     return {
       data: movies,
