@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, Like, Brackets } from "typeorm";
+import { Repository, ILike, Brackets } from "typeorm";
 import { Movie } from "../entities/movie.entity";
 import { PaginatedResult } from "../interfaces/api.interface";
 
@@ -300,11 +300,11 @@ export class MovieRepository {
     page: number,
     limit: number
   ): Promise<PaginatedResult<Movie>> {
-    // Fallback to simple LIKE search (only title and originalTitle, NOT overview)
+    // Fallback to simple ILIKE search (case-insensitive, only title and originalTitle, NOT overview)
     const [movies, total] = await this.repository.findAndCount({
       where: [
-        { title: Like(`%${query}%`), isBlocked: false },
-        { originalTitle: Like(`%${query}%`), isBlocked: false },
+        { title: ILike(`%${query}%`), isBlocked: false },
+        { originalTitle: ILike(`%${query}%`), isBlocked: false },
       ],
       skip: (page - 1) * limit,
       take: limit,
