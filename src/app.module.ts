@@ -97,6 +97,25 @@ import { RefreshToken } from "./entities/refresh-token.entity";
             ? { rejectUnauthorized: false }
             : false,
         useUTC: true,
+        // Connection pool configuration for better performance
+        extra: {
+          // Maximum number of connections in the pool
+          max: parseInt(configService.get("DB_POOL_MAX") || "20", 10),
+          // Minimum number of connections in the pool
+          min: parseInt(configService.get("DB_POOL_MIN") || "5", 10),
+          // Maximum time (ms) a client can be idle before being closed
+          idleTimeoutMillis: 30000,
+          // Maximum time (ms) to wait for a connection from the pool
+          connectionTimeoutMillis: 2000,
+          // Maximum time (ms) a connection can exist before being closed and recreated
+          maxLifetimeSeconds: 3600,
+        },
+        // Enable query result caching
+        cache: {
+          duration: 60000, // 1 minute default cache
+          type: "database",
+          tableName: "query_result_cache",
+        },
       }),
       inject: [ConfigService],
     }),

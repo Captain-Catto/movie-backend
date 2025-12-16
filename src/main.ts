@@ -2,6 +2,7 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
+import * as compression from "compression";
 import "reflect-metadata";
 
 process.env.TZ = "UTC";
@@ -12,6 +13,23 @@ async function bootstrap() {
   const logger = new Logger("Bootstrap");
 
   logger.log(`⏰ Timezone: ${process.env.TZ}`);
+
+  // Enable response compression for better performance
+  app.use(
+    compression({
+      filter: (req, res) => {
+        // Don't compress if request specifies no-transform
+        if (req.headers["x-no-compression"]) {
+          return false;
+        }
+        // Use compression filter function
+        return compression.filter(req, res);
+      },
+      // Only compress responses larger than 1KB
+      threshold: 1024,
+      level: 6, // Compression level (0-9, 6 is default and balanced)
+    })
+  );
 
   // Global validation pipe
   app.useGlobalPipes(

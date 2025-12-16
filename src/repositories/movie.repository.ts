@@ -125,25 +125,13 @@ export class MovieRepository {
         break;
     }
 
-    console.log(`🔍 SQL Query for sortBy=${sortBy}:`, queryBuilder.getSql());
-
-    const total = await queryBuilder.getCount();
     const skipAmount = (page - 1) * limit;
 
-    console.log(`🔍 DEBUG MovieRepository.findAll:`, {
-      page,
-      limit,
-      total,
-      skipAmount,
-      willReturnData: skipAmount < total,
-      genre,
-      year,
-      sortBy,
-    });
-
-    const movies = await queryBuilder.skip(skipAmount).take(limit).getMany();
-
-    console.log(`📦 Query result: ${movies.length} movies found`);
+    // Use getManyAndCount for better performance (single query instead of 2)
+    const [movies, total] = await queryBuilder
+      .skip(skipAmount)
+      .take(limit)
+      .getManyAndCount();
 
     // Debug: Check releaseDate values for latest sort
     if (sortBy === "latest" || !sortBy) {

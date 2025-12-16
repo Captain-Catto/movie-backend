@@ -1,6 +1,5 @@
 -- Migration 008: Add full-text search and fuzzy matching optimization
 -- Description: Enables pg_trgm extension and creates search indexes for title-only search
--- Author: Claude Code
 -- Date: 2025-12-07
 
 -- ========================================
