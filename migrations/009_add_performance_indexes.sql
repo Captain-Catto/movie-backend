@@ -12,36 +12,36 @@ ON movies(popularity DESC);
 
 -- Composite index for top_rated sorting (voteAverage + voteCount)
 CREATE INDEX IF NOT EXISTS idx_movies_top_rated
-ON movies(vote_average DESC, vote_count DESC)
-WHERE vote_count > 100;
+ON movies("voteAverage" DESC, "voteCount" DESC)
+WHERE "voteCount" > 100;
 
 -- Index for sorting by release date (latest, now_playing, upcoming)
 CREATE INDEX IF NOT EXISTS idx_movies_release_date
-ON movies(release_date DESC NULLS LAST);
+ON movies("releaseDate" DESC NULLS LAST);
 
 -- GIN index for genre filtering (array column)
 CREATE INDEX IF NOT EXISTS idx_movies_genre_ids
-ON movies USING gin(genre_ids);
+ON movies USING gin("genreIds");
 
 -- Index for last updated (for sorted queries)
 CREATE INDEX IF NOT EXISTS idx_movies_last_updated
-ON movies(last_updated DESC);
+ON movies("lastUpdated" DESC);
 
 -- Index for blocked movies filter
 CREATE INDEX IF NOT EXISTS idx_movies_is_blocked
-ON movies(is_blocked)
-WHERE is_blocked = false;
+ON movies("isBlocked")
+WHERE "isBlocked" = false;
 
 -- Composite index for now_playing filter
 CREATE INDEX IF NOT EXISTS idx_movies_now_playing
-ON movies(release_date DESC, popularity DESC)
-WHERE release_date <= CURRENT_DATE
-  AND release_date >= CURRENT_DATE - INTERVAL '90 days';
+ON movies("releaseDate" DESC, popularity DESC)
+WHERE "releaseDate" <= CURRENT_DATE
+  AND "releaseDate" >= CURRENT_DATE - INTERVAL '90 days';
 
 -- Composite index for upcoming filter
 CREATE INDEX IF NOT EXISTS idx_movies_upcoming
-ON movies(release_date ASC, popularity DESC)
-WHERE release_date > CURRENT_DATE;
+ON movies("releaseDate" ASC, popularity DESC)
+WHERE "releaseDate" > CURRENT_DATE;
 
 -- ========================================
 -- TV_SERIES TABLE INDEXES
@@ -53,30 +53,30 @@ ON tv_series(popularity DESC);
 
 -- Composite index for top_rated sorting
 CREATE INDEX IF NOT EXISTS idx_tv_top_rated
-ON tv_series(vote_average DESC, vote_count DESC)
-WHERE vote_count > 100;
+ON tv_series("voteAverage" DESC, "voteCount" DESC)
+WHERE "voteCount" > 100;
 
 -- Index for sorting by first air date
 CREATE INDEX IF NOT EXISTS idx_tv_first_air_date
-ON tv_series(first_air_date DESC NULLS LAST);
+ON tv_series("firstAirDate" DESC NULLS LAST);
 
 -- GIN index for genre filtering
 CREATE INDEX IF NOT EXISTS idx_tv_genre_ids
-ON tv_series USING gin(genre_ids);
+ON tv_series USING gin("genreIds");
 
 -- Index for last updated
 CREATE INDEX IF NOT EXISTS idx_tv_last_updated
-ON tv_series(last_updated DESC);
+ON tv_series("lastUpdated" DESC);
 
 -- Index for blocked series filter
 CREATE INDEX IF NOT EXISTS idx_tv_is_blocked
-ON tv_series(is_blocked)
-WHERE is_blocked = false;
+ON tv_series("isBlocked")
+WHERE "isBlocked" = false;
 
 -- Composite index for on_the_air filter
 CREATE INDEX IF NOT EXISTS idx_tv_on_the_air
-ON tv_series(first_air_date DESC, popularity DESC)
-WHERE first_air_date <= CURRENT_DATE;
+ON tv_series("firstAirDate" DESC, popularity DESC)
+WHERE "firstAirDate" <= CURRENT_DATE;
 
 -- ========================================
 -- TRENDING TABLE INDEXES
@@ -84,8 +84,8 @@ WHERE first_air_date <= CURRENT_DATE;
 
 -- Index for trending queries (most common)
 CREATE INDEX IF NOT EXISTS idx_trending_media_type_hidden
-ON trending(media_type, is_hidden)
-WHERE is_hidden = false;
+ON trending("mediaType", "isHidden")
+WHERE "isHidden" = false;
 
 -- Index for trending by popularity
 CREATE INDEX IF NOT EXISTS idx_trending_popularity
@@ -104,12 +104,12 @@ CREATE INDEX IF NOT EXISTS idx_favorites_created_at
 ON favorites(created_at DESC);
 
 -- ========================================
--- RECENT_SEARCH TABLE INDEXES
+-- RECENT_SEARCHES TABLE INDEXES
 -- ========================================
 
 -- Composite index for user recent searches
-CREATE INDEX IF NOT EXISTS idx_recent_search_user_created
-ON recent_search(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_recent_searches_user_created
+ON recent_searches("userId", "createdAt" DESC);
 
 -- ========================================
 -- VERIFY INDEXES CREATED
@@ -120,7 +120,7 @@ SELECT
   indexname,
   indexdef
 FROM pg_indexes
-WHERE tablename IN ('movies', 'tv_series', 'trending', 'favorites', 'recent_search')
+WHERE tablename IN ('movies', 'tv_series', 'trending', 'favorites', 'recent_searches')
   AND indexname LIKE 'idx_%'
 ORDER BY tablename, indexname;
 
@@ -133,7 +133,7 @@ SELECT
   pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
   pg_size_pretty(pg_indexes_size(schemaname||'.'||tablename)) AS indexes_size
 FROM pg_indexes
-WHERE tablename IN ('movies', 'tv_series', 'trending', 'favorites', 'recent_search')
+WHERE tablename IN ('movies', 'tv_series', 'trending', 'favorites', 'recent_searches')
 GROUP BY schemaname, tablename
 ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 
