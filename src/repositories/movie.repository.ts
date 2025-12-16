@@ -6,6 +6,10 @@ import { PaginatedResult } from "../interfaces/api.interface";
 
 @Injectable()
 export class MovieRepository {
+  // Cache for total movie count
+  private totalCountCache: { count: number; timestamp: number } | null = null;
+  private readonly CACHE_TTL = 3600000; // 1 hour in milliseconds
+
   constructor(
     @InjectRepository(Movie)
     private repository: Repository<Movie>
@@ -180,6 +184,27 @@ export class MovieRepository {
     return this.repository.findOne({ where: { tmdbId } });
   }
 
+  /**
+   * Get total count of non-blocked movies with 1-hour cache
+   * Used for pagination estimation in search results
+   */
+  async getTotalCount(): Promise<number> {
+    const now = Date.now();
+
+    // Return cached value if still valid
+    if (this.totalCountCache && now - this.totalCountCache.timestamp < this.CACHE_TTL) {
+      return this.totalCountCache.count;
+    }
+
+    // Query database for fresh count
+    const count = await this.repository.count({ where: { isBlocked: false } });
+
+    // Update cache
+    this.totalCountCache = { count, timestamp: now };
+
+    return count;
+  }
+
   async create(movieData: Partial<Movie>): Promise<Movie> {
     const movie = this.repository.create(movieData);
     return this.repository.save(movie);
@@ -270,15 +295,25 @@ export class MovieRepository {
       .skip((page - 1) * limit)
       .take(limit);
 
-    const [movies, total] = await qb.getManyAndCount();
+    // PERFORMANCE: Skip COUNT query with similarity calculation (8s on 500k rows)
+    // Just return results with estimated total for pagination
+    const movies = await qb.getMany();
+
+    // Estimate total: if we got full page, assume there are more results
+    // Cap at total movie count to avoid pagination overflow
+    const totalMovies = await this.getTotalCount();
+    const estimatedTotal = Math.min(
+      movies.length === limit ? (page + 10) * limit : page * limit,
+      totalMovies
+    );
 
     return {
       data: movies,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: estimatedTotal,
+        totalPages: Math.ceil(estimatedTotal / limit),
       },
     };
   }
