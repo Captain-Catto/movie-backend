@@ -12,32 +12,26 @@ This directory contains SQL migration files for the movie streaming application 
 
 ## Running Migrations
 
-### Option 1: Using psql (Recommended)
+### Option 1: Using npm script (Recommended)
 
 ```bash
-# Connect to your PostgreSQL database
-psql -U your_username -d your_database
-
-# Run specific migration
-\i migrations/005_fix_reply_count_trigger.sql
-
-# Or run from command line
-psql -U your_username -d your_database -f migrations/005_fix_reply_count_trigger.sql
+# From movie-backend directory
+npm run migrate
 ```
 
-### Option 2: Using PgAdmin
+### Option 2: Using psql directly
+
+```bash
+# Run specific migration
+PGPASSWORD="your_password" psql -h your_host -p 5432 -U your_username -d your_database -f migrations/005_fix_reply_count_trigger.sql
+```
+
+### Option 3: Using PgAdmin
 
 1. Open PgAdmin and connect to your database
 2. Right-click on your database → Query Tool
 3. Open the migration file (005_fix_reply_count_trigger.sql)
 4. Execute the script (F5)
-
-### Option 3: Using Node.js Script
-
-```bash
-# From movie-backend directory
-npm run migrate:latest
-```
 
 ## Migration 005: Fix Reply Count Trigger
 
@@ -92,7 +86,7 @@ Should return **0 rows** if everything is synchronized.
 
 ```bash
 # From movie-backend directory
-psql -U your_username -d your_database -f scripts/test-reply-count-trigger.sql
+psql -U your_username -d your_database -f scripts/db/test-reply-count-trigger.sql
 ```
 
 This will run 6 comprehensive tests:
@@ -138,7 +132,7 @@ SELECT id, reply_count FROM comments WHERE id = 123;
 If reply counts become out of sync, run:
 
 ```bash
-psql -U your_username -d your_database -f scripts/sync-reply-count.sql
+psql -U your_username -d your_database -f scripts/db/sync-reply-count.sql
 ```
 
 This will:
@@ -192,11 +186,11 @@ CREATE TRIGGER update_reply_count_trigger
 Update your `.env` file:
 
 ```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=your_username
-DB_PASSWORD=your_password
-DB_DATABASE=your_database
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USERNAME=your_username
+DATABASE_PASSWORD=your_password
+DATABASE_NAME=your_database
 ```
 
 ### Prerequisites
@@ -215,7 +209,7 @@ DB_DATABASE=your_database
 
 **Solution**: Run the sync script:
 ```bash
-psql -U your_username -d your_database -f scripts/sync-reply-count.sql
+psql -U your_username -d your_database -f scripts/db/sync-reply-count.sql
 ```
 
 ### Issue: Permission denied
@@ -238,4 +232,4 @@ GRANT ALL PRIVILEGES ON DATABASE your_database TO your_username;
 For issues or questions:
 - Check the test scripts in `scripts/` directory
 - Review the trigger code in `005_fix_reply_count_trigger.sql`
-- See the parent project CLAUDE.md for architecture details
+- See the project documentation in `docs/`

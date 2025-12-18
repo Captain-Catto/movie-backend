@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "format": "prettier --write \"src/**/*.ts\"",
+    "migrate": "node scripts/run-migrations.js",
     "start": "node dist/main.js",
     "start:dev": "nodemon --exec ts-node src/main.ts",
     "start:debug": "nodemon --exec ts-node --inspect-brk src/main.ts",

@@ -2,16 +2,9 @@
 
 NestJS-based movie backend API with PostgreSQL database and TMDB integration.
 
-## Features
+## Tính năng
 
-- 🎬 **Movie & TV Series Management**: Complete CRUD operations for movies and TV series
-- 📈 **Trending Content**: Real-time trending movies and TV shows
-- 🔍 **Search Functionality**: Advanced search across movies and TV series
-- 🔐 **Authentication**: JWT-based authentication with bcrypt password hashing
-- 🔄 **Data Synchronization**: Automated TMDB API integration with cron jobs
-- 📦 **PostgreSQL Integration**: TypeORM-powered database operations
-- 🛡️ **Validation**: Request validation with class-validator
-- 🚀 **Modern Stack**: Built with NestJS, TypeScript, and async/await
+Tài liệu chi tiết về các tính năng backend được tách ra tại `docs/FEATURES.md`.
 
 ## Tech Stack
 
@@ -22,31 +15,80 @@ NestJS-based movie backend API with PostgreSQL database and TMDB integration.
 - **Scheduling**: @nestjs/schedule (Cron jobs)
 - **HTTP Client**: Axios for TMDB API calls
 - **Password Hashing**: bcrypt
+- **WebSocket**: Socket.IO (NestJS gateway)
+- **File Upload**: multer
+- **Storage**: AWS S3 (optional)
 
 ## API Endpoints
 
-### Movies
+Tài liệu tính năng chi tiết: `docs/FEATURES.md`.
 
-- `GET /api/movies?page=1&genre=28&year=2023` - List movies with filtering
-- `GET /api/movies/:id` - Get movie details
+Ghi chú: backend đặt global prefix `api`, vì vậy các path bên dưới đều có dạng `/{prefix}/{controller}` như `GET /api/movies`.
 
-### TV Series
+### Catalog (public)
 
-- `GET /api/tv?page=1&genre=16&year=2023` - List TV series with filtering
-- `GET /api/tv/:id` - Get TV series details
+- Movies
+  - `GET /api/movies?page=1&limit=24&genres=28&year=2023&countries=US&sortBy=popularity.desc&language=en-US`
+  - `GET /api/movies/now-playing`
+  - `GET /api/movies/popular`
+  - `GET /api/movies/top-rated`
+  - `GET /api/movies/upcoming`
+  - `GET /api/movies/:tmdbId`
+  - `GET /api/movies/:tmdbId/credits`
+  - `GET /api/movies/:tmdbId/videos`
+  - `GET /api/movies/:tmdbId/recommendations`
 
-### Trending
+- TV series
+  - `GET /api/tv?page=1&limit=24&genres=16&year=2023&countries=JP&sortBy=popularity.desc&language=en-US`
+  - `GET /api/tv/on-the-air`
+  - `GET /api/tv/popular-tv`
+  - `GET /api/tv/top-rated-tv`
+  - `GET /api/tv/:tmdbId`
+  - `GET /api/tv/:tmdbId/credits`
+  - `GET /api/tv/:tmdbId/videos`
+  - `GET /api/tv/:tmdbId/recommendations`
 
-- `GET /api/trending` - Get trending content
+- Trending
+  - `GET /api/trending?page=1&limit=24`
 
-### Search
+- Search
+  - `GET /api/search?q=avengers&page=1&type=multi&language=en-US`
 
-- `GET /api/search?q=avengers&page=1` - Search movies and TV series
+- People
+  - `GET /api/people/popular?page=1`
+  - `GET /api/people/:tmdbId`
+  - `GET /api/people/:tmdbId/credits`
+  - `GET /api/people/:tmdbId/credits/paginated?page=1&limit=20&mediaType=all&sortBy=release_date`
+
+- Content lookup
+  - `GET /api/content/lookup/tmdb/:tmdbId`
 
 ### Authentication
 
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/google`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `GET /api/auth/me` (JWT required)
+
+### User features (JWT required)
+
+- Favorites: `GET /api/favorites`, `POST /api/favorites`, `DELETE /api/favorites`, `GET /api/favorites/ids`, `GET /api/favorites/check/:contentId/:contentType`
+- Comments: `GET /api/comments/movie/:movieId`, `GET /api/comments/tv/:tvId`, `POST /api/comments`, `PUT /api/comments/:id`, `DELETE /api/comments/:id`, `POST /api/comments/:id/like`, `POST /api/comments/:id/report`
+- Notifications: `GET /api/notifications`, `GET /api/notifications/unread-count`, `PUT /api/notifications/:id/read`, `PUT /api/notifications/read-all`
+- Search history: `GET /api/search/recent`, `POST /api/search/recent`, `DELETE /api/search/recent`, `DELETE /api/search/recent/:id`
+
+### Admin (JWT + role required)
+
+- `POST /api/admin/auth/login`
+- User management: `GET /api/admin/users/list`, `GET /api/admin/users/:id`, `POST /api/admin/users/ban`, `POST /api/admin/users/unban/:id`, `PUT /api/admin/users/:id/role`
+- Content control: `POST /api/admin/content/block`, `POST /api/admin/content/unblock`, `GET /api/admin/content/list`, `GET /api/admin/content/blocked`, `GET /api/admin/content/trending`
+- SEO metadata: `POST /api/admin/seo`, `PUT /api/admin/seo/:id`, `DELETE /api/admin/seo/:id`, `GET /api/admin/seo`, `GET /api/admin/seo/page-type/:pageType`, `POST /api/admin/seo/:id/toggle`
+- Notifications: `POST /api/admin/notifications/broadcast`, `POST /api/admin/notifications/role`, `POST /api/admin/notifications/user`, `POST /api/admin/notifications/maintenance`, `GET /api/admin/notifications`, `GET /api/admin/notifications/stats`
+- Comments moderation: `GET /api/admin/comments`, `GET /api/admin/comments/reported`, `PUT /api/admin/comments/:id/hide`, `PUT /api/admin/comments/:id/unhide`, `DELETE /api/admin/comments/:id`
+- Dashboard and analytics: `GET /api/admin/dashboard/stats`, `GET /api/admin/analytics/overview`, `GET /api/admin/analytics/views`
+- Manual sync (background): `POST /api/admin/sync`
 
 ## Installation
 
@@ -64,7 +106,7 @@ NestJS-based movie backend API with PostgreSQL database and TMDB integration.
    ```
 
 3. **Setup environment variables**
-   Create a `.env` file in the root directory:
+   Create a `.env` file in the root directory (or copy from `.env.example`):
 
    ```env
    # Database Configuration
@@ -83,8 +125,27 @@ NestJS-based movie backend API with PostgreSQL database and TMDB integration.
    TMDB_BASE_URL=https://api.themoviedb.org/3
 
    # Application Configuration
-   PORT=3000
+   PORT=8080
    NODE_ENV=development
+
+   # TypeORM (optional)
+   TYPEORM_SYNCHRONIZE=true
+   TYPEORM_LOGGING=false
+   DB_POOL_MAX=20
+   DB_POOL_MIN=5
+
+   # AWS S3 (optional, for upload)
+   AWS_ACCESS_KEY_ID=replace-with-access-key
+   AWS_SECRET_ACCESS_KEY=replace-with-secret-key
+   AWS_REGION=ap-southeast-1
+   AWS_S3_BUCKET_NAME=replace-with-bucket-name
+
+   # Catalog limits (optional, for cleanup jobs)
+   MOVIE_CATALOG_LIMIT=500000
+   TV_CATALOG_LIMIT=200000
+
+   # Admin promotion (optional)
+   ADMIN_PROMOTION_SECRET=replace-with-strong-secret
    ```
 
 4. **Setup PostgreSQL Database**
@@ -133,12 +194,12 @@ curl -X POST http://localhost:8080/api/auth/register \
 
 ## Data Synchronization
 
-The application automatically synchronizes data from TMDB API:
+Backend hỗ trợ nhiều cơ chế đồng bộ dữ liệu từ TMDB:
 
-- **Frequency**: Every 30 minutes (configurable)
-- **Content**: Popular movies, TV series, and trending content
-- **Strategy**: Upsert (insert new, update existing)
-- **Error Handling**: Rate limiting, timeout handling, retry logic
+- **Popular sync (scheduled job)**: cron chạy mỗi ngày lúc `03:00` (timezone `UTC`) để sync popular movies, popular TV series và trending; sau đó chạy cleanup để giới hạn kích thước catalog theo `MOVIE_CATALOG_LIMIT` và `TV_CATALOG_LIMIT`.
+- **Lazy-loading cho danh sách**: khi gọi `GET /api/movies` hoặc `GET /api/tv` mà trang chưa có trong DB, backend sẽ tự trigger sync trang đó, sau đó trả dữ liệu (kèm cờ `isOnDemandSync` trong response).
+- **Daily export sync (manual)**: các endpoint `/api/daily-sync/*` để đồng bộ theo file daily exports của TMDB (movies/tv/all/today) và endpoint thống kê.
+- **Sync endpoints (manual)**: `/api/sync/*` để sync nhanh popular/trending theo ngôn ngữ.
 
 ## Database Schema
 
@@ -166,13 +227,33 @@ The application automatically synchronizes data from TMDB API:
 - JWT-based session management
 - Basic profile information
 
+### Favorites
+
+- Favorites theo user cho movie/tv
+- Hỗ trợ truy vấn nhanh danh sách ID và kiểm tra một item
+
+### Comments
+
+- Comment theo movie/tv, hỗ trợ reply dạng cây
+- Like/dislike, report, ẩn/hiện cho moderation
+- Mention user và lọc nội dung (banned words)
+
+### Notifications
+
+- Lưu DB, read/unread, thống kê
+- Hỗ trợ template và analytics (admin)
+
+### SEO Metadata
+
+- Lưu metadata theo `pageType`, có thể bật/tắt theo trạng thái
+
 ## Security Features
 
-- 🔒 **JWT Authentication**: Secure token-based authentication
-- 🛡️ **Password Hashing**: bcrypt with salt rounds
-- 🚫 **Input Validation**: Request validation and sanitization
-- 🔐 **Environment Variables**: Secure API key management
-- 🌐 **CORS Configuration**: Cross-origin request handling
+- **JWT Authentication**: Token-based authentication
+- **Password Hashing**: bcrypt with salt rounds
+- **Input Validation**: Request validation and sanitization
+- **Environment Variables**: Config-based secrets and credentials
+- **CORS Configuration**: Cross-origin request handling
 
 ## Error Handling
 
@@ -189,9 +270,13 @@ The application automatically synchronizes data from TMDB API:
 ```
 src/
 ├── auth/           # Authentication guards and strategies
+├── commands/        # CLI-like commands (work in progress)
 ├── controllers/    # API controllers
+├── decorators/      # Custom decorators (GetUser, Roles)
 ├── dto/           # Data Transfer Objects
 ├── entities/      # Database entities
+├── gateways/        # WebSocket gateways (Socket.IO)
+├── guards/          # Authorization guards (roles, jwt)
 ├── interfaces/    # TypeScript interfaces
 ├── modules/       # NestJS modules
 ├── repositories/  # Database repositories
@@ -207,6 +292,16 @@ src/
 3. Create service in `src/services/`
 4. Add controller in `src/controllers/`
 5. Register in appropriate module
+
+## Tài liệu liên quan
+
+- `docs/DEPLOYMENT.md` - Hướng dẫn deploy (PM2, Nginx, env production)
+- `docs/README_DAILY_SYNC.md` - Hướng dẫn daily export sync
+- `docs/NOTIFICATION_SETUP.md` - Mô tả hệ thống notification và migration liên quan
+
+## Lưu ý khi public API
+
+Trong code hiện tại có một số endpoint phục vụ maintenance/debug không có guard (ví dụ: `/api/sync/*`, `/api/daily-sync/*`, `/api/recommendations/*`, `/api/people/admin/cache/*`, `/api/debug/*`, `/api/demo/*`). Nếu backend được public ra Internet, nên giới hạn bằng network policy hoặc bổ sung guard trước khi đưa lên production.
 
 ## Contributing
 
