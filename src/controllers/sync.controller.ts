@@ -1,24 +1,24 @@
 import { Controller, Post, HttpCode, HttpStatus, Query } from "@nestjs/common";
 import { DataSyncService } from "../services/data-sync.service";
 import { ApiResponse } from "../interfaces/api.interface";
+import { SyncSettingsService } from "../services/sync-settings.service";
 
 @Controller("sync")
 export class SyncController {
-  constructor(private dataSyncService: DataSyncService) {}
+  constructor(
+    private dataSyncService: DataSyncService,
+    private syncSettingsService: SyncSettingsService
+  ) {}
 
   @Post("all")
   @HttpCode(HttpStatus.OK)
   async syncAll(@Query("language") language?: string): Promise<ApiResponse> {
     try {
       const lang = language || "en-US";
+      const limits = await this.syncSettingsService.getCatalogLimits();
 
-      // Sync popular movies (5 pages = ~100 movies)
       await this.dataSyncService.syncPopularMovies(lang);
-
-      // Sync popular TV series (5 pages = ~100 TV shows)
       await this.dataSyncService.syncPopularTVSeries(lang);
-
-      // Sync trending (1 page = ~20 items)
       await this.dataSyncService.syncTrending(lang);
 
       return {
@@ -26,9 +26,18 @@ export class SyncController {
         message: `All data sync completed successfully with language: ${lang}. Imported movies, TV series, and trending content.`,
         data: {
           language: lang,
-          movies: "~100 popular movies imported",
-          tvSeries: "~100 popular TV series imported",
-          trending: "~20 trending items imported",
+          movies:
+            limits.movieLimit > 0
+              ? `~${limits.movieLimit} popular movies targeted`
+              : "Popular movies (no limit)",
+          tvSeries:
+            limits.tvLimit > 0
+              ? `~${limits.tvLimit} popular TV series targeted`
+              : "Popular TV series (no limit)",
+          trending:
+            limits.trendingLimit > 0
+              ? `~${limits.trendingLimit} trending items targeted`
+              : "Trending items (no limit)",
         },
       };
     } catch (error) {
@@ -45,6 +54,7 @@ export class SyncController {
   async syncMovies(@Query("language") language?: string): Promise<ApiResponse> {
     try {
       const lang = language || "en-US";
+      const { movieLimit } = await this.syncSettingsService.getCatalogLimits();
       await this.dataSyncService.syncPopularMovies(lang);
 
       return {
@@ -52,7 +62,10 @@ export class SyncController {
         message: `Movies sync completed successfully with language: ${lang}`,
         data: {
           language: lang,
-          result: "~100 popular movies imported",
+          result:
+            movieLimit > 0
+              ? `~${movieLimit} popular movies targeted`
+              : "Popular movies (no limit)",
         },
       };
     } catch (error) {
@@ -71,6 +84,7 @@ export class SyncController {
   ): Promise<ApiResponse> {
     try {
       const lang = language || "en-US";
+      const { tvLimit } = await this.syncSettingsService.getCatalogLimits();
       await this.dataSyncService.syncPopularTVSeries(lang);
 
       return {
@@ -78,7 +92,10 @@ export class SyncController {
         message: `TV series sync completed successfully with language: ${lang}`,
         data: {
           language: lang,
-          result: "~100 popular TV series imported",
+          result:
+            tvLimit > 0
+              ? `~${tvLimit} popular TV series targeted`
+              : "Popular TV series (no limit)",
         },
       };
     } catch (error) {
@@ -97,6 +114,8 @@ export class SyncController {
   ): Promise<ApiResponse> {
     try {
       const lang = language || "en-US";
+      const { trendingLimit } =
+        await this.syncSettingsService.getCatalogLimits();
       await this.dataSyncService.syncTrending(lang);
 
       return {
@@ -104,7 +123,10 @@ export class SyncController {
         message: `Trending sync completed successfully with language: ${lang}`,
         data: {
           language: lang,
-          result: "~20 trending items imported",
+          result:
+            trendingLimit > 0
+              ? `~${trendingLimit} trending items targeted`
+              : "Trending items (no limit)",
         },
       };
     } catch (error) {

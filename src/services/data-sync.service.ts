@@ -12,6 +12,7 @@ import { Movie } from "../entities/movie.entity";
 import { TVSeries } from "../entities/tv-series.entity";
 import { Trending, MediaType } from "../entities/trending.entity";
 import { TMDB_MAX_PAGES } from "../constants/tmdb.constants";
+import { SyncSettingsService } from "./sync-settings.service";
 
 type TrendingHiddenState = {
   isHidden: boolean;
@@ -27,30 +28,55 @@ export class DataSyncService {
     private tmdbService: TMDBService,
     private movieRepository: MovieRepository,
     private tvSeriesRepository: TVSeriesRepository,
-    private trendingRepository: TrendingRepository
+    private trendingRepository: TrendingRepository,
+    private syncSettingsService: SyncSettingsService
   ) {}
 
   async syncPopularMovies(language: string = "en-US"): Promise<void> {
     try {
+      const { movieLimit } = await this.syncSettingsService.getCatalogLimits();
+
+      if (movieLimit === 0) {
+        this.logger.log(
+          "Skipping popular movies sync because movie limit is set to 0"
+        );
+        return;
+      }
+
       this.logger.log(
         `Starting popular movies sync with language: ${language}...`
       );
 
       let currentPage = 1;
-      let totalPages = 1;
+      let pageLimit = TMDB_MAX_PAGES;
+      let syncedPages = 0;
 
-      // Fetch all available pages dynamically
-      do {
+      while (currentPage <= pageLimit) {
         const response = await this.tmdbService.getPopularMovies(
           currentPage,
           language
         );
 
-        // Get total pages from first response
-        if (currentPage === 1 && response.total_pages > 0) {
-          totalPages = response.total_pages;
+        // Establish page limit on first response
+        if (currentPage === 1) {
+          const totalPagesFromApi = response.total_pages || 1;
+          const basePageLimit = Math.min(totalPagesFromApi, TMDB_MAX_PAGES);
+
+          if (response.results.length === 0) {
+            this.logger.log(
+              `No movies returned at page ${currentPage}, stopping.`
+            );
+            break;
+          }
+
+          const configuredPageLimit =
+            movieLimit > 0
+              ? Math.ceil(movieLimit / response.results.length)
+              : basePageLimit;
+
+          pageLimit = Math.min(configuredPageLimit, basePageLimit);
           this.logger.log(
-            `Found ${response.total_results} total movies across ${totalPages} pages`
+            `Found ${response.total_results} total movies across ${totalPagesFromApi} pages (syncing up to ${pageLimit} pages based on limit ${movieLimit || "∞"})`
           );
         }
 
@@ -67,20 +93,15 @@ export class DataSyncService {
           await this.syncMovie(tmdbMovie);
         }
 
+        syncedPages = currentPage;
         currentPage++;
 
         // Add delay to respect rate limits
         await this.delay(500);
-
-        // TMDB API limit to prevent errors
-        if (currentPage > TMDB_MAX_PAGES) {
-          this.logger.warn(`Reached TMDB API limit of ${TMDB_MAX_PAGES} pages`);
-          break;
-        }
-      } while (true);
+      }
 
       this.logger.log(
-        `Popular movies sync completed. Synced ${currentPage - 1} pages`
+        `Popular movies sync completed. Synced ${syncedPages} pages (limit ${pageLimit}).`
       );
     } catch (error) {
       this.logger.error("Error syncing popular movies:", error);
@@ -89,23 +110,48 @@ export class DataSyncService {
 
   async syncPopularTVSeries(language: string = "en-US"): Promise<void> {
     try {
+      const { tvLimit } = await this.syncSettingsService.getCatalogLimits();
+
+      if (tvLimit === 0) {
+        this.logger.log(
+          "Skipping popular TV series sync because TV limit is set to 0"
+        );
+        return;
+      }
+
       this.logger.log(
         `Starting popular TV series sync with language: ${language}...`
       );
 
       let currentPage = 1;
+      let pageLimit = TMDB_MAX_PAGES;
+      let syncedPages = 0;
 
-      // Fetch all available pages dynamically
-      do {
+      while (currentPage <= pageLimit) {
         const response = await this.tmdbService.getPopularTVSeries(
           currentPage,
           language
         );
 
-        // Get total pages from first response
-        if (currentPage === 1 && response.total_pages > 0) {
+        if (currentPage === 1) {
+          const totalPagesFromApi = response.total_pages || 1;
+          const basePageLimit = Math.min(totalPagesFromApi, TMDB_MAX_PAGES);
+
+          if (response.results.length === 0) {
+            this.logger.log(
+              `No TV series returned at page ${currentPage}, stopping.`
+            );
+            break;
+          }
+
+          const configuredPageLimit =
+            tvLimit > 0
+              ? Math.ceil(tvLimit / response.results.length)
+              : basePageLimit;
+
+          pageLimit = Math.min(configuredPageLimit, basePageLimit);
           this.logger.log(
-            `Found ${response.total_results} total TV series across ${response.total_pages} pages`
+            `Found ${response.total_results} total TV series across ${totalPagesFromApi} pages (syncing up to ${pageLimit} pages based on limit ${tvLimit || "∞"})`
           );
         }
 
@@ -122,22 +168,15 @@ export class DataSyncService {
           await this.syncTVSeries(tmdbTV);
         }
 
+        syncedPages = currentPage;
         currentPage++;
 
         // Add delay to respect rate limits
         await this.delay(500);
-
-        // TMDB API limit to prevent errors
-        if (currentPage > TMDB_MAX_PAGES) {
-          this.logger.warn(
-            `Reached TMDB API limit of ${TMDB_MAX_PAGES} pages for TV series`
-          );
-          break;
-        }
-      } while (true);
+      }
 
       this.logger.log(
-        `Popular TV series sync completed. Synced ${currentPage - 1} pages`
+        `Popular TV series sync completed. Synced ${syncedPages} pages (limit ${pageLimit}).`
       );
     } catch (error) {
       this.logger.error("Error syncing popular TV series:", error);
@@ -146,9 +185,23 @@ export class DataSyncService {
 
   async syncTrending(language: string = "en-US"): Promise<void> {
     try {
+      const { trendingLimit } = await this.syncSettingsService.getCatalogLimits();
+
+      if (trendingLimit === 0) {
+        this.logger.log(
+          "Skipping trending sync because trending limit is set to 0"
+        );
+        return;
+      }
+
       this.logger.log(`Starting trending sync with language: ${language}...`);
 
-      const existing = await this.trendingRepository.findAll(1, 1000, true);
+      const hiddenSnapshotSize = Math.max(trendingLimit || 0, 1000);
+      const existing = await this.trendingRepository.findAll(
+        1,
+        hiddenSnapshotSize,
+        true
+      );
       const hiddenStateMap = new Map<string, TrendingHiddenState>();
       existing.data.forEach((entry) => {
         hiddenStateMap.set(`${entry.tmdbId}:${entry.mediaType}`, {
@@ -161,7 +214,9 @@ export class DataSyncService {
       // Clear existing trending data as it changes frequently
       await this.trendingRepository.clearAll();
 
-      const maxPages = 5; // limit to avoid rate limit, TMDB returns ~20 per page
+      const defaultPages = 5; // previous hard-coded behavior
+      let maxPages = defaultPages;
+      let itemsPerPage = 20;
       let totalSynced = 0;
 
       for (let page = 1; page <= maxPages; page++) {
@@ -177,11 +232,35 @@ export class DataSyncService {
           break;
         }
 
+        if (page === 1) {
+          itemsPerPage = trendingItems.length || itemsPerPage;
+          if (trendingLimit > 0) {
+            maxPages = Math.max(1, Math.ceil(trendingLimit / itemsPerPage));
+          }
+          this.logger.log(
+            `Trending sync configured for up to ${maxPages} pages (~${maxPages * itemsPerPage} items) based on limit ${trendingLimit || "∞"}`
+          );
+        }
+
+        const remaining =
+          trendingLimit > 0 ? Math.max(trendingLimit - totalSynced, 0) : null;
+        if (remaining !== null && remaining <= 0) {
+          this.logger.log(
+            `Reached configured trending limit (${trendingLimit}), stopping.`
+          );
+          break;
+        }
+
+        const itemsToProcess =
+          remaining !== null
+            ? trendingItems.slice(0, remaining)
+            : trendingItems;
+
         this.logger.log(
-          `Syncing trending page ${page} with ${trendingItems.length} items`
+          `Syncing trending page ${page} with ${itemsToProcess.length} items`
         );
 
-        for (const item of trendingItems) {
+        for (const item of itemsToProcess) {
           const mediaType =
             item.media_type === "movie" ? MediaType.MOVIE : MediaType.TV;
           const hiddenState = hiddenStateMap.get(`${item.id}:${mediaType}`);
@@ -189,11 +268,20 @@ export class DataSyncService {
           totalSynced++;
         }
 
+        if (remaining !== null && totalSynced >= trendingLimit) {
+          this.logger.log(
+            `Reached configured trending limit (${trendingLimit}), stopping.`
+          );
+          break;
+        }
+
         // brief delay to respect TMDB limits
         await this.delay(400);
       }
 
-      this.logger.log(`Trending sync completed. Synced ${totalSynced} items.`);
+      this.logger.log(
+        `Trending sync completed. Synced ${totalSynced} items (page cap ${maxPages}).`
+      );
     } catch (error) {
       this.logger.error("Error syncing trending:", error);
     }

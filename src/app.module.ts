@@ -40,6 +40,7 @@ import {
   CommentMention,
   BannedWord,
   CommentReport,
+  SyncSettings,
 } from "./entities";
 import { Recommendation } from "./entities/recommendation.entity";
 import { PersonCache } from "./entities/person-cache.entity";
@@ -85,6 +86,7 @@ import { RefreshToken } from "./entities/refresh-token.entity";
           BannedWord,
           CommentReport,
           RefreshToken,
+          SyncSettings,
         ],
         synchronize:
           configService.get("TYPEORM_SYNCHRONIZE") === "true" ||

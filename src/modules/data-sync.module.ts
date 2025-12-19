@@ -7,16 +7,30 @@ import { TMDBModule } from "./tmdb.module";
 import { MovieModule } from "./movie.module";
 import { TVModule } from "./tv.module";
 import { TrendingModule } from "./trending.module";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { SyncSettings } from "../entities/sync-settings.entity";
+import { SyncSettingsService } from "../services/sync-settings.service";
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([SyncSettings]),
     ScheduleModule.forRoot(),
     TMDBModule,
     forwardRef(() => MovieModule),
     forwardRef(() => TVModule),
     forwardRef(() => TrendingModule),
   ],
-  providers: [DataSyncService, DataSyncTask, CatalogCleanupService],
-  exports: [DataSyncService, DataSyncTask, CatalogCleanupService],
+  providers: [
+    DataSyncService,
+    DataSyncTask,
+    CatalogCleanupService,
+    SyncSettingsService,
+  ],
+  exports: [
+    DataSyncService,
+    DataSyncTask,
+    CatalogCleanupService,
+    SyncSettingsService,
+  ],
 })
 export class DataSyncModule {}

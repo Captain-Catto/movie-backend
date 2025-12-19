@@ -89,6 +89,7 @@ Ghi chú: backend đặt global prefix `api`, vì vậy các path bên dưới �
 - Comments moderation: `GET /api/admin/comments`, `GET /api/admin/comments/reported`, `PUT /api/admin/comments/:id/hide`, `PUT /api/admin/comments/:id/unhide`, `DELETE /api/admin/comments/:id`
 - Dashboard and analytics: `GET /api/admin/dashboard/stats`, `GET /api/admin/analytics/overview`, `GET /api/admin/analytics/views`
 - Manual sync (background): `POST /api/admin/sync`
+- Sync catalog limits: `GET /api/admin/sync/settings`, `PATCH /api/admin/sync/settings`
 
 ## Installation
 
@@ -143,6 +144,7 @@ Ghi chú: backend đặt global prefix `api`, vì vậy các path bên dưới �
    # Catalog limits (optional, for cleanup jobs)
    MOVIE_CATALOG_LIMIT=500000
    TV_CATALOG_LIMIT=200000
+   TRENDING_CATALOG_LIMIT=100
 
    # Admin promotion (optional)
    ADMIN_PROMOTION_SECRET=replace-with-strong-secret
@@ -196,7 +198,7 @@ curl -X POST http://localhost:8080/api/auth/register \
 
 Backend hỗ trợ nhiều cơ chế đồng bộ dữ liệu từ TMDB:
 
-- **Popular sync (scheduled job)**: cron chạy mỗi ngày lúc `03:00` (timezone `UTC`) để sync popular movies, popular TV series và trending; sau đó chạy cleanup để giới hạn kích thước catalog theo `MOVIE_CATALOG_LIMIT` và `TV_CATALOG_LIMIT`.
+- **Popular sync (scheduled job)**: cron chạy mỗi ngày lúc `03:00` (timezone `UTC`) để sync popular movies, popular TV series và trending; sau đó chạy cleanup để giới hạn kích thước catalog theo các giá trị trong bảng `sync_settings` (seed từ `MOVIE_CATALOG_LIMIT`, `TV_CATALOG_LIMIT`, `TRENDING_CATALOG_LIMIT` hoặc chỉnh qua `PATCH /api/admin/sync/settings`).
 - **Lazy-loading cho danh sách**: khi gọi `GET /api/movies` hoặc `GET /api/tv` mà trang chưa có trong DB, backend sẽ tự trigger sync trang đó, sau đó trả dữ liệu (kèm cờ `isOnDemandSync` trong response).
 - **Daily export sync (manual)**: các endpoint `/api/daily-sync/*` để đồng bộ theo file daily exports của TMDB (movies/tv/all/today) và endpoint thống kê.
 - **Sync endpoints (manual)**: `/api/sync/*` để sync nhanh popular/trending theo ngôn ngữ.

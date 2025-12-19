@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Logger,
+  Patch,
   Post,
   UseGuards,
 } from "@nestjs/common";
@@ -16,24 +18,45 @@ import { DataSyncService } from "../services/data-sync.service";
 import { CatalogCleanupService } from "../services/catalog-cleanup.service";
 import { AdminSyncRequestDto } from "../dto/admin-sync.dto";
 import { ApiResponse } from "../interfaces/api.interface";
+import { SyncSettingsService } from "../services/sync-settings.service";
+import { UpdateSyncSettingsDto } from "../dto/sync-settings.dto";
 
 @Controller("admin/sync")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class AdminSyncController {
   private readonly logger = new Logger(AdminSyncController.name);
-  private readonly movieLimit = Number(
-    process.env.MOVIE_CATALOG_LIMIT || 500_000
-  );
-  private readonly tvLimit = Number(
-    process.env.TV_CATALOG_LIMIT || 200_000
-  );
 
   constructor(
     private readonly dailySyncService: DailySyncService,
     private readonly dataSyncService: DataSyncService,
-    private readonly catalogCleanupService: CatalogCleanupService
+    private readonly catalogCleanupService: CatalogCleanupService,
+    private readonly syncSettingsService: SyncSettingsService
   ) {}
+
+  @Get("settings")
+  @HttpCode(HttpStatus.OK)
+  async getSettings(): Promise<ApiResponse> {
+    const settings = await this.syncSettingsService.getSettings();
+    return {
+      success: true,
+      message: "Current sync catalog limits",
+      data: settings,
+    };
+  }
+
+  @Patch("settings")
+  @HttpCode(HttpStatus.OK)
+  async updateSettings(
+    @Body() body: UpdateSyncSettingsDto
+  ): Promise<ApiResponse> {
+    const updated = await this.syncSettingsService.updateSettings(body);
+    return {
+      success: true,
+      message: "Sync catalog limits updated",
+      data: updated,
+    };
+  }
 
   @Post()
   @HttpCode(HttpStatus.ACCEPTED)
@@ -152,11 +175,14 @@ export class AdminSyncController {
 
   private async runCleanup(): Promise<void> {
     try {
-      if (Number.isFinite(this.movieLimit) && this.movieLimit > 0) {
-        await this.catalogCleanupService.trimMovies(this.movieLimit);
+      const { movieLimit, tvLimit } =
+        await this.syncSettingsService.getCatalogLimits();
+
+      if (Number.isFinite(movieLimit) && movieLimit > 0) {
+        await this.catalogCleanupService.trimMovies(movieLimit);
       }
-      if (Number.isFinite(this.tvLimit) && this.tvLimit > 0) {
-        await this.catalogCleanupService.trimTvSeries(this.tvLimit);
+      if (Number.isFinite(tvLimit) && tvLimit > 0) {
+        await this.catalogCleanupService.trimTvSeries(tvLimit);
       }
       this.logger.log("🧹 Catalog cleanup completed after popular sync");
     } catch (cleanupError) {
