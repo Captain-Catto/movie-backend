@@ -256,22 +256,55 @@ export class AdminAnalyticsService {
         take: limit,
       });
 
-      return {
-        movies: movies.map((m) => ({
-          id: m.tmdbId,
+      // Get favorite counts for each content
+      const movieFavCounts = await Promise.all(
+        movies.map(async (m) => {
+          const count = await this.favoriteRepository.count({
+            where: { contentId: String(m.tmdbId), contentType: "movie" },
+          });
+          return { tmdbId: m.tmdbId, favoriteCount: count };
+        })
+      );
+
+      const tvFavCounts = await Promise.all(
+        tvSeries.map(async (tv) => {
+          const count = await this.favoriteRepository.count({
+            where: { contentId: String(tv.tmdbId), contentType: "tv" },
+          });
+          return { tmdbId: tv.tmdbId, favoriteCount: count };
+        })
+      );
+
+      // Create lookup maps
+      const movieFavMap = new Map(movieFavCounts.map(f => [f.tmdbId, f.favoriteCount]));
+      const tvFavMap = new Map(tvFavCounts.map(f => [f.tmdbId, f.favoriteCount]));
+
+      // Combine all results into a single array with proper field names
+      const allContent = [
+        ...movies.map((m) => ({
+          tmdbId: m.tmdbId,
           title: m.title,
-          viewCount: m.viewCount,
-          clickCount: m.clickCount,
-          type: "movie",
+          contentType: "movie" as const,
+          viewCount: m.viewCount || 0,
+          clickCount: m.clickCount || 0,
+          favoriteCount: movieFavMap.get(m.tmdbId) || 0,
+          posterPath: m.posterPath || null,
         })),
-        tvSeries: tvSeries.map((tv) => ({
-          id: tv.tmdbId,
+        ...tvSeries.map((tv) => ({
+          tmdbId: tv.tmdbId,
           title: tv.title,
-          viewCount: tv.viewCount,
-          clickCount: tv.clickCount,
-          type: "tv",
+          contentType: "tv" as const,
+          viewCount: tv.viewCount || 0,
+          clickCount: tv.clickCount || 0,
+          favoriteCount: tvFavMap.get(tv.tmdbId) || 0,
+          posterPath: tv.posterPath || null,
         })),
-      };
+      ];
+
+      // Sort by viewCount and return top items
+      return allContent
+        .sort((a, b) => b.viewCount - a.viewCount)
+        .slice(0, limit);
     } catch (error) {
       this.logger.error("Error getting popular content:", error);
       throw error;
