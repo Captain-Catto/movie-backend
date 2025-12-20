@@ -26,10 +26,18 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   async trackEvent(@Body() dto: TrackEventDto, @Req() req: Request) {
     try {
+      console.log("[Analytics Controller] Received tracking request:", dto);
+
       // Extract user info from request
       const userId = (req.user as any)?.id || null;
       const ipAddress = req.ip || req.headers["x-forwarded-for"] || null;
       const userAgent = req.headers["user-agent"] || null;
+
+      console.log("[Analytics Controller] Request info:", {
+        userId,
+        ipAddress,
+        userAgent: userAgent ? "present" : "missing",
+      });
 
       await this.analyticsService.trackEvent({
         ...dto,
@@ -38,15 +46,22 @@ export class AnalyticsController {
         userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
       });
 
+      console.log("[Analytics Controller] Event tracked successfully");
+
       return {
         success: true,
         message: "Event tracked successfully",
       };
     } catch (error) {
-      console.error("Error tracking event:", error);
+      console.error("[Analytics Controller] Error tracking event:", error);
+      console.error("[Analytics Controller] Error details:", {
+        message: error.message,
+        stack: error.stack,
+      });
       return {
         success: false,
         message: "Failed to track event",
+        error: error.message,
       };
     }
   }
