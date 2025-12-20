@@ -203,6 +203,43 @@ export class AdminAnalyticsService {
         .limit(20)
         .getRawMany();
 
+      // Fetch titles for favorited content
+      const movieIds = mostFavorited
+        .filter(f => f.contentType === "movie")
+        .map(f => parseInt(f.contentId));
+      
+      const tvIds = mostFavorited
+        .filter(f => f.contentType === "tv")
+        .map(f => parseInt(f.contentId));
+
+      const [movieTitles, tvTitles] = await Promise.all([
+        movieIds.length > 0
+          ? this.movieRepository
+              .createQueryBuilder("movie")
+              .select(["movie.tmdbId", "movie.title", "movie.posterPath"])
+              .where("movie.tmdbId IN (:...ids)", { ids: movieIds })
+              .getMany()
+          : [],
+        tvIds.length > 0
+          ? this.tvRepository
+              .createQueryBuilder("tv")
+              .select(["tv.tmdbId", "tv.title", "tv.posterPath"])
+              .where("tv.tmdbId IN (:...ids)", { ids: tvIds })
+              .getMany()
+          : [],
+      ]);
+
+      // Create lookup maps
+      const movieTitleMap = new Map<number, { title: string; posterPath: string | null }>();
+      movieTitles.forEach(m => {
+        movieTitleMap.set(m.tmdbId, { title: m.title, posterPath: m.posterPath });
+      });
+
+      const tvTitleMap = new Map<number, { title: string; posterPath: string | null }>();
+      tvTitles.forEach(tv => {
+        tvTitleMap.set(tv.tmdbId, { title: tv.title, posterPath: tv.posterPath });
+      });
+
       // Favorites over time (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -224,11 +261,20 @@ export class AdminAnalyticsService {
           movies: movieFavorites,
           tvSeries: tvFavorites,
         },
-        mostFavorited: mostFavorited.map((f) => ({
-          contentId: f.contentId,
-          contentType: f.contentType,
-          count: parseInt(f.favoriteCount),
-        })),
+        mostFavorited: mostFavorited.map((f) => {
+          const tmdbId = parseInt(f.contentId);
+          const titleData = f.contentType === "movie" 
+            ? movieTitleMap.get(tmdbId)
+            : tvTitleMap.get(tmdbId);
+          
+          return {
+            contentId: f.contentId,
+            contentType: f.contentType,
+            count: parseInt(f.favoriteCount),
+            title: titleData ? titleData.title : "Unknown",
+            posterPath: titleData ? titleData.posterPath : null,
+          };
+        }),
         trend: favoritesOverTime.map((f) => ({
           date: f.date,
           count: parseInt(f.count),
