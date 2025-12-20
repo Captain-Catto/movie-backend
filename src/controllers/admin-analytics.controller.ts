@@ -124,7 +124,7 @@ export class AdminAnalyticsController {
       const query: any = {};
       if (startDate) query.startDate = new Date(startDate);
       if (endDate) query.endDate = new Date(endDate);
-      
+
       // Map contentType to match ViewAnalytics enum
       if (contentType) {
         if (contentType === "tv" || contentType === "tv_series") {
@@ -145,6 +145,43 @@ export class AdminAnalyticsController {
       return {
         success: false,
         message: "Failed to retrieve click statistics",
+        error: error.message,
+      };
+    }
+  }
+
+  @Get("plays")
+  @HttpCode(HttpStatus.OK)
+  async getPlayStats(
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+    @Query("contentType") contentType?: string
+  ): Promise<ApiResponse> {
+    try {
+      const query: any = {};
+      if (startDate) query.startDate = new Date(startDate);
+      if (endDate) query.endDate = new Date(endDate);
+
+      // Map contentType to match ViewAnalytics enum
+      if (contentType) {
+        if (contentType === "tv" || contentType === "tv_series") {
+          query.contentType = ContentType.TV_SERIES;
+        } else if (contentType === "movie") {
+          query.contentType = ContentType.MOVIE;
+        }
+      }
+
+      const data = await this.adminAnalyticsService.getPlayStats(query);
+
+      return {
+        success: true,
+        message: "Play statistics retrieved successfully",
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to retrieve play statistics",
         error: error.message,
       };
     }

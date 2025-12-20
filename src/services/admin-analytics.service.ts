@@ -178,6 +178,42 @@ export class AdminAnalyticsService {
     }
   }
 
+  // Get play statistics
+  async getPlayStats(query: AnalyticsQuery = {}) {
+    const { startDate, endDate, contentType } = query;
+
+    try {
+      const queryBuilder = this.viewAnalyticsRepository
+        .createQueryBuilder("analytics")
+        .where("analytics.actionType = :action", { action: ActionType.PLAY });
+
+      if (startDate) {
+        queryBuilder.andWhere("analytics.createdAt >= :startDate", {
+          startDate,
+        });
+      }
+
+      if (endDate) {
+        queryBuilder.andWhere("analytics.createdAt <= :endDate", { endDate });
+      }
+
+      if (contentType) {
+        queryBuilder.andWhere("analytics.contentType = :contentType", {
+          contentType,
+        });
+      }
+
+      const totalPlays = await queryBuilder.getCount();
+
+      return {
+        total: totalPlays,
+      };
+    } catch (error) {
+      this.logger.error("Error getting play stats:", error);
+      throw error;
+    }
+  }
+
   // Get favorite statistics
   async getFavoriteStats() {
     try {
