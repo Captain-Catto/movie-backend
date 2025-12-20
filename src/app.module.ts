@@ -17,6 +17,7 @@ import { NotificationModule } from "./modules/notification.module";
 import { FavoriteModule } from "./modules/favorite.module";
 import { CommentModule } from "./modules/comment.module";
 import { AdminModule } from "./modules/admin.module";
+import { AnalyticsModule } from "./modules/analytics.module";
 import { SyncController } from "./controllers/sync.controller";
 import { DebugController } from "./controllers/debug.controller";
 import { UserRepository } from "./repositories/user.repository";
@@ -136,6 +137,7 @@ import { RefreshToken } from "./entities/refresh-token.entity";
     FavoriteModule,
     CommentModule,
     AdminModule,
+    AnalyticsModule,
     TypeOrmModule.forFeature([User]), // For DebugController
   ],
   controllers: [SyncController, DebugController],
