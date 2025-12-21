@@ -11,8 +11,8 @@ import {
 } from "../entities";
 
 export interface AnalyticsQuery {
-  startDate?: Date;
-  endDate?: Date;
+  startDate?: string | Date;
+  endDate?: string | Date;
   contentType?: ViewContentType;
   limit?: number;
 }
@@ -51,7 +51,10 @@ export class AdminAnalyticsService {
       }
 
       if (endDate) {
-        queryBuilder.andWhere("analytics.createdAt <= :endDate", { endDate });
+        // Add 1 day to endDate to include the entire end date (use < nextDay instead of <= endDate)
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        queryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
       }
 
       if (contentType) {
@@ -165,7 +168,10 @@ export class AdminAnalyticsService {
       }
 
       if (endDate) {
-        queryBuilder.andWhere("analytics.createdAt <= :endDate", { endDate });
+        // Add 1 day to endDate to include the entire end date (use < nextDay instead of <= endDate)
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        queryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
       }
 
       if (contentType) {
@@ -205,7 +211,10 @@ export class AdminAnalyticsService {
       }
 
       if (endDate) {
-        queryBuilder.andWhere("analytics.createdAt <= :endDate", { endDate });
+        // Add 1 day to endDate to include the entire end date (use < nextDay instead of <= endDate)
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        queryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
       }
 
       if (contentType) {
