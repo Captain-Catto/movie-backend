@@ -224,10 +224,30 @@ export class AdminAnalyticsService {
       }
 
       const totalPlays = await queryBuilder.getCount();
+
+      // Breakdown by metadata.source to understand which play button was used
+      const sourceBreakdownRaw = await this.viewAnalyticsRepository
+        .createQueryBuilder("analytics")
+        .select("COALESCE(analytics.metadata->>'source', 'unknown')", "source")
+        .addSelect("COUNT(*)", "count")
+        .where("analytics.actionType = :action", { action: ActionType.PLAY })
+        .groupBy("source")
+        .getRawMany();
+
+      const bySource = sourceBreakdownRaw.reduce<Record<string, number>>(
+        (acc, row) => {
+          const key = row.source || "unknown";
+          acc[key] = parseInt(row.count, 10) || 0;
+          return acc;
+        },
+        {}
+      );
+
       this.logger.log(`[Analytics] getPlayStats result: ${totalPlays} plays`);
 
       return {
         total: totalPlays,
+        bySource,
       };
     } catch (error) {
       this.logger.error("Error getting play stats:", error);
