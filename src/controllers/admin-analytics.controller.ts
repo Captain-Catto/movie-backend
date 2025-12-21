@@ -49,9 +49,9 @@ export class AdminAnalyticsController {
   ): Promise<ApiResponse> {
     try {
       const query: any = {};
-      if (startDate) query.startDate = new Date(startDate);
-      if (endDate) query.endDate = new Date(endDate);
-      
+      if (startDate) query.startDate = startDate; // Keep as string for proper timezone handling
+      if (endDate) query.endDate = endDate;
+
       // Map contentType to match ViewAnalytics enum
       if (contentType) {
         if (contentType === "tv" || contentType === "tv_series") {
@@ -122,8 +122,8 @@ export class AdminAnalyticsController {
   ): Promise<ApiResponse> {
     try {
       const query: any = {};
-      if (startDate) query.startDate = new Date(startDate);
-      if (endDate) query.endDate = new Date(endDate);
+      if (startDate) query.startDate = startDate; // Keep as string for proper timezone handling
+      if (endDate) query.endDate = endDate;
 
       // Map contentType to match ViewAnalytics enum
       if (contentType) {
@@ -159,8 +159,8 @@ export class AdminAnalyticsController {
   ): Promise<ApiResponse> {
     try {
       const query: any = {};
-      if (startDate) query.startDate = new Date(startDate);
-      if (endDate) query.endDate = new Date(endDate);
+      if (startDate) query.startDate = startDate; // Keep as string for proper timezone handling
+      if (endDate) query.endDate = endDate;
 
       // Map contentType to match ViewAnalytics enum
       if (contentType) {
