@@ -36,6 +36,9 @@ export class AdminAnalyticsService {
   async getViewStats(query: AnalyticsQuery = {}) {
     const { startDate, endDate, contentType } = query;
 
+    // Debug logging
+    this.logger.log(`[Analytics] getViewStats called with: startDate=${startDate}, endDate=${endDate}, contentType=${contentType}`);
+
     try {
       const queryBuilder = this.viewAnalyticsRepository
         .createQueryBuilder("analytics")
@@ -58,6 +61,7 @@ export class AdminAnalyticsService {
       }
 
       const totalViews = await queryBuilder.getCount();
+      this.logger.log(`[Analytics] getViewStats result: ${totalViews} views`);
 
       // Views by content type
       const movieViews = await this.viewAnalyticsRepository.count({
@@ -146,6 +150,9 @@ export class AdminAnalyticsService {
   async getClickStats(query: AnalyticsQuery = {}) {
     const { startDate, endDate, contentType } = query;
 
+    // Debug logging
+    this.logger.log(`[Analytics] getClickStats called with: startDate=${startDate}, endDate=${endDate}, contentType=${contentType}`);
+
     try {
       const queryBuilder = this.viewAnalyticsRepository
         .createQueryBuilder("analytics")
@@ -168,6 +175,7 @@ export class AdminAnalyticsService {
       }
 
       const totalClicks = await queryBuilder.getCount();
+      this.logger.log(`[Analytics] getClickStats result: ${totalClicks} clicks`);
 
       return {
         total: totalClicks,
@@ -181,6 +189,9 @@ export class AdminAnalyticsService {
   // Get play statistics
   async getPlayStats(query: AnalyticsQuery = {}) {
     const { startDate, endDate, contentType } = query;
+
+    // Debug logging
+    this.logger.log(`[Analytics] getPlayStats called with: startDate=${startDate}, endDate=${endDate}, contentType=${contentType}`);
 
     try {
       const queryBuilder = this.viewAnalyticsRepository
@@ -204,6 +215,7 @@ export class AdminAnalyticsService {
       }
 
       const totalPlays = await queryBuilder.getCount();
+      this.logger.log(`[Analytics] getPlayStats result: ${totalPlays} plays`);
 
       return {
         total: totalPlays,
