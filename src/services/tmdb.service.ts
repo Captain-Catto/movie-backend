@@ -673,7 +673,12 @@ export class TMDBService {
       });
       return response.data;
     } catch (error) {
-      this.logger.error(`Error fetching movie ${movieId}:`, error);
+      // Only log detailed error for non-404 errors
+      if (error.response?.status === 404) {
+        this.logger.warn(`Movie ${movieId} not found in TMDB (404)`);
+      } else {
+        this.logger.error(`Error fetching movie ${movieId}:`, error.message);
+      }
       throw error;
     }
   }
@@ -688,7 +693,12 @@ export class TMDBService {
       });
       return response.data;
     } catch (error) {
-      this.logger.error(`Error fetching TV series ${tvId}:`, error);
+      // Only log detailed error for non-404 errors
+      if (error.response?.status === 404) {
+        this.logger.warn(`TV series ${tvId} not found in TMDB (404)`);
+      } else {
+        this.logger.error(`Error fetching TV series ${tvId}:`, error.message);
+      }
       throw error;
     }
   }
@@ -757,7 +767,11 @@ export class TMDBService {
         crew: response.data.crew || [],
       };
     } catch (error) {
-      this.logger.error(`Error fetching credits for movie ${movieId}:`, error);
+      if (error.response?.status === 404) {
+        this.logger.warn(`Movie credits ${movieId} not found (404)`);
+      } else {
+        this.logger.error(`Error fetching credits for movie ${movieId}:`, error.message);
+      }
       throw error;
     }
   }
@@ -779,7 +793,11 @@ export class TMDBService {
         crew: response.data.crew || [],
       };
     } catch (error) {
-      this.logger.error(`Error fetching credits for TV series ${tvId}:`, error);
+      if (error.response?.status === 404) {
+        this.logger.warn(`TV credits ${tvId} not found (404)`);
+      } else {
+        this.logger.error(`Error fetching credits for TV series ${tvId}:`, error.message);
+      }
       throw error;
     }
   }
@@ -797,10 +815,11 @@ export class TMDBService {
       });
       return response.data;
     } catch (error) {
-      this.logger.error(
-        `Error fetching enhanced movie details ${movieId}:`,
-        error
-      );
+      if (error.response?.status === 404) {
+        this.logger.warn(`Movie ${movieId} not found in TMDB (404)`);
+      } else {
+        this.logger.error(`Error fetching enhanced movie details ${movieId}:`, error.message);
+      }
       throw error;
     }
   }
@@ -818,10 +837,11 @@ export class TMDBService {
       });
       return response.data;
     } catch (error) {
-      this.logger.error(
-        `Error fetching enhanced TV series details ${tvId}:`,
-        error
-      );
+      if (error.response?.status === 404) {
+        this.logger.warn(`TV series ${tvId} not found in TMDB (404)`);
+      } else {
+        this.logger.error(`Error fetching enhanced TV series details ${tvId}:`, error.message);
+      }
       throw error;
     }
   }
