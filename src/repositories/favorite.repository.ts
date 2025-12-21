@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { DeleteResult, Repository } from "typeorm";
 import { Favorite } from "../entities/favorite.entity";
 
 export interface FavoriteOptions {
@@ -98,8 +98,8 @@ export class FavoriteRepository {
     userId: number,
     contentId: string,
     contentType: "movie" | "tv"
-  ): Promise<void> {
-    await this.repository.delete({
+  ): Promise<DeleteResult> {
+    return this.repository.delete({
       userId,
       contentId,
       contentType,

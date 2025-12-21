@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import {
   Movie,
@@ -21,6 +23,8 @@ import { AdminUserService } from "../services/admin-user.service";
 import { AdminAnalyticsService } from "../services/admin-analytics.service";
 import { AdminSeoService } from "../services/admin-seo.service";
 import { AdminDashboardService } from "../services/admin-dashboard.service";
+import { AdminAnalyticsRealtimeService } from "../services/admin-analytics-realtime.service";
+import { AdminAnalyticsGateway } from "../gateways/admin-analytics.gateway";
 
 // Controllers
 import { AdminContentController } from "../controllers/admin-content.controller";
@@ -38,6 +42,17 @@ import { TrendingModule } from "./trending.module";
     DailySyncModule,
     DataSyncModule,
     TrendingModule,
+    ConfigModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.getOrThrow<string>("JWT_SECRET"),
+        signOptions: {
+          expiresIn: configService.get<string>("JWT_EXPIRES_IN") || "15m",
+        },
+      }),
+      inject: [ConfigService],
+    }),
     TypeOrmModule.forFeature([
       Movie,
       TVSeries,
@@ -67,6 +82,8 @@ import { TrendingModule } from "./trending.module";
     AdminAnalyticsService,
     AdminSeoService,
     AdminDashboardService,
+    AdminAnalyticsRealtimeService,
+    AdminAnalyticsGateway,
   ],
   exports: [
     AdminContentService,
@@ -74,6 +91,8 @@ import { TrendingModule } from "./trending.module";
     AdminAnalyticsService,
     AdminSeoService,
     AdminDashboardService,
+    AdminAnalyticsRealtimeService,
+    AdminAnalyticsGateway,
   ],
 })
 export class AdminModule {}

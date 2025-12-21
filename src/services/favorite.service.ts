@@ -3,10 +3,14 @@ import {
   FavoriteRepository,
   FavoriteOptions,
 } from "../repositories/favorite.repository";
+import { AdminAnalyticsRealtimeService } from "./admin-analytics-realtime.service";
 
 @Injectable()
 export class FavoriteService {
-  constructor(private readonly favoriteRepository: FavoriteRepository) {}
+  constructor(
+    private readonly favoriteRepository: FavoriteRepository,
+    private readonly analyticsRealtime: AdminAnalyticsRealtimeService
+  ) {}
 
   async getUserFavorites(userId: number, options: FavoriteOptions) {
     const result = await this.favoriteRepository.findByUserId(userId, options);
@@ -36,13 +40,18 @@ export class FavoriteService {
       throw new Error("Item already in favorites");
     }
 
-    return this.favoriteRepository.create({
+    const created = await this.favoriteRepository.create({
       userId,
       contentId,
       contentType,
       updatedAt: new Date(),
       user: null, // Will be set by the repository
     });
+
+    // Best-effort realtime push for admin dashboard
+    this.analyticsRealtime.trackFavoriteDelta(1).catch(() => undefined);
+
+    return created;
   }
 
   async removeFromFavorites(
@@ -50,7 +59,17 @@ export class FavoriteService {
     contentId: string,
     contentType: "movie" | "tv"
   ) {
-    return this.favoriteRepository.delete(userId, contentId, contentType);
+    const result = await this.favoriteRepository.delete(
+      userId,
+      contentId,
+      contentType
+    );
+
+    if (result?.affected && result.affected > 0) {
+      this.analyticsRealtime.trackFavoriteDelta(-1).catch(() => undefined);
+    }
+
+    return result;
   }
 
   /**

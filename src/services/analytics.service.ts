@@ -8,6 +8,7 @@ import {
   Movie,
   TVSeries,
 } from "../entities";
+import { AdminAnalyticsRealtimeService } from "./admin-analytics-realtime.service";
 const UAParser = require("ua-parser-js");
 
 interface TrackEventParams {
@@ -32,7 +33,8 @@ export class AnalyticsService {
     @InjectRepository(Movie)
     private movieRepository: Repository<Movie>,
     @InjectRepository(TVSeries)
-    private tvRepository: Repository<TVSeries>
+    private tvRepository: Repository<TVSeries>,
+    private readonly realtimeService: AdminAnalyticsRealtimeService
   ) {}
 
   /**
@@ -84,6 +86,9 @@ export class AnalyticsService {
           this.logger.error("Error updating content counters:", error);
         }
       );
+
+      // Push lightweight realtime snapshot updates for admin dashboard
+      this.realtimeService.trackAction(actionType).catch(() => undefined);
     } catch (error) {
       this.logger.error("Error tracking event:", error);
       throw error;
