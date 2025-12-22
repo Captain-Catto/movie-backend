@@ -21,6 +21,7 @@ interface TrackEventParams {
   userId?: number;
   ipAddress?: string;
   userAgent?: string;
+  country?: string | null;
 }
 
 @Injectable()
@@ -74,7 +75,7 @@ export class AnalyticsService {
         ipAddress,
         userAgent,
         deviceType: deviceInfo.device,
-        country: null, // Can integrate IP geolocation service later
+        country: params.country || null,
         metadata: metadata || {},
       });
 
