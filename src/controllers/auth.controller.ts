@@ -15,6 +15,7 @@ import { ApiResponse } from "../interfaces/api.interface";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { IsEmail, IsString, IsOptional } from "class-validator";
 import { UpdateProfileDto } from "../dto/profile.dto";
+import geoip from "geoip-lite";
 
 export class GoogleAuthDto {
   @IsEmail()
@@ -243,8 +244,10 @@ export class AuthController {
 
   private extractRequestMetadata(req: any) {
     const forwarded = req?.headers?.["x-forwarded-for"];
+    const realIp = req?.headers?.["x-real-ip"];
     const rawIp =
       (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0]) ||
+      (Array.isArray(realIp) ? realIp[0] : realIp) ||
       req?.ip ||
       req?.connection?.remoteAddress;
 
@@ -256,11 +259,27 @@ export class AuthController {
         : undefined;
 
     const userAgentHeader = req?.headers?.["user-agent"];
+    const countryHeader =
+      (req?.headers?.["cf-ipcountry"] as string) ||
+      (req?.headers?.["x-vercel-ip-country"] as string);
+
+    const country =
+      typeof countryHeader === "string" && countryHeader.length === 2
+        ? countryHeader.toUpperCase()
+        : ipAddress
+        ? geoip.lookup(this.stripIpPrefix(ipAddress))?.country || null
+        : null;
 
     return {
-      ipAddress,
+      ipAddress: this.stripIpPrefix(ipAddress),
       userAgent:
         typeof userAgentHeader === "string" ? userAgentHeader : undefined,
+      country,
     };
+  }
+
+  private stripIpPrefix(ip?: string) {
+    if (!ip) return undefined;
+    return ip.startsWith("::ffff:") ? ip.replace("::ffff:", "") : ip;
   }
 }

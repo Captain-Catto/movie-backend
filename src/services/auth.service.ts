@@ -18,6 +18,7 @@ import * as bcrypt from "bcrypt";
 interface RequestMetadata {
   ipAddress?: string;
   userAgent?: string;
+  country?: string | null;
 }
 
 @Injectable()
@@ -29,26 +30,6 @@ export class AuthService {
     private adminSettingsService: AdminSettingsService
   ) {}
 
-  private detectDeviceType(userAgent?: string): string | null {
-    if (!userAgent) return null;
-
-    const normalized = userAgent.toLowerCase();
-
-    if (
-      normalized.includes("mobile") ||
-      normalized.includes("iphone") ||
-      normalized.includes("android")
-    ) {
-      return "mobile";
-    }
-
-    if (normalized.includes("ipad") || normalized.includes("tablet")) {
-      return "tablet";
-    }
-
-    return "desktop";
-  }
-
   private buildLoginMetadata(metadata?: RequestMetadata): Partial<User> {
     const loginData: Partial<User> = {
       lastLoginAt: new Date(),
@@ -58,14 +39,24 @@ export class AuthService {
       loginData.lastLoginIp = metadata.ipAddress;
     }
 
-    if (metadata?.userAgent) {
-      const deviceType = this.detectDeviceType(metadata.userAgent);
-      if (deviceType) {
-        loginData.lastLoginDevice = deviceType;
-      }
+    const deviceType = this.detectDeviceType(metadata?.userAgent);
+    if (deviceType) {
+      loginData.lastLoginDevice = deviceType;
     }
 
     return loginData;
+  }
+
+  private detectDeviceType(userAgent?: string): string | null {
+    if (!userAgent) return null;
+    const ua = userAgent.toLowerCase();
+    if (ua.includes("mobile") || ua.includes("iphone") || ua.includes("android")) {
+      return "mobile";
+    }
+    if (ua.includes("ipad") || ua.includes("tablet")) {
+      return "tablet";
+    }
+    return "desktop";
   }
 
   private validateRegistrationInputs(
@@ -135,8 +126,7 @@ export class AuthService {
       await this.refreshTokenRepository.createRefreshToken(
         user.id,
         30,
-        requestMetadata?.ipAddress,
-        requestMetadata?.userAgent
+        requestMetadata?.ipAddress
       );
 
     // Remove password from response
@@ -197,8 +187,7 @@ export class AuthService {
       await this.refreshTokenRepository.createRefreshToken(
         user.id,
         30,
-        requestMetadata?.ipAddress,
-        requestMetadata?.userAgent
+        requestMetadata?.ipAddress
       );
 
     // Remove password from response
@@ -255,8 +244,7 @@ export class AuthService {
       await this.refreshTokenRepository.createRefreshToken(
         user.id,
         30,
-        requestMetadata?.ipAddress,
-        requestMetadata?.userAgent
+        requestMetadata?.ipAddress
       );
 
     return {
@@ -339,8 +327,7 @@ export class AuthService {
       await this.refreshTokenRepository.createRefreshToken(
         user.id,
         30,
-        requestMetadata?.ipAddress,
-        requestMetadata?.userAgent
+        requestMetadata?.ipAddress
       );
 
     // Remove password from response
