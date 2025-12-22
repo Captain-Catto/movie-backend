@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import type { SignOptions } from "jsonwebtoken";
 import {
   Movie,
   TVSeries,
@@ -45,12 +46,17 @@ import { TrendingModule } from "./trending.module";
     ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.getOrThrow<string>("JWT_SECRET"),
-        signOptions: {
-          expiresIn: configService.get<string>("JWT_EXPIRES_IN") || "15m",
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const expiresIn = (configService.get<string>("JWT_EXPIRES_IN") ||
+          "15m") as SignOptions["expiresIn"];
+
+        return {
+          secret: configService.getOrThrow<string>("JWT_SECRET"),
+          signOptions: {
+            expiresIn,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     TypeOrmModule.forFeature([
