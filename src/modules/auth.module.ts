@@ -11,6 +11,7 @@ import { AuthService } from "../services/auth.service";
 import { UserRepository } from "../repositories/user.repository";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
 import { JwtStrategy } from "../auth/jwt.strategy";
+import { SettingsModule } from "./settings.module";
 
 const DEFAULT_JWT_EXPIRES_IN: StringValue = "15m";
 
@@ -29,6 +30,7 @@ const resolveJwtExpiresIn = (
   imports: [
     TypeOrmModule.forFeature([User, RefreshToken]),
     PassportModule.register({ defaultStrategy: "jwt" }),
+    SettingsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

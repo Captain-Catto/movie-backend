@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UserRepository } from "../repositories/user.repository";
@@ -9,6 +10,7 @@ import { RefreshTokenRepository } from "../repositories/refresh-token.repository
 import { User } from "../entities/user.entity";
 import { RegisterDto, LoginDto } from "../dto/auth.dto";
 import { UserResponse } from "../interfaces/user.interface";
+import { AdminSettingsService } from "./admin-settings.service";
 
 interface RequestMetadata {
   ipAddress?: string;
@@ -20,7 +22,8 @@ export class AuthService {
   constructor(
     private userRepository: UserRepository,
     private jwtService: JwtService,
-    private refreshTokenRepository: RefreshTokenRepository
+    private refreshTokenRepository: RefreshTokenRepository,
+    private adminSettingsService: AdminSettingsService
   ) {}
 
   private detectDeviceType(userAgent?: string): string | null {
@@ -62,11 +65,42 @@ export class AuthService {
     return loginData;
   }
 
+  private validateRegistrationInputs(
+    dto: RegisterDto,
+    settings: {
+      nickname: { min: number; max: number };
+      password: { min: number; max: number };
+    }
+  ) {
+    if (
+      dto.name &&
+      (dto.name.length < settings.nickname.min ||
+        dto.name.length > settings.nickname.max)
+    ) {
+      throw new BadRequestException(
+        `Tên phải từ ${settings.nickname.min}-${settings.nickname.max} ký tự`
+      );
+    }
+
+    if (
+      dto.password.length < settings.password.min ||
+      dto.password.length > settings.password.max
+    ) {
+      throw new BadRequestException(
+        `Mật khẩu phải từ ${settings.password.min}-${settings.password.max} ký tự`
+      );
+    }
+  }
+
   async register(
     registerDto: RegisterDto,
     requestMetadata?: RequestMetadata
   ): Promise<{ user: UserResponse; token: string; refreshToken: string }> {
     const { email, password, name } = registerDto;
+
+    const registrationSettings =
+      await this.adminSettingsService.getRegistrationSettings();
+    this.validateRegistrationInputs(registerDto, registrationSettings);
 
     // Check if user already exists
     const existingUser = await this.userRepository.findByEmail(email);

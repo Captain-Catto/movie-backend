@@ -9,7 +9,7 @@ const REGISTRATION_SETTINGS_KEY = "registration";
 const DEFAULT_REGISTRATION_SETTINGS: RegistrationSettingsDto = {
   id: { min: 6, max: 16 },
   nickname: { min: 3, max: 16 },
-  password: { min: 8, max: 16 },
+  password: { min: 6, max: 16 },
 };
 
 @Injectable()
