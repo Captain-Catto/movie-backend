@@ -284,6 +284,7 @@ export class AuthController {
 
   private stripIpPrefix(ip?: string) {
     if (!ip) return undefined;
-    return ip.startsWith("::ffff:") ? ip.replace("::ffff:", "") : ip;
+    const trimmed = ip.trim();
+    return trimmed.startsWith("::ffff:") ? trimmed.replace("::ffff:", "") : trimmed;
   }
 }

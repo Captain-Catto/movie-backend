@@ -110,6 +110,7 @@ export class AnalyticsController {
 
   private normalizeIp(ip?: string | null): string | null {
     if (!ip) return null;
+    ip = ip.trim();
     // Strip IPv6 prefix if present (e.g., ::ffff:1.2.3.4)
     if (ip.startsWith("::ffff:")) {
       return ip.replace("::ffff:", "");
