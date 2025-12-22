@@ -137,12 +137,57 @@ export class AdminAnalyticsService {
         .limit(limit)
         .getRawMany();
 
-      return results.map((r) => ({
-        contentId: r.contentId,
-        contentType: r.contentType,
-        title: r.title,
-        viewCount: parseInt(r.viewCount),
-      }));
+      // Fetch poster paths from movies and tv_series tables
+      const movieIds = results
+        .filter(r => r.contentType === ViewContentType.MOVIE)
+        .map(r => parseInt(r.contentId));
+
+      const tvIds = results
+        .filter(r => r.contentType === ViewContentType.TV_SERIES)
+        .map(r => parseInt(r.contentId));
+
+      const [moviePosters, tvPosters] = await Promise.all([
+        movieIds.length > 0
+          ? this.movieRepository
+              .createQueryBuilder("movie")
+              .select(["movie.tmdbId", "movie.posterPath"])
+              .where("movie.tmdbId IN (:...ids)", { ids: movieIds })
+              .getMany()
+          : [],
+        tvIds.length > 0
+          ? this.tvRepository
+              .createQueryBuilder("tv")
+              .select(["tv.tmdbId", "tv.posterPath"])
+              .where("tv.tmdbId IN (:...ids)", { ids: tvIds })
+              .getMany()
+          : [],
+      ]);
+
+      // Create lookup maps
+      const moviePosterMap = new Map<number, string | null>();
+      moviePosters.forEach(m => {
+        moviePosterMap.set(m.tmdbId, m.posterPath);
+      });
+
+      const tvPosterMap = new Map<number, string | null>();
+      tvPosters.forEach(tv => {
+        tvPosterMap.set(tv.tmdbId, tv.posterPath);
+      });
+
+      return results.map((r) => {
+        const tmdbId = parseInt(r.contentId);
+        const posterPath = r.contentType === ViewContentType.MOVIE
+          ? moviePosterMap.get(tmdbId)
+          : tvPosterMap.get(tmdbId);
+
+        return {
+          contentId: r.contentId,
+          contentType: r.contentType,
+          title: r.title,
+          viewCount: parseInt(r.viewCount),
+          posterPath: posterPath || null,
+        };
+      });
     } catch (error) {
       this.logger.error("Error getting most viewed content:", error);
       throw error;
