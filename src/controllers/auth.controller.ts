@@ -243,9 +243,13 @@ export class AuthController {
   }
 
   private extractRequestMetadata(req: any) {
+    const cfIp = req?.headers?.["cf-connecting-ip"];
+    const trueClientIp = req?.headers?.["true-client-ip"];
     const forwarded = req?.headers?.["x-forwarded-for"];
     const realIp = req?.headers?.["x-real-ip"];
     const rawIp =
+      (typeof cfIp === "string" ? cfIp : undefined) ||
+      (typeof trueClientIp === "string" ? trueClientIp : undefined) ||
       (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0]) ||
       (Array.isArray(realIp) ? realIp[0] : realIp) ||
       req?.ip ||

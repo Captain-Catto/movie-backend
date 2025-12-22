@@ -71,8 +71,13 @@ export class AnalyticsController {
   }
 
   private resolveIp(req: Request): string | null {
+    const cfIp = req.headers["cf-connecting-ip"] as string | undefined;
+    const trueClientIp = req.headers["true-client-ip"] as string | undefined;
     const forwarded = req.headers["x-forwarded-for"];
     const realIp = req.headers["x-real-ip"] as string | undefined;
+
+    if (cfIp) return this.normalizeIp(cfIp);
+    if (trueClientIp) return this.normalizeIp(trueClientIp);
     if (Array.isArray(forwarded) && forwarded.length > 0) {
       return this.normalizeIp(forwarded[0]);
     }
