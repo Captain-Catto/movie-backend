@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, FindManyOptions, In } from "typeorm";
+import { Repository, FindManyOptions, In, MoreThanOrEqual } from "typeorm";
 import {
   Notification,
   NotificationType,
@@ -37,6 +37,13 @@ export class NotificationRepository {
     const { page = 1, limit = 20, type, unreadOnly = false } = query;
     const skip = (page - 1) * limit;
 
+    // Only return notifications after the user registered
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ["id", "createdAt"],
+    });
+    const createdCutoff = user?.createdAt;
+
     const whereConditions: any = { userId };
 
     if (type) {
@@ -48,7 +55,12 @@ export class NotificationRepository {
     }
 
     const findOptions: FindManyOptions<Notification> = {
-      where: whereConditions,
+      where: createdCutoff
+        ? {
+            ...whereConditions,
+            createdAt: MoreThanOrEqual(createdCutoff),
+          }
+        : whereConditions,
       relations: ["sender"],
       order: { createdAt: "DESC" },
       skip,
