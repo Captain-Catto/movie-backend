@@ -72,13 +72,15 @@ export class AnalyticsController {
 
   private resolveIp(req: Request): string | null {
     const forwarded = req.headers["x-forwarded-for"];
+    const realIp = req.headers["x-real-ip"] as string | undefined;
     if (Array.isArray(forwarded) && forwarded.length > 0) {
-      return forwarded[0];
+      return this.normalizeIp(forwarded[0]);
     }
     if (typeof forwarded === "string") {
-      return forwarded.split(",")[0].trim();
+      return this.normalizeIp(forwarded.split(",")[0].trim());
     }
-    return req.ip || null;
+    if (realIp) return this.normalizeIp(realIp);
+    return this.normalizeIp(req.ip || null);
   }
 
   private resolveCountry(req: Request, ip?: string | null): string | null {
@@ -99,5 +101,39 @@ export class AnalyticsController {
     } catch {
       return null;
     }
+  }
+
+  private normalizeIp(ip?: string | null): string | null {
+    if (!ip) return null;
+    // Strip IPv6 prefix if present (e.g., ::ffff:1.2.3.4)
+    if (ip.startsWith("::ffff:")) {
+      return ip.replace("::ffff:", "");
+    }
+    // Ignore local/private ranges for geo lookup
+    if (
+      ip === "::1" ||
+      ip === "127.0.0.1" ||
+      ip.startsWith("10.") ||
+      ip.startsWith("192.168.") ||
+      ip.startsWith("172.16.") ||
+      ip.startsWith("172.17.") ||
+      ip.startsWith("172.18.") ||
+      ip.startsWith("172.19.") ||
+      ip.startsWith("172.20.") ||
+      ip.startsWith("172.21.") ||
+      ip.startsWith("172.22.") ||
+      ip.startsWith("172.23.") ||
+      ip.startsWith("172.24.") ||
+      ip.startsWith("172.25.") ||
+      ip.startsWith("172.26.") ||
+      ip.startsWith("172.27.") ||
+      ip.startsWith("172.28.") ||
+      ip.startsWith("172.29.") ||
+      ip.startsWith("172.30.") ||
+      ip.startsWith("172.31.")
+    ) {
+      return null;
+    }
+    return ip;
   }
 }
