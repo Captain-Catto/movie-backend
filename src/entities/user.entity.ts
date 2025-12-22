@@ -65,6 +65,9 @@ export class User {
   @Column({ type: "varchar", length: 50, nullable: true })
   lastLoginDevice: string; // mobile/desktop/tablet
 
+  @Column({ type: "varchar", length: 10, nullable: true })
+  lastLoginCountry: string; // ISO country code
+
   @Column({ type: "integer", default: 0 })
   totalWatchTime: number; // Total watch time in minutes
 

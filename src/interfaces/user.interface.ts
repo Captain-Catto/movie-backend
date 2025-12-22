@@ -12,4 +12,5 @@ export interface UserResponse {
   lastLoginAt?: Date;
   lastLoginIp?: string;
   lastLoginDevice?: string;
+  lastLoginCountry?: string | null;
 }

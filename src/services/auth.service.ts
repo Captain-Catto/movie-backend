@@ -44,6 +44,10 @@ export class AuthService {
       loginData.lastLoginDevice = deviceType;
     }
 
+    if (metadata?.country) {
+      loginData.lastLoginCountry = metadata.country;
+    }
+
     return loginData;
   }
 
