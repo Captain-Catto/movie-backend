@@ -16,6 +16,7 @@ import {
   NotificationTemplate,
   UserNotificationState,
   NotificationAnalytics,
+  Setting,
 } from "../entities";
 
 // Services
@@ -34,9 +35,11 @@ import { AdminAnalyticsController } from "../controllers/admin-analytics.control
 import { AdminSeoController } from "../controllers/admin-seo.controller";
 import { AdminDashboardController } from "../controllers/admin-dashboard.controller";
 import { AdminSyncController } from "../controllers/admin-sync.controller";
+import { AdminSettingsController } from "../controllers/admin-settings.controller";
 import { DailySyncModule } from "./daily-sync.module";
 import { DataSyncModule } from "./data-sync.module";
 import { TrendingModule } from "./trending.module";
+import { AdminSettingsService } from "../services/admin-settings.service";
 
 @Module({
   imports: [
@@ -72,6 +75,7 @@ import { TrendingModule } from "./trending.module";
       NotificationTemplate,
       UserNotificationState,
       NotificationAnalytics,
+      Setting,
     ]),
   ],
   controllers: [
@@ -81,6 +85,7 @@ import { TrendingModule } from "./trending.module";
     AdminSeoController,
     AdminDashboardController,
     AdminSyncController,
+    AdminSettingsController,
   ],
   providers: [
     AdminContentService,
@@ -90,6 +95,7 @@ import { TrendingModule } from "./trending.module";
     AdminDashboardService,
     AdminAnalyticsRealtimeService,
     AdminAnalyticsGateway,
+    AdminSettingsService,
   ],
   exports: [
     AdminContentService,
@@ -99,6 +105,7 @@ import { TrendingModule } from "./trending.module";
     AdminDashboardService,
     AdminAnalyticsRealtimeService,
     AdminAnalyticsGateway,
+    AdminSettingsService,
   ],
 })
 export class AdminModule {}

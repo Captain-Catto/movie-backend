@@ -35,3 +35,4 @@ export { ViewAnalytics, ActionType } from "./view-analytics.entity";
 export { UserActivity, ActivityType } from "./user-activity.entity";
 export { SeoMetadata, PageType } from "./seo-metadata.entity";
 export { SyncSettings } from "./sync-settings.entity";
+export { Setting } from "./setting.entity";
