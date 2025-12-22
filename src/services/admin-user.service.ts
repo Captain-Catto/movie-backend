@@ -1,12 +1,8 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User, UserRole, UserActivity, ActivityType } from "../entities";
+import * as bcrypt from "bcrypt";
 
 export interface BanUserDto {
   userId: number;
@@ -202,7 +198,7 @@ export class AdminUserService {
 
   async updateUserProfile(
     userId: number,
-    updates: Partial<Pick<User, "name" | "email" | "role" | "isActive">>
+    updates: Partial<Pick<User, "name" | "role" | "isActive" | "password">>
   ): Promise<User> {
     try {
       const user = await this.userRepository.findOne({
@@ -213,22 +209,8 @@ export class AdminUserService {
         throw new NotFoundException(`User with ID ${userId} not found`);
       }
 
-      if (updates.email && updates.email !== user.email) {
-        const existingUser = await this.userRepository.findOne({
-          where: { email: updates.email },
-        });
-        if (existingUser && existingUser.id !== userId) {
-          throw new ConflictException(
-            `Email ${updates.email} is already in use`
-          );
-        }
-      }
-
       if (typeof updates.name === "string") {
         user.name = updates.name;
-      }
-      if (typeof updates.email === "string") {
-        user.email = updates.email;
       }
       if (updates.role) {
         user.role = updates.role;
@@ -240,6 +222,10 @@ export class AdminUserService {
           user.bannedBy = null;
           user.bannedReason = null;
         }
+      }
+
+      if (typeof updates.password === "string" && updates.password.trim()) {
+        user.password = await bcrypt.hash(updates.password, 12);
       }
 
       const savedUser = await this.userRepository.save(user);
