@@ -103,6 +103,11 @@ export class AuthService {
     }
 
     const loginMetadata = this.buildLoginMetadata(requestMetadata);
+    console.log("[AUTH] Registration metadata:", {
+      ip: loginMetadata.lastLoginIp,
+      device: loginMetadata.lastLoginDevice,
+      country: requestMetadata?.country || null,
+    });
 
     // Create new user
     const user = await this.userRepository.create({
@@ -170,6 +175,11 @@ export class AuthService {
     }
 
     const loginMetadata = this.buildLoginMetadata(requestMetadata);
+    console.log("[AUTH] Login metadata:", {
+      ip: loginMetadata.lastLoginIp,
+      device: loginMetadata.lastLoginDevice,
+      country: requestMetadata?.country || null,
+    });
     await this.userRepository.update(user.id, loginMetadata);
     Object.assign(user, loginMetadata);
 

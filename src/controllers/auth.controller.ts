@@ -285,6 +285,13 @@ export class AuthController {
   private stripIpPrefix(ip?: string) {
     if (!ip) return undefined;
     const trimmed = ip.trim();
-    return trimmed.startsWith("::ffff:") ? trimmed.replace("::ffff:", "") : trimmed;
+    if (trimmed.startsWith("::ffff:")) {
+      return trimmed.replace("::ffff:", "");
+    }
+    if (trimmed.includes(":") && trimmed.includes(".")) {
+      // Strip port if appended, keep IPv6 intact
+      return trimmed.split(":")[0];
+    }
+    return trimmed;
   }
 }

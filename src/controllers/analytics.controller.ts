@@ -115,6 +115,10 @@ export class AnalyticsController {
     if (ip.startsWith("::ffff:")) {
       return ip.replace("::ffff:", "");
     }
+    // Strip port if appended (e.g., 1.2.3.4:5678)
+    if (ip.includes(":") && ip.includes(".")) {
+      return ip.split(":")[0];
+    }
     // Ignore local/private ranges for geo lookup
     if (
       ip === "::1" ||
