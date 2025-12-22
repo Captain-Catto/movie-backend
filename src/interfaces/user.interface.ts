@@ -9,4 +9,8 @@ export interface UserResponse {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  lastLoginAt?: Date;
+  lastLoginIp?: string;
+  lastLoginDevice?: string;
+  lastLoginUserAgent?: string;
 }

@@ -35,9 +35,15 @@ export class AuthController {
 
   @Post("register")
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() registerDto: RegisterDto): Promise<ApiResponse> {
+  async register(
+    @Body() registerDto: RegisterDto,
+    @Request() req
+  ): Promise<ApiResponse> {
     try {
-      const result = await this.authService.register(registerDto);
+      const result = await this.authService.register(
+        registerDto,
+        this.extractRequestMetadata(req)
+      );
 
       return {
         success: true,
@@ -56,9 +62,15 @@ export class AuthController {
 
   @Post("login")
   @HttpCode(HttpStatus.OK)
-  async login(@Body() loginDto: LoginDto): Promise<ApiResponse> {
+  async login(
+    @Body() loginDto: LoginDto,
+    @Request() req
+  ): Promise<ApiResponse> {
     try {
-      const result = await this.authService.login(loginDto);
+      const result = await this.authService.login(
+        loginDto,
+        this.extractRequestMetadata(req)
+      );
 
       return {
         success: true,
@@ -77,7 +89,10 @@ export class AuthController {
 
   @Post("google")
   @HttpCode(HttpStatus.OK)
-  async googleAuth(@Body() googleUser: GoogleAuthDto): Promise<ApiResponse> {
+  async googleAuth(
+    @Body() googleUser: GoogleAuthDto,
+    @Request() req
+  ): Promise<ApiResponse> {
     console.log("🔍 [AUTH] Raw request body type:", typeof googleUser);
     console.log(
       "🔍 [AUTH] Raw request body keys:",
@@ -103,7 +118,10 @@ export class AuthController {
     }
 
     try {
-      const result = await this.authService.validateGoogleUser(googleUser);
+      const result = await this.authService.validateGoogleUser(
+        googleUser,
+        this.extractRequestMetadata(req)
+      );
 
       // Simple log: just show successful Google login with role
       console.log(
@@ -146,7 +164,10 @@ export class AuthController {
 
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
-  async refreshToken(@Body("refreshToken") refreshToken: string): Promise<ApiResponse> {
+  async refreshToken(
+    @Body("refreshToken") refreshToken: string,
+    @Request() req
+  ): Promise<ApiResponse> {
     if (!refreshToken) {
       return {
         success: false,
@@ -156,7 +177,10 @@ export class AuthController {
     }
 
     try {
-      const result = await this.authService.refreshAccessToken(refreshToken);
+      const result = await this.authService.refreshAccessToken(
+        refreshToken,
+        this.extractRequestMetadata(req)
+      );
 
       return {
         success: true,
@@ -189,6 +213,29 @@ export class AuthController {
       success: true,
       message: "Logged out successfully",
       data: null,
+    };
+  }
+
+  private extractRequestMetadata(req: any) {
+    const forwarded = req?.headers?.["x-forwarded-for"];
+    const rawIp =
+      (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0]) ||
+      req?.ip ||
+      req?.connection?.remoteAddress;
+
+    const ipAddress =
+      typeof rawIp === "string"
+        ? rawIp.trim()
+        : Array.isArray(rawIp)
+        ? rawIp[0]
+        : undefined;
+
+    const userAgentHeader = req?.headers?.["user-agent"];
+
+    return {
+      ipAddress,
+      userAgent:
+        typeof userAgentHeader === "string" ? userAgentHeader : undefined,
     };
   }
 }

@@ -18,6 +18,7 @@ import { RolesGuard } from "../guards/roles.guard";
 import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
+import { UpdateUserDto } from "../dto/admin-user.dto";
 
 @Controller("admin/users")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -151,6 +152,29 @@ export class AdminUserController {
       return {
         success: false,
         message: "Failed to update user role",
+        error: error.message,
+      };
+    }
+  }
+
+  @Put(":id")
+  @HttpCode(HttpStatus.OK)
+  async updateUser(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: UpdateUserDto
+  ): Promise<ApiResponse> {
+    try {
+      const result = await this.adminUserService.updateUserProfile(id, body);
+
+      return {
+        success: true,
+        message: "User updated successfully",
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to update user",
         error: error.message,
       };
     }

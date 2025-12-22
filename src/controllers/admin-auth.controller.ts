@@ -5,6 +5,7 @@ import {
   HttpStatus,
   HttpCode,
   UnauthorizedException,
+  Request,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -23,9 +24,15 @@ export class AdminAuthController {
 
   @Post("login")
   @HttpCode(HttpStatus.OK)
-  async adminLogin(@Body() loginDto: LoginDto): Promise<ApiResponse> {
+  async adminLogin(
+    @Body() loginDto: LoginDto,
+    @Request() req
+  ): Promise<ApiResponse> {
     try {
-      const result = await this.authService.login(loginDto);
+      const result = await this.authService.login(
+        loginDto,
+        this.extractRequestMetadata(req)
+      );
 
       // Check if user has admin role
       if (
@@ -100,5 +107,28 @@ export class AdminAuthController {
         error: error.message,
       };
     }
+  }
+
+  private extractRequestMetadata(req: any) {
+    const forwarded = req?.headers?.["x-forwarded-for"];
+    const rawIp =
+      (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0]) ||
+      req?.ip ||
+      req?.connection?.remoteAddress;
+
+    const ipAddress =
+      typeof rawIp === "string"
+        ? rawIp.trim()
+        : Array.isArray(rawIp)
+        ? rawIp[0]
+        : undefined;
+
+    const userAgentHeader = req?.headers?.["user-agent"];
+
+    return {
+      ipAddress,
+      userAgent:
+        typeof userAgentHeader === "string" ? userAgentHeader : undefined,
+    };
   }
 }

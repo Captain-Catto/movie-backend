@@ -59,6 +59,15 @@ export class User {
   @Column({ type: "timestamp", nullable: true })
   lastLoginAt: Date;
 
+  @Column({ type: "varchar", length: 100, nullable: true })
+  lastLoginIp: string;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  lastLoginDevice: string; // mobile/desktop/tablet
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  lastLoginUserAgent: string;
+
   @Column({ type: "integer", default: 0 })
   totalWatchTime: number; // Total watch time in minutes
 

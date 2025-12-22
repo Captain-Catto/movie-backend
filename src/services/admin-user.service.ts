@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User, UserRole, UserActivity, ActivityType } from "../entities";
@@ -191,6 +196,60 @@ export class AdminUserService {
       return sanitizedUser as User;
     } catch (error) {
       this.logger.error("Error updating user role:", error);
+      throw error;
+    }
+  }
+
+  async updateUserProfile(
+    userId: number,
+    updates: Partial<Pick<User, "name" | "email" | "role" | "isActive">>
+  ): Promise<User> {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+
+      if (updates.email && updates.email !== user.email) {
+        const existingUser = await this.userRepository.findOne({
+          where: { email: updates.email },
+        });
+        if (existingUser && existingUser.id !== userId) {
+          throw new ConflictException(
+            `Email ${updates.email} is already in use`
+          );
+        }
+      }
+
+      if (typeof updates.name === "string") {
+        user.name = updates.name;
+      }
+      if (typeof updates.email === "string") {
+        user.email = updates.email;
+      }
+      if (updates.role) {
+        user.role = updates.role;
+      }
+      if (typeof updates.isActive === "boolean") {
+        user.isActive = updates.isActive;
+        if (updates.isActive) {
+          user.bannedAt = null;
+          user.bannedBy = null;
+          user.bannedReason = null;
+        }
+      }
+
+      const savedUser = await this.userRepository.save(user);
+
+      this.logger.log(`User ${userId} profile updated`);
+
+      const { password, ...sanitizedUser } = savedUser;
+      return sanitizedUser as User;
+    } catch (error) {
+      this.logger.error("Error updating user profile:", error);
       throw error;
     }
   }

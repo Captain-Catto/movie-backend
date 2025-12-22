@@ -10,6 +10,11 @@ import { User } from "../entities/user.entity";
 import { RegisterDto, LoginDto } from "../dto/auth.dto";
 import { UserResponse } from "../interfaces/user.interface";
 
+interface RequestMetadata {
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -18,8 +23,49 @@ export class AuthService {
     private refreshTokenRepository: RefreshTokenRepository
   ) {}
 
+  private detectDeviceType(userAgent?: string): string | null {
+    if (!userAgent) return null;
+
+    const normalized = userAgent.toLowerCase();
+
+    if (
+      normalized.includes("mobile") ||
+      normalized.includes("iphone") ||
+      normalized.includes("android")
+    ) {
+      return "mobile";
+    }
+
+    if (normalized.includes("ipad") || normalized.includes("tablet")) {
+      return "tablet";
+    }
+
+    return "desktop";
+  }
+
+  private buildLoginMetadata(metadata?: RequestMetadata): Partial<User> {
+    const loginData: Partial<User> = {
+      lastLoginAt: new Date(),
+    };
+
+    if (metadata?.ipAddress) {
+      loginData.lastLoginIp = metadata.ipAddress;
+    }
+
+    if (metadata?.userAgent) {
+      loginData.lastLoginUserAgent = metadata.userAgent;
+      const deviceType = this.detectDeviceType(metadata.userAgent);
+      if (deviceType) {
+        loginData.lastLoginDevice = deviceType;
+      }
+    }
+
+    return loginData;
+  }
+
   async register(
-    registerDto: RegisterDto
+    registerDto: RegisterDto,
+    requestMetadata?: RequestMetadata
   ): Promise<{ user: UserResponse; token: string; refreshToken: string }> {
     const { email, password, name } = registerDto;
 
@@ -29,11 +75,14 @@ export class AuthService {
       throw new ConflictException("Email already exists");
     }
 
+    const loginMetadata = this.buildLoginMetadata(requestMetadata);
+
     // Create new user
     const user = await this.userRepository.create({
       email,
       password,
       name: name || email.split("@")[0],
+      ...loginMetadata,
     });
 
     // Generate JWT access token (15m)
@@ -46,7 +95,12 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
 
     // Generate refresh token (30d)
-    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(user.id, 30);
+    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(
+      user.id,
+      30,
+      requestMetadata?.ipAddress,
+      requestMetadata?.userAgent
+    );
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
@@ -59,7 +113,8 @@ export class AuthService {
   }
 
   async login(
-    loginDto: LoginDto
+    loginDto: LoginDto,
+    requestMetadata?: RequestMetadata
   ): Promise<{ user: UserResponse; token: string; refreshToken: string }> {
     const { email, password } = loginDto;
 
@@ -87,6 +142,10 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
+    const loginMetadata = this.buildLoginMetadata(requestMetadata);
+    await this.userRepository.update(user.id, loginMetadata);
+    Object.assign(user, loginMetadata);
+
     // Generate JWT access token (15m)
     const payload = {
       sub: user.id,
@@ -97,7 +156,12 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
 
     // Generate refresh token (30d)
-    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(user.id, 30);
+    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(
+      user.id,
+      30,
+      requestMetadata?.ipAddress,
+      requestMetadata?.userAgent
+    );
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
@@ -113,7 +177,10 @@ export class AuthService {
     return this.userRepository.findById(userId);
   }
 
-  async refreshAccessToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
+  async refreshAccessToken(
+    refreshToken: string,
+    requestMetadata?: RequestMetadata
+  ): Promise<{ token: string; refreshToken: string }> {
     const refreshTokenEntity = await this.refreshTokenRepository.findByToken(refreshToken);
 
     if (!refreshTokenEntity) {
@@ -144,7 +211,12 @@ export class AuthService {
 
     // Generate new refresh token and revoke old one
     await this.refreshTokenRepository.revokeToken(refreshToken);
-    const newRefreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(user.id, 30);
+    const newRefreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(
+      user.id,
+      30,
+      requestMetadata?.ipAddress,
+      requestMetadata?.userAgent
+    );
 
     return {
       token: newAccessToken,
@@ -152,12 +224,15 @@ export class AuthService {
     };
   }
 
-  async validateGoogleUser(googleData: {
-    email: string;
-    name: string;
-    image?: string;
-    googleId: string;
-  }): Promise<{ user: UserResponse; token: string; refreshToken: string }> {
+  async validateGoogleUser(
+    googleData: {
+      email: string;
+      name: string;
+      image?: string;
+      googleId: string;
+    },
+    requestMetadata?: RequestMetadata
+  ): Promise<{ user: UserResponse; token: string; refreshToken: string }> {
     const { email, name, image, googleId } = googleData;
 
     // Validate required fields
@@ -204,6 +279,10 @@ export class AuthService {
       }
     }
 
+    const loginMetadata = this.buildLoginMetadata(requestMetadata);
+    await this.userRepository.update(user.id, loginMetadata);
+    Object.assign(user, loginMetadata);
+
     // Generate JWT access token (15m)
     const payload = {
       sub: user.id,
@@ -215,7 +294,12 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
 
     // Generate refresh token (30d)
-    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(user.id, 30);
+    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(
+      user.id,
+      30,
+      requestMetadata?.ipAddress,
+      requestMetadata?.userAgent
+    );
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
