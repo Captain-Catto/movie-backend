@@ -15,7 +15,7 @@ import { ApiResponse } from "../interfaces/api.interface";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { IsEmail, IsString, IsOptional } from "class-validator";
 import { UpdateProfileDto } from "../dto/profile.dto";
-import geoip from "geoip-lite";
+import * as geoip from "geoip-lite";
 
 export class GoogleAuthDto {
   @IsEmail()
@@ -267,7 +267,7 @@ export class AuthController {
       typeof countryHeader === "string" && countryHeader.length === 2
         ? countryHeader.toUpperCase()
         : ipAddress
-        ? geoip.lookup(this.stripIpPrefix(ipAddress))?.country || null
+        ? geoip.lookup?.(this.stripIpPrefix(ipAddress))?.country || null
         : null;
 
     return {

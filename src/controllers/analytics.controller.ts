@@ -8,7 +8,7 @@ import {
 } from "@nestjs/common";
 import { AnalyticsService } from "../services/analytics.service";
 import { Request } from "express";
-import geoip from "geoip-lite";
+import * as geoip from "geoip-lite";
 
 interface TrackEventDto {
   contentId: string;
