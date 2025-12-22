@@ -48,6 +48,11 @@ export class NotificationTemplateRepository {
     const { page = 1, limit = 20 } = options;
     const skip = (page - 1) * limit;
 
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ["createdAt"],
+    });
+
     const queryBuilder = this.repository
       .createQueryBuilder("template")
       .leftJoinAndSelect("template.sender", "sender")
@@ -64,6 +69,16 @@ export class NotificationTemplateRepository {
           userId: userId.toString(),
           userRoles: userRoles,
         }
+      )
+      .andWhere(
+        user?.createdAt
+          ? "template.createdAt >= :userCreatedAt"
+          : "1=1",
+        user?.createdAt
+          ? {
+              userCreatedAt: user.createdAt,
+            }
+          : undefined
       )
       .andWhere("(template.expiresAt IS NULL OR template.expiresAt > :now)", {
         now: new Date(),
