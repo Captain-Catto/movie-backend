@@ -53,7 +53,6 @@ export class AuthService {
     }
 
     if (metadata?.userAgent) {
-      loginData.lastLoginUserAgent = metadata.userAgent;
       const deviceType = this.detectDeviceType(metadata.userAgent);
       if (deviceType) {
         loginData.lastLoginDevice = deviceType;
@@ -95,12 +94,13 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
 
     // Generate refresh token (30d)
-    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(
-      user.id,
-      30,
-      requestMetadata?.ipAddress,
-      requestMetadata?.userAgent
-    );
+    const refreshTokenEntity =
+      await this.refreshTokenRepository.createRefreshToken(
+        user.id,
+        30,
+        requestMetadata?.ipAddress,
+        requestMetadata?.userAgent
+      );
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
@@ -156,12 +156,13 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
 
     // Generate refresh token (30d)
-    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(
-      user.id,
-      30,
-      requestMetadata?.ipAddress,
-      requestMetadata?.userAgent
-    );
+    const refreshTokenEntity =
+      await this.refreshTokenRepository.createRefreshToken(
+        user.id,
+        30,
+        requestMetadata?.ipAddress,
+        requestMetadata?.userAgent
+      );
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
@@ -181,23 +182,25 @@ export class AuthService {
     refreshToken: string,
     requestMetadata?: RequestMetadata
   ): Promise<{ token: string; refreshToken: string }> {
-    const refreshTokenEntity = await this.refreshTokenRepository.findByToken(refreshToken);
+    const refreshTokenEntity = await this.refreshTokenRepository.findByToken(
+      refreshToken
+    );
 
     if (!refreshTokenEntity) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException("Invalid refresh token");
     }
 
     if (refreshTokenEntity.isRevoked) {
-      throw new UnauthorizedException('Refresh token has been revoked');
+      throw new UnauthorizedException("Refresh token has been revoked");
     }
 
     if (new Date() > refreshTokenEntity.expiresAt) {
-      throw new UnauthorizedException('Refresh token has expired');
+      throw new UnauthorizedException("Refresh token has expired");
     }
 
     const user = await this.userRepository.findById(refreshTokenEntity.userId);
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException("User not found");
     }
 
     // Generate new access token
@@ -211,12 +214,13 @@ export class AuthService {
 
     // Generate new refresh token and revoke old one
     await this.refreshTokenRepository.revokeToken(refreshToken);
-    const newRefreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(
-      user.id,
-      30,
-      requestMetadata?.ipAddress,
-      requestMetadata?.userAgent
-    );
+    const newRefreshTokenEntity =
+      await this.refreshTokenRepository.createRefreshToken(
+        user.id,
+        30,
+        requestMetadata?.ipAddress,
+        requestMetadata?.userAgent
+      );
 
     return {
       token: newAccessToken,
@@ -294,12 +298,13 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
 
     // Generate refresh token (30d)
-    const refreshTokenEntity = await this.refreshTokenRepository.createRefreshToken(
-      user.id,
-      30,
-      requestMetadata?.ipAddress,
-      requestMetadata?.userAgent
-    );
+    const refreshTokenEntity =
+      await this.refreshTokenRepository.createRefreshToken(
+        user.id,
+        30,
+        requestMetadata?.ipAddress,
+        requestMetadata?.userAgent
+      );
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
