@@ -122,6 +122,7 @@ export class AdminAnalyticsService {
         .select("analytics.contentId", "contentId")
         .addSelect("analytics.contentType", "contentType")
         .addSelect("analytics.contentTitle", "title")
+        .addSelect("analytics.metadata", "metadata")
         .addSelect("COUNT(*)", "viewCount")
         .where("analytics.actionType = :action", { action: ActionType.VIEW });
 
@@ -176,16 +177,34 @@ export class AdminAnalyticsService {
 
       return results.map((r) => {
         const tmdbId = parseInt(r.contentId);
-        const posterPath = r.contentType === ViewContentType.MOVIE
-          ? moviePosterMap.get(tmdbId)
-          : tvPosterMap.get(tmdbId);
+        const posterPath =
+          r.contentType === ViewContentType.MOVIE
+            ? moviePosterMap.get(tmdbId)
+            : tvPosterMap.get(tmdbId);
+
+        // Fallback to metadata poster path if DB not found
+        const metadata =
+          typeof r.metadata === "string"
+            ? (() => {
+                try {
+                  return JSON.parse(r.metadata);
+                } catch {
+                  return {};
+                }
+              })()
+            : r.metadata || {};
+        const fallbackPoster =
+          posterPath ||
+          metadata?.posterPath ||
+          metadata?.poster_path ||
+          null;
 
         return {
           contentId: r.contentId,
           contentType: r.contentType,
           title: r.title,
           viewCount: parseInt(r.viewCount),
-          posterPath: posterPath || null,
+          posterPath: fallbackPoster,
         };
       });
     } catch (error) {
@@ -301,9 +320,18 @@ export class AdminAnalyticsService {
   }
 
   // Get favorite statistics
-  async getFavoriteStats() {
+  async getFavoriteStats(contentType?: ViewContentType) {
     try {
-      const totalFavorites = await this.favoriteRepository.count();
+      const whereContent =
+        contentType === ViewContentType.TV_SERIES
+          ? "tv"
+          : contentType === ViewContentType.MOVIE
+          ? "movie"
+          : undefined;
+
+      const totalFavorites = await this.favoriteRepository.count(
+        whereContent ? { where: { contentType: whereContent } } : {}
+      );
 
       // Favorites by content type
       const movieFavorites = await this.favoriteRepository.count({
@@ -315,11 +343,19 @@ export class AdminAnalyticsService {
       });
 
       // Most favorited content
-      const mostFavorited = await this.favoriteRepository
+      const mostFavoritedQuery = this.favoriteRepository
         .createQueryBuilder("favorite")
         .select("favorite.contentId", "contentId")
         .addSelect("favorite.contentType", "contentType")
-        .addSelect("COUNT(*)", "favoriteCount")
+        .addSelect("COUNT(*)", "favoriteCount");
+
+      if (whereContent) {
+        mostFavoritedQuery.where("favorite.contentType = :ctype", {
+          ctype: whereContent,
+        });
+      }
+
+      const mostFavorited = await mostFavoritedQuery
         .groupBy("favorite.contentId, favorite.contentType")
         .orderBy("COUNT(*)", "DESC")
         .limit(20)
@@ -366,13 +402,21 @@ export class AdminAnalyticsService {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const favoritesOverTime = await this.favoriteRepository
+      const favoritesOverTimeBuilder = this.favoriteRepository
         .createQueryBuilder("favorite")
         .select("DATE(favorite.createdAt)", "date")
         .addSelect("COUNT(*)", "count")
         .where("favorite.createdAt >= :startDate", {
           startDate: thirtyDaysAgo,
-        })
+        });
+
+      if (whereContent) {
+        favoritesOverTimeBuilder.andWhere("favorite.contentType = :ctype", {
+          ctype: whereContent,
+        });
+      }
+
+      const favoritesOverTime = await favoritesOverTimeBuilder
         .groupBy("DATE(favorite.createdAt)")
         .orderBy("DATE(favorite.createdAt)", "ASC")
         .getRawMany();

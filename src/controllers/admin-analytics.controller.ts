@@ -189,9 +189,22 @@ export class AdminAnalyticsController {
 
   @Get("favorites")
   @HttpCode(HttpStatus.OK)
-  async getFavoriteStats(): Promise<ApiResponse> {
+  async getFavoriteStats(
+    @Query("contentType") contentType?: string
+  ): Promise<ApiResponse> {
     try {
-      const data = await this.adminAnalyticsService.getFavoriteStats();
+      let mappedContentType: ContentType | undefined;
+      if (contentType) {
+        if (contentType === "tv" || contentType === "tv_series") {
+          mappedContentType = ContentType.TV_SERIES;
+        } else if (contentType === "movie") {
+          mappedContentType = ContentType.MOVIE;
+        }
+      }
+
+      const data = await this.adminAnalyticsService.getFavoriteStats(
+        mappedContentType
+      );
 
       return {
         success: true,
