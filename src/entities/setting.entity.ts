@@ -19,9 +19,10 @@ export class Setting {
   @Column({ type: "jsonb" })
   value: Record<string, any>;
 
-  @CreateDateColumn()
+  // Use lowercase column names to match existing migration
+  @CreateDateColumn({ name: "createdat" })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: "updatedat" })
   updatedAt: Date;
 }
