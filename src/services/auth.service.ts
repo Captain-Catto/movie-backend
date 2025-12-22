@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UserRepository } from "../repositories/user.repository";
@@ -11,6 +12,8 @@ import { User } from "../entities/user.entity";
 import { RegisterDto, LoginDto } from "../dto/auth.dto";
 import { UserResponse } from "../interfaces/user.interface";
 import { AdminSettingsService } from "./admin-settings.service";
+import { UpdateProfileDto } from "../dto/profile.dto";
+import * as bcrypt from "bcrypt";
 
 interface RequestMetadata {
   ipAddress?: string;
@@ -352,5 +355,27 @@ export class AuthService {
 
   async revokeRefreshToken(refreshToken: string): Promise<void> {
     await this.refreshTokenRepository.revokeToken(refreshToken);
+  }
+
+  async updateProfile(
+    userId: number,
+    dto: UpdateProfileDto
+  ): Promise<UserResponse> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    if (dto.name) {
+      user.name = dto.name;
+    }
+
+    if (dto.password) {
+      user.password = await bcrypt.hash(dto.password, 12);
+    }
+
+    const saved = await this.userRepository.update(user.id, user);
+    const { password: _, ...rest } = saved;
+    return rest as UserResponse;
   }
 }

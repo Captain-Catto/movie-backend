@@ -5,6 +5,7 @@ import {
   HttpStatus,
   HttpCode,
   Get,
+  Put,
   UseGuards,
   Request,
 } from "@nestjs/common";
@@ -13,6 +14,7 @@ import { RegisterDto, LoginDto } from "../dto/auth.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { IsEmail, IsString, IsOptional } from "class-validator";
+import { UpdateProfileDto } from "../dto/profile.dto";
 
 export class GoogleAuthDto {
   @IsEmail()
@@ -160,6 +162,29 @@ export class AuthController {
         },
       },
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put("profile")
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @Request() req,
+    @Body() body: UpdateProfileDto
+  ): Promise<ApiResponse> {
+    try {
+      const user = await this.authService.updateProfile(req.user.id, body);
+      return {
+        success: true,
+        message: "Profile updated",
+        data: { user },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to update profile",
+        error: error.message,
+      };
+    }
   }
 
   @Post("refresh")
