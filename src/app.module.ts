@@ -21,6 +21,7 @@ import { AnalyticsModule } from "./modules/analytics.module";
 import { SyncController } from "./controllers/sync.controller";
 import { DebugController } from "./controllers/debug.controller";
 import { UserRepository } from "./repositories/user.repository";
+import { SettingsModule } from "./modules/settings.module";
 import {
   Movie,
   TVSeries,
@@ -140,6 +141,7 @@ import { RefreshToken } from "./entities/refresh-token.entity";
     CommentModule,
     AdminModule,
     AnalyticsModule,
+    SettingsModule,
     TypeOrmModule.forFeature([User]), // For DebugController
   ],
   controllers: [SyncController, DebugController],

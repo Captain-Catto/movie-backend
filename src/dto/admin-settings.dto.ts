@@ -23,8 +23,4 @@ export class RegistrationSettingsDto {
   @ValidateNested()
   @Type(() => MinMaxDto)
   password: MinMaxDto;
-
-  @ValidateNested()
-  @Type(() => MinMaxDto)
-  exchangePassword: MinMaxDto;
 }

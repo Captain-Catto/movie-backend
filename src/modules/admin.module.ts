@@ -40,12 +40,14 @@ import { DailySyncModule } from "./daily-sync.module";
 import { DataSyncModule } from "./data-sync.module";
 import { TrendingModule } from "./trending.module";
 import { AdminSettingsService } from "../services/admin-settings.service";
+import { SettingsModule } from "./settings.module";
 
 @Module({
   imports: [
     DailySyncModule,
     DataSyncModule,
     TrendingModule,
+    SettingsModule,
     ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
