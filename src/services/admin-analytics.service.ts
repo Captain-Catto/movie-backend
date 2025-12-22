@@ -174,19 +174,72 @@ export class AdminAnalyticsService {
         tvPosterMap.set(tv.tmdbId, tv.posterPath);
       });
 
+      // Fetch metadata poster fallback for items missing in DB
+      const missingIds = results
+        .filter((r) => {
+          const tmdbId = parseInt(r.contentId);
+          const hasPoster =
+            (r.contentType === ViewContentType.MOVIE
+              ? moviePosterMap.get(tmdbId)
+              : tvPosterMap.get(tmdbId)) || null;
+          return !hasPoster;
+        })
+        .map((r) => r.contentId);
+
+      const metadataPosterMap = new Map<string, string | null>();
+      if (missingIds.length > 0) {
+        const rawMeta = await this.viewAnalyticsRepository
+          .createQueryBuilder("analytics")
+          .distinctOn(["analytics.contentId", "analytics.contentType"])
+          .select([
+            "analytics.contentId as contentId",
+            "analytics.contentType as contentType",
+            "analytics.metadata as metadata",
+          ])
+          .where("analytics.actionType = :action", { action: ActionType.VIEW })
+          .andWhere("analytics.contentId IN (:...ids)", { ids: missingIds })
+          .orderBy("analytics.contentId")
+          .addOrderBy("analytics.createdAt", "DESC")
+          .getRawMany();
+
+        rawMeta.forEach((row) => {
+          const key = `${row.contentType}:${row.contentId}`;
+          let poster: string | null = null;
+          const meta =
+            typeof row.metadata === "string"
+              ? (() => {
+                  try {
+                    return JSON.parse(row.metadata);
+                  } catch {
+                    return {};
+                  }
+                })()
+              : row.metadata || {};
+          poster =
+            meta?.posterPath ||
+            meta?.poster_path ||
+            meta?.posterURL ||
+            meta?.posterUrl ||
+            null;
+          metadataPosterMap.set(key, poster);
+        });
+      }
+
       return results.map((r) => {
         const tmdbId = parseInt(r.contentId);
         const posterPath =
           r.contentType === ViewContentType.MOVIE
             ? moviePosterMap.get(tmdbId)
             : tvPosterMap.get(tmdbId);
+        const fallbackKey = `${r.contentType}:${r.contentId}`;
+        const fallbackPoster = metadataPosterMap.get(fallbackKey) || null;
 
         return {
           contentId: r.contentId,
           contentType: r.contentType,
           title: r.title,
           viewCount: parseInt(r.viewCount),
-          posterPath: posterPath || null,
+          posterPath: posterPath || fallbackPoster,
         };
       });
     } catch (error) {
