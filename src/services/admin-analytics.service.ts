@@ -122,7 +122,6 @@ export class AdminAnalyticsService {
         .select("analytics.contentId", "contentId")
         .addSelect("analytics.contentType", "contentType")
         .addSelect("analytics.contentTitle", "title")
-        .addSelect("analytics.metadata", "metadata")
         .addSelect("COUNT(*)", "viewCount")
         .where("analytics.actionType = :action", { action: ActionType.VIEW });
 
@@ -182,29 +181,12 @@ export class AdminAnalyticsService {
             ? moviePosterMap.get(tmdbId)
             : tvPosterMap.get(tmdbId);
 
-        // Fallback to metadata poster path if DB not found
-        const metadata =
-          typeof r.metadata === "string"
-            ? (() => {
-                try {
-                  return JSON.parse(r.metadata);
-                } catch {
-                  return {};
-                }
-              })()
-            : r.metadata || {};
-        const fallbackPoster =
-          posterPath ||
-          metadata?.posterPath ||
-          metadata?.poster_path ||
-          null;
-
         return {
           contentId: r.contentId,
           contentType: r.contentType,
           title: r.title,
           viewCount: parseInt(r.viewCount),
-          posterPath: fallbackPoster,
+          posterPath: posterPath || null,
         };
       });
     } catch (error) {
