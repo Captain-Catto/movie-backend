@@ -23,6 +23,15 @@ type TrendingHiddenState = {
 @Injectable()
 export class DataSyncService {
   private readonly logger = new Logger(DataSyncService.name);
+  private readonly progressState: Record<
+    "movies" | "tv",
+    { lastLoggedAt: number; lastLoggedPage: number }
+  > = {
+    movies: { lastLoggedAt: 0, lastLoggedPage: 0 },
+    tv: { lastLoggedAt: 0, lastLoggedPage: 0 },
+  };
+  private readonly PROGRESS_PAGE_STEP = 100;
+  private readonly PROGRESS_TIME_MS = 10 * 60 * 1000; // 10 minutes
 
   constructor(
     private tmdbService: TMDBService,
@@ -76,7 +85,11 @@ export class DataSyncService {
 
           pageLimit = Math.min(configuredPageLimit, basePageLimit);
           this.logger.log(
-            `Found ${response.total_results} total movies across ${totalPagesFromApi} pages (syncing up to ${pageLimit} pages based on limit ${movieLimit || "∞"})`
+            `Found ${
+              response.total_results
+            } total movies across ${totalPagesFromApi} pages (syncing up to ${pageLimit} pages based on limit ${
+              movieLimit || "∞"
+            })`
           );
         }
 
@@ -85,9 +98,11 @@ export class DataSyncService {
           break;
         }
 
-        this.logger.log(
-          `Syncing page ${currentPage} with ${response.results.length} movies`
-        );
+        if (this.shouldLogProgress("movies", currentPage)) {
+          this.logger.log(
+            `Progress: popular movies page ${currentPage}/${pageLimit} (${response.results.length} items)`
+          );
+        }
 
         for (const tmdbMovie of response.results) {
           await this.syncMovie(tmdbMovie);
@@ -151,7 +166,11 @@ export class DataSyncService {
 
           pageLimit = Math.min(configuredPageLimit, basePageLimit);
           this.logger.log(
-            `Found ${response.total_results} total TV series across ${totalPagesFromApi} pages (syncing up to ${pageLimit} pages based on limit ${tvLimit || "∞"})`
+            `Found ${
+              response.total_results
+            } total TV series across ${totalPagesFromApi} pages (syncing up to ${pageLimit} pages based on limit ${
+              tvLimit || "∞"
+            })`
           );
         }
 
@@ -160,9 +179,11 @@ export class DataSyncService {
           break;
         }
 
-        this.logger.log(
-          `Syncing page ${currentPage} with ${response.results.length} TV series`
-        );
+        if (this.shouldLogProgress("tv", currentPage)) {
+          this.logger.log(
+            `Progress: popular TV page ${currentPage}/${pageLimit} (${response.results.length} items)`
+          );
+        }
 
         for (const tmdbTV of response.results) {
           await this.syncTVSeries(tmdbTV);
@@ -185,7 +206,8 @@ export class DataSyncService {
 
   async syncTrending(language: string = "en-US"): Promise<void> {
     try {
-      const { trendingLimit } = await this.syncSettingsService.getCatalogLimits();
+      const { trendingLimit } =
+        await this.syncSettingsService.getCatalogLimits();
 
       if (trendingLimit === 0) {
         this.logger.log(
@@ -228,7 +250,9 @@ export class DataSyncService {
         );
 
         if (!trendingItems?.length) {
-          this.logger.log(`No trending items returned at page ${page}, stopping.`);
+          this.logger.log(
+            `No trending items returned at page ${page}, stopping.`
+          );
           break;
         }
 
@@ -238,7 +262,9 @@ export class DataSyncService {
             maxPages = Math.max(1, Math.ceil(trendingLimit / itemsPerPage));
           }
           this.logger.log(
-            `Trending sync configured for up to ${maxPages} pages (~${maxPages * itemsPerPage} items) based on limit ${trendingLimit || "∞"}`
+            `Trending sync configured for up to ${maxPages} pages (~${
+              maxPages * itemsPerPage
+            } items) based on limit ${trendingLimit || "∞"}`
           );
         }
 
@@ -396,5 +422,27 @@ export class DataSyncService {
 
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private shouldLogProgress(
+    type: "movies" | "tv",
+    currentPage: number
+  ): boolean {
+    const state = this.progressState[type];
+    const now = Date.now();
+
+    const pageStepReached =
+      currentPage === 1 ||
+      currentPage === state.lastLoggedPage ||
+      currentPage - state.lastLoggedPage >= this.PROGRESS_PAGE_STEP;
+    const timeElapsed = now - state.lastLoggedAt >= this.PROGRESS_TIME_MS;
+
+    if (pageStepReached || timeElapsed) {
+      state.lastLoggedPage = currentPage;
+      state.lastLoggedAt = now;
+      return true;
+    }
+
+    return false;
   }
 }
