@@ -6,6 +6,6 @@ import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.inte
 @Module({
   imports: [TypeOrmModule.forFeature([ViewerAuditLog])],
   providers: [ViewerReadOnlyInterceptor],
-  exports: [ViewerReadOnlyInterceptor],
+  exports: [ViewerReadOnlyInterceptor, TypeOrmModule],
 })
 export class ViewerAuditModule {}
