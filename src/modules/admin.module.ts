@@ -36,16 +36,22 @@ import { AdminSeoController } from "../controllers/admin-seo.controller";
 import { AdminDashboardController } from "../controllers/admin-dashboard.controller";
 import { AdminSyncController } from "../controllers/admin-sync.controller";
 import { AdminSettingsController } from "../controllers/admin-settings.controller";
+import { AdminCommentController } from "../controllers/admin-comment.controller";
+import { AdminAuthController } from "../controllers/admin-auth.controller";
 import { DailySyncModule } from "./daily-sync.module";
 import { DataSyncModule } from "./data-sync.module";
 import { TrendingModule } from "./trending.module";
 import { AdminSettingsService } from "../services/admin-settings.service";
 import { SettingsModule } from "./settings.module";
 import { ViewerAuditModule } from "./viewer-audit.module";
+import { CommentModule } from "./comment.module";
+import { AuthModule } from "./auth.module";
 
 @Module({
   imports: [
     ViewerAuditModule,
+    CommentModule,
+    AuthModule,
     DailySyncModule,
     DataSyncModule,
     TrendingModule,
@@ -90,6 +96,8 @@ import { ViewerAuditModule } from "./viewer-audit.module";
     AdminDashboardController,
     AdminSyncController,
     AdminSettingsController,
+    AdminCommentController,
+    AdminAuthController,
   ],
   providers: [
     AdminContentService,

@@ -17,6 +17,7 @@ import { NotificationController } from "../controllers/notification.controller";
 import { AdminNotificationController } from "../controllers/admin-notification.controller";
 import { NotificationGateway } from "../gateways/notification.gateway";
 import { AuthModule } from "./auth.module";
+import { ViewerAuditModule } from "./viewer-audit.module";
 
 const DEFAULT_JWT_EXPIRES_IN: StringValue = "7d";
 
@@ -33,6 +34,7 @@ const resolveJwtExpiresIn = (
 
 @Module({
   imports: [
+    ViewerAuditModule,
     TypeOrmModule.forFeature([
       NotificationTemplate,
       UserNotificationState,
