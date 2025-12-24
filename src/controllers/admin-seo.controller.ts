@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
   ParseIntPipe,
@@ -23,10 +24,12 @@ import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { PageType } from "../entities";
+import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
 @Controller("admin/seo")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@UseInterceptors(ViewerReadOnlyInterceptor)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminSeoController {
   constructor(private adminSeoService: AdminSeoService) {}
 

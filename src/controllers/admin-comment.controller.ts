@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   Request,
   HttpCode,
   HttpStatus,
@@ -24,10 +25,12 @@ import {
   BannedWordSeverity,
   BannedWordAction,
 } from "../entities/comment.entity";
+import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
 @Controller("admin/comments")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@UseInterceptors(ViewerReadOnlyInterceptor)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminCommentController {
   constructor(
     private commentService: CommentService,

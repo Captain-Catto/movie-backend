@@ -6,6 +6,7 @@ import {
   Query,
   Param,
   UseGuards,
+  UseInterceptors,
   Request,
   HttpCode,
   HttpStatus,
@@ -22,10 +23,12 @@ import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { ContentType, MediaType } from "../entities";
+import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
 @Controller("admin/content")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@UseInterceptors(ViewerReadOnlyInterceptor)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminContentController {
   constructor(private adminContentService: AdminContentService) {}
 

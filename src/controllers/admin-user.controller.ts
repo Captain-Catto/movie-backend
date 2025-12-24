@@ -7,6 +7,7 @@ import {
   Query,
   Param,
   UseGuards,
+  UseInterceptors,
   Request,
   HttpCode,
   HttpStatus,
@@ -19,10 +20,12 @@ import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { UpdateUserDto } from "../dto/admin-user.dto";
+import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
 @Controller("admin/users")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@UseInterceptors(ViewerReadOnlyInterceptor)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminUserController {
   constructor(private adminUserService: AdminUserService) {}
 

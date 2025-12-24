@@ -3,6 +3,7 @@ import {
   Get,
   Query,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
 } from "@nestjs/common";
@@ -13,10 +14,12 @@ import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { ContentType } from "../entities";
+import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
 @Controller("admin/analytics")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@UseInterceptors(ViewerReadOnlyInterceptor)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminAnalyticsController {
   constructor(private adminAnalyticsService: AdminAnalyticsService) {}
 

@@ -41,9 +41,11 @@ import { DataSyncModule } from "./data-sync.module";
 import { TrendingModule } from "./trending.module";
 import { AdminSettingsService } from "../services/admin-settings.service";
 import { SettingsModule } from "./settings.module";
+import { ViewerAuditModule } from "./viewer-audit.module";
 
 @Module({
   imports: [
+    ViewerAuditModule,
     DailySyncModule,
     DataSyncModule,
     TrendingModule,

@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Put,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../guards/roles.guard";
@@ -14,10 +15,12 @@ import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { AdminSettingsService } from "../services/admin-settings.service";
 import { RegistrationSettingsDto } from "../dto/admin-settings.dto";
+import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
 @Controller("admin/settings")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@UseInterceptors(ViewerReadOnlyInterceptor)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminSettingsController {
   constructor(private readonly adminSettingsService: AdminSettingsService) {}
 

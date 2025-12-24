@@ -44,6 +44,7 @@ import {
   CommentReport,
   SyncSettings,
   Setting,
+  ViewerAuditLog,
 } from "./entities";
 import { Recommendation } from "./entities/recommendation.entity";
 import { PersonCache } from "./entities/person-cache.entity";
@@ -91,6 +92,7 @@ import { RefreshToken } from "./entities/refresh-token.entity";
           RefreshToken,
           SyncSettings,
           Setting,
+          ViewerAuditLog,
         ],
         synchronize:
           configService.get("TYPEORM_SYNCHRONIZE") === "true" ||

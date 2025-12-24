@@ -34,11 +34,9 @@ export class AdminAuthController {
         this.extractRequestMetadata(req)
       );
 
-      // Check if user has admin role
-      if (
-        result.user.role !== UserRole.ADMIN &&
-        result.user.role !== UserRole.SUPER_ADMIN
-      ) {
+      // Check if user has admin role (including viewer)
+      const allowedRoles = [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER];
+      if (!allowedRoles.includes(result.user.role)) {
         throw new UnauthorizedException(
           "Access denied. Admin privileges required."
         );

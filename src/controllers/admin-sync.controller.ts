@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../guards/roles.guard";
@@ -20,10 +21,12 @@ import { AdminSyncRequestDto } from "../dto/admin-sync.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { SyncSettingsService } from "../services/sync-settings.service";
 import { UpdateSyncSettingsDto } from "../dto/sync-settings.dto";
+import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
 @Controller("admin/sync")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@UseInterceptors(ViewerReadOnlyInterceptor)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminSyncController {
   private readonly logger = new Logger(AdminSyncController.name);
 

@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   Request,
   HttpCode,
   HttpStatus,
@@ -18,6 +19,7 @@ import { RolesGuard } from "../guards/roles.guard";
 import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
+import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 import {
   CreateBroadcastNotificationDto,
   CreateRoleNotificationDto,
@@ -30,7 +32,8 @@ import {
 
 @Controller("admin/notifications")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@UseInterceptors(ViewerReadOnlyInterceptor)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminNotificationController {
   constructor(private notificationService: NotificationService) {}
 
