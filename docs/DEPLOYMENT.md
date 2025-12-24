@@ -1,8 +1,8 @@
-# 🚀 Production Deployment Guide - Movie Backend
+# Production Deployment Guide - Movie Backend
 
 Complete guide to deploy NestJS backend + PostgreSQL to VPS.
 
-## 📋 Prerequisites
+## Prerequisites
 
 - VPS with Ubuntu 20.04/22.04 (Recommended: 2GB RAM minimum)
 - Domain name (optional but recommended)
@@ -10,7 +10,7 @@ Complete guide to deploy NestJS backend + PostgreSQL to VPS.
 
 ---
 
-## 🔧 Part 1: VPS Initial Setup
+## Part 1: VPS Initial Setup
 
 ### 1.1 Update System
 ```bash
@@ -52,7 +52,7 @@ sudo apt install -y git
 
 ---
 
-## 🗄️ Part 2: PostgreSQL Database Setup
+## Part 2: PostgreSQL Database Setup
 
 ### 2.1 Create Database and User
 ```bash
@@ -122,7 +122,7 @@ psql -h localhost -U movie_user -d movie_db
 
 ---
 
-## 📦 Part 3: Deploy Backend Application
+## Part 3: Deploy Backend Application
 
 ### 3.1 Create Application Directory
 ```bash
@@ -194,7 +194,7 @@ pm2 logs movie-backend
 
 ---
 
-## 🌐 Part 4: Nginx Reverse Proxy Setup
+## Part 4: Nginx Reverse Proxy Setup
 
 ### 4.1 Create Nginx Configuration
 ```bash
@@ -242,7 +242,7 @@ sudo systemctl reload nginx
 
 ---
 
-## 🔒 Part 5: SSL Certificate (HTTPS)
+## Part 5: SSL Certificate (HTTPS)
 
 ### 5.1 Install Certbot
 ```bash
@@ -261,7 +261,7 @@ sudo certbot renew --dry-run
 
 ---
 
-## 📊 Part 6: Monitoring & Maintenance
+## Part 6: Monitoring & Maintenance
 
 ### 6.1 View Logs
 ```bash
@@ -272,7 +272,7 @@ sudo tail -f /var/log/nginx/movie-backend-error.log
 
 ---
 
-## ✅ Part 7: Final Checklist
+## Part 7: Final Checklist
 
 - PostgreSQL running and accessible
 - Database created with correct user/password
