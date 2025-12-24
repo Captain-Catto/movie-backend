@@ -9,4 +9,8 @@ export class UpdateProfileDto {
   @IsString()
   @MinLength(6)
   password?: string;
+
+  @IsOptional()
+  @IsString()
+  image?: string;
 }

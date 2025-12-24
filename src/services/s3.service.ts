@@ -33,6 +33,14 @@ export class S3Service {
     this.logger.log(`S3 Service initialized with bucket: ${this.bucketName}`);
   }
 
+  private sanitizeFileName(fileName: string): string {
+    return fileName
+      .replace(/[^\w\s.-]/g, "")
+      .replace(/\s+/g, "_")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
   /**
    * Upload movie file to S3
    */
@@ -47,12 +55,7 @@ export class S3Service {
     message?: string;
   }> {
     try {
-      // Sanitize filename for S3 key - remove special characters and encode properly
-      const sanitizedFileName = fileName
-        .replace(/[^\w\s.-]/g, "") // Remove special characters except word chars, spaces, dots, hyphens
-        .replace(/\s+/g, "_") // Replace spaces with underscores
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, ""); // Remove diacritics (Vietnamese accents)
+      const sanitizedFileName = this.sanitizeFileName(fileName);
 
       const key = `movies/${Date.now()}-${sanitizedFileName}`;
 
@@ -86,6 +89,58 @@ export class S3Service {
       };
     } catch (error) {
       this.logger.error("Failed to upload movie to S3:", error);
+      return {
+        success: false,
+        message: `Upload failed: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Upload avatar image to S3
+   */
+  async uploadAvatar(
+    file: Buffer,
+    fileName: string,
+    contentType: string
+  ): Promise<{
+    success: boolean;
+    url?: string;
+    key?: string;
+    message?: string;
+  }> {
+    try {
+      const sanitizedFileName = this.sanitizeFileName(fileName);
+      const key = `avatars/${Date.now()}-${sanitizedFileName}`;
+
+      const command = new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        Body: file,
+        ContentType: contentType,
+        Metadata: {
+          "uploaded-at": new Date().toISOString(),
+          "original-name": fileName,
+        },
+      });
+
+      await this.s3Client.send(command);
+
+      const encodedKey = encodeURIComponent(key).replace(/%2F/g, "/");
+      const publicUrl = `https://${this.bucketName}.s3.${
+        process.env.AWS_REGION || "ap-southeast-1"
+      }.amazonaws.com/${encodedKey}`;
+
+      this.logger.log(`Avatar uploaded successfully: ${key}`);
+
+      return {
+        success: true,
+        url: publicUrl,
+        key,
+        message: "Avatar uploaded successfully",
+      };
+    } catch (error) {
+      this.logger.error("Failed to upload avatar to S3:", error);
       return {
         success: false,
         message: `Upload failed: ${error.message}`,

@@ -375,6 +375,10 @@ export class AuthService {
       user.password = await bcrypt.hash(dto.password, 12);
     }
 
+    if (dto.image) {
+      user.image = dto.image;
+    }
+
     const saved = await this.userRepository.update(user.id, user);
     const { password: _, ...rest } = saved;
     return rest as UserResponse;
