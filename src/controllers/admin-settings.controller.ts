@@ -14,7 +14,10 @@ import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { AdminSettingsService } from "../services/admin-settings.service";
-import { RegistrationSettingsDto } from "../dto/admin-settings.dto";
+import {
+  RegistrationSettingsDto,
+  EffectSettingsDto,
+} from "../dto/admin-settings.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
 @Controller("admin/settings")
@@ -44,6 +47,30 @@ export class AdminSettingsController {
     return {
       success: true,
       message: "Registration settings updated",
+      data,
+    };
+  }
+
+  @Get("effects")
+  @HttpCode(HttpStatus.OK)
+  async getEffectSettings(): Promise<ApiResponse> {
+    const data = await this.adminSettingsService.getEffectSettings();
+    return {
+      success: true,
+      message: "Effect settings retrieved",
+      data,
+    };
+  }
+
+  @Put("effects")
+  @HttpCode(HttpStatus.OK)
+  async updateEffectSettings(
+    @Body() body: EffectSettingsDto
+  ): Promise<ApiResponse> {
+    const data = await this.adminSettingsService.updateEffectSettings(body);
+    return {
+      success: true,
+      message: "Effect settings updated",
       data,
     };
   }

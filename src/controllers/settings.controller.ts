@@ -16,4 +16,15 @@ export class SettingsController {
       data,
     };
   }
+
+  @Get("effects")
+  @HttpCode(HttpStatus.OK)
+  async getEffects(): Promise<ApiResponse> {
+    const data = await this.adminSettingsService.getEffectSettings();
+    return {
+      success: true,
+      message: "Effect settings",
+      data,
+    };
+  }
 }
