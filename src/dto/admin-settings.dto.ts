@@ -72,10 +72,6 @@ export class SnowSettingsDto {
 export class RegistrationSettingsDto {
   @ValidateNested()
   @Type(() => MinMaxDto)
-  id: MinMaxDto;
-
-  @ValidateNested()
-  @Type(() => MinMaxDto)
   nickname: MinMaxDto;
 
   @ValidateNested()
