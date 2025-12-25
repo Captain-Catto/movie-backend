@@ -17,7 +17,7 @@ const DEFAULT_REGISTRATION_SETTINGS: RegistrationSettingsDto = {
 };
 
 const DEFAULT_RED_ENVELOPE_SETTINGS = {
-  fallSpeed: 0.8, // 0.1 - 3 (slower than before to fix speed issue)
+  fallSpeed: 0.3, // 0.1 - 3 (much slower for better visual)
   rotationSpeed: 1.0, // 0.1 - 5 (normal rotation)
   windStrength: 0.3, // 0 - 1 (gentle wind)
   sparkleFrequency: 0.02, // 0 - 0.1 (moderate sparkles)
