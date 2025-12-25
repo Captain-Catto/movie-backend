@@ -7,6 +7,9 @@ import {
   IsArray,
   IsIn,
   IsString,
+  IsOptional,
+  IsNumber,
+  Max,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -18,6 +21,52 @@ class MinMaxDto {
   @IsInt()
   @Min(1)
   max: number;
+}
+
+// Red Envelope specific settings
+export class RedEnvelopeSettingsDto {
+  @IsNumber()
+  @Min(0.1)
+  @Max(3)
+  fallSpeed: number;
+
+  @IsNumber()
+  @Min(0.1)
+  @Max(5)
+  rotationSpeed: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  windStrength: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(0.1)
+  sparkleFrequency: number;
+}
+
+// Snow specific settings
+export class SnowSettingsDto {
+  @IsNumber()
+  @Min(0.1)
+  @Max(3)
+  speed: number;
+
+  @IsNumber()
+  @Min(0.5)
+  @Max(2)
+  density: number;
+
+  @IsNumber()
+  @Min(0.5)
+  @Max(3)
+  size: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  windStrength: number;
 }
 
 export class RegistrationSettingsDto {
@@ -46,4 +95,14 @@ export class EffectSettingsDto {
   @IsString()
   @IsIn(["low", "medium", "high"])
   intensity: "low" | "medium" | "high";
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RedEnvelopeSettingsDto)
+  redEnvelopeSettings?: RedEnvelopeSettingsDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SnowSettingsDto)
+  snowSettings?: SnowSettingsDto;
 }
