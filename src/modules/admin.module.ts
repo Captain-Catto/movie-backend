@@ -17,6 +17,7 @@ import {
   UserNotificationState,
   NotificationAnalytics,
   Setting,
+  UserLog,
 } from "../entities";
 
 // Services
@@ -27,6 +28,7 @@ import { AdminSeoService } from "../services/admin-seo.service";
 import { AdminDashboardService } from "../services/admin-dashboard.service";
 import { AdminAnalyticsRealtimeService } from "../services/admin-analytics-realtime.service";
 import { AdminAnalyticsGateway } from "../gateways/admin-analytics.gateway";
+import { UserActivityLoggerService } from "../services/user-activity-logger.service";
 
 // Controllers
 import { AdminContentController } from "../controllers/admin-content.controller";
@@ -86,6 +88,7 @@ import { AuthModule } from "./auth.module";
       UserNotificationState,
       NotificationAnalytics,
       Setting,
+      UserLog,
     ]),
   ],
   controllers: [
@@ -108,6 +111,7 @@ import { AuthModule } from "./auth.module";
     AdminAnalyticsRealtimeService,
     AdminAnalyticsGateway,
     AdminSettingsService,
+    UserActivityLoggerService,
   ],
   exports: [
     AdminContentService,
@@ -118,6 +122,7 @@ import { AuthModule } from "./auth.module";
     AdminAnalyticsRealtimeService,
     AdminAnalyticsGateway,
     AdminSettingsService,
+    UserActivityLoggerService,
   ],
 })
 export class AdminModule {}

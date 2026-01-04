@@ -14,6 +14,7 @@ import {
   ParseIntPipe,
 } from "@nestjs/common";
 import { AdminUserService, BanUserDto } from "../services/admin-user.service";
+import { UserActivityLoggerService } from "../services/user-activity-logger.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../guards/roles.guard";
 import { Roles } from "../decorators/roles.decorator";
@@ -27,7 +28,10 @@ import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.inte
 @UseInterceptors(ViewerReadOnlyInterceptor)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminUserController {
-  constructor(private adminUserService: AdminUserService) {}
+  constructor(
+    private adminUserService: AdminUserService,
+    private userActivityLogger: UserActivityLoggerService
+  ) {}
 
   @Get("list")
   @HttpCode(HttpStatus.OK)
@@ -178,6 +182,32 @@ export class AdminUserController {
       return {
         success: false,
         message: "Failed to update user",
+        error: error.message,
+      };
+    }
+  }
+
+  @Get(":id/logs")
+  @HttpCode(HttpStatus.OK)
+  async getUserLogs(
+    @Param("id", ParseIntPipe) userId: number,
+    @Request() req
+  ): Promise<ApiResponse> {
+    try {
+      const logs = await this.userActivityLogger.getUserLogs(
+        userId,
+        req.user.role
+      );
+
+      return {
+        success: true,
+        message: "User logs retrieved successfully",
+        data: { logs },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to retrieve user logs",
         error: error.message,
       };
     }
