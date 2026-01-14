@@ -44,6 +44,12 @@ export class RedEnvelopeSettingsDto {
   @Min(0)
   @Max(0.1)
   sparkleFrequency: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  quantity?: number;
 }
 
 // Snow specific settings

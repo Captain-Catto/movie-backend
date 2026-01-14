@@ -20,6 +20,7 @@ const DEFAULT_RED_ENVELOPE_SETTINGS = {
   rotationSpeed: 1.0, // 0.1 - 5 (normal rotation)
   windStrength: 0.3, // 0 - 1 (gentle wind)
   sparkleFrequency: 0.02, // 0 - 0.1 (moderate sparkles)
+  quantity: 25, // 1 - 100 (amount of envelopes)
 };
 
 const DEFAULT_SNOW_SETTINGS = {
