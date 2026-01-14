@@ -101,4 +101,9 @@ export class EffectSettingsDto {
   @ValidateNested()
   @Type(() => SnowSettingsDto)
   snowSettings?: SnowSettingsDto;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  excludedPaths?: string[];
 }

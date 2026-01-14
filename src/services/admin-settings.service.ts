@@ -35,6 +35,7 @@ const DEFAULT_EFFECT_SETTINGS: EffectSettingsDto = {
   intensity: "medium",
   redEnvelopeSettings: DEFAULT_RED_ENVELOPE_SETTINGS,
   snowSettings: DEFAULT_SNOW_SETTINGS,
+  excludedPaths: [],
 };
 
 @Injectable()

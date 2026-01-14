@@ -6,11 +6,13 @@ import type { StringValue } from "ms";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../entities/user.entity";
 import { RefreshToken } from "../entities/refresh-token.entity";
+import { UserLog } from "../entities/user-log.entity";
 import { AuthController } from "../controllers/auth.controller";
 import { AuthService } from "../services/auth.service";
 import { UserRepository } from "../repositories/user.repository";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
 import { JwtStrategy } from "../auth/jwt.strategy";
+import { UserActivityLoggerService } from "../services/user-activity-logger.service";
 import { SettingsModule } from "./settings.module";
 
 const DEFAULT_JWT_EXPIRES_IN: StringValue = "15m";
@@ -28,7 +30,7 @@ const resolveJwtExpiresIn = (
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken]),
+    TypeOrmModule.forFeature([User, RefreshToken, UserLog]),
     PassportModule.register({ defaultStrategy: "jwt" }),
     SettingsModule,
     JwtModule.registerAsync({
@@ -45,7 +47,7 @@ const resolveJwtExpiresIn = (
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy],
-  exports: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy],
+  providers: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy, UserActivityLoggerService],
+  exports: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy, UserActivityLoggerService],
 })
 export class AuthModule {}

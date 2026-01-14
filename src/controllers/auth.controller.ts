@@ -10,6 +10,7 @@ import {
   Request,
 } from "@nestjs/common";
 import { AuthService } from "../services/auth.service";
+import { UserActivityLoggerService } from "../services/user-activity-logger.service";
 import { RegisterDto, LoginDto } from "../dto/auth.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -34,7 +35,10 @@ export class GoogleAuthDto {
 
 @Controller("auth")
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private userActivityLogger: UserActivityLoggerService
+  ) {}
 
   @Post("register")
   @HttpCode(HttpStatus.CREATED)
@@ -74,6 +78,16 @@ export class AuthController {
         loginDto,
         this.extractRequestMetadata(req)
       );
+
+      // Log login activity
+      const metadata = this.extractRequestMetadata(req);
+      await this.userActivityLogger.logLogin({
+        userId: result.user.id,
+        ipAddress: metadata.ipAddress,
+        userAgent: metadata.userAgent,
+        country: metadata.country,
+        device: this.detectDevice(metadata.userAgent),
+      });
 
       return {
         success: true,
@@ -130,6 +144,16 @@ export class AuthController {
       console.log(
         `👤 Google login: ${result.user.email} (${result.user.role})`
       );
+
+      // Log login activity
+      const metadata = this.extractRequestMetadata(req);
+      await this.userActivityLogger.logLogin({
+        userId: result.user.id,
+        ipAddress: metadata.ipAddress,
+        userAgent: metadata.userAgent,
+        country: metadata.country,
+        device: this.detectDevice(metadata.userAgent),
+      });
 
       return {
         success: true,
@@ -293,5 +317,13 @@ export class AuthController {
       return trimmed.split(":")[0];
     }
     return trimmed;
+  }
+
+  private detectDevice(userAgent?: string): string {
+    if (!userAgent) return "unknown";
+    const ua = userAgent.toLowerCase();
+    if (ua.includes("mobile")) return "mobile";
+    if (ua.includes("tablet") || ua.includes("ipad")) return "tablet";
+    return "desktop";
   }
 }
