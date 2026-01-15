@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
 import * as compression from "compression";
+import helmet from "helmet";
 import "reflect-metadata";
 
 process.env.TZ = "UTC";
@@ -13,6 +14,9 @@ async function bootstrap() {
   const logger = new Logger("Bootstrap");
 
   logger.log(`⏰ Timezone: ${process.env.TZ}`);
+
+  // Enable standard security headers
+  app.use(helmet());
 
   // Enable response compression for better performance
   app.use(
