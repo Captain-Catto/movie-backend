@@ -238,16 +238,15 @@ export class CommentController {
 
   // ✅ DELETE COMMENT (TEMPORARY - NO AUTH FOR TESTING)
   @Delete(":id")
-  // @UseGuards(JwtAuthGuard) // Commented out for testing
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async deleteComment(
     @Param("id", ParseIntPipe) id: number,
     @Request() req?
   ): Promise<ApiResponse> {
     try {
-      // Use dummy user ID for testing when no auth
-      const userId = req?.user?.id || 1;
-      const userRole = req?.user?.role || "user";
+      const userId = req.user.id;
+      const userRole = req.user.role;
       const result = await this.commentService.deleteComment(
         id,
         userId,
