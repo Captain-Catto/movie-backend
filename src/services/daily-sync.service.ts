@@ -434,6 +434,8 @@ export class DailySyncService {
           ? new Date(tmdbTV.first_air_date)
           : null,
         originCountry: tmdbTV.origin_country,
+        numberOfSeasons: tmdbTV.number_of_seasons ?? null,
+        numberOfEpisodes: tmdbTV.number_of_episodes ?? null,
       };
 
       await this.tvSeriesRepository.upsertByTmdbId(tmdbTV.id, tvData);

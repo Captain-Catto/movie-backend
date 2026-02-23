@@ -39,6 +39,9 @@ export interface TMDBTVSeries {
   genre_ids: number[];
   original_language: string;
   origin_country: string[];
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  episode_run_time?: number[];
 }
 
 /**
@@ -332,6 +335,17 @@ export interface TMDBTVDetails extends TMDBTVSeries {
   status: string;
   tagline: string;
   last_air_date: string;
+  created_by?: Array<{
+    id: number;
+    credit_id?: string;
+    name: string;
+    original_name?: string;
+    gender?: number;
+    profile_path?: string | null;
+  }>;
+  type?: string;
+  adult?: boolean;
+  in_production?: boolean;
 }
 
 export interface TMDBEpisode {

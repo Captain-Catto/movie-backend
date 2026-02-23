@@ -2,7 +2,10 @@ import { Injectable, NotFoundException, Logger } from "@nestjs/common";
 import { TVSeriesRepository } from "../repositories/tv-series.repository";
 import { RecommendationRepository } from "../repositories/recommendation.repository";
 import { TMDBService } from "./tmdb.service";
-import { TMDBSeasonDetails } from "../interfaces/tmdb-api.interface";
+import {
+  TMDBSeasonDetails,
+  TMDBTVDetails,
+} from "../interfaces/tmdb-api.interface";
 import { TVSeries } from "../entities/tv-series.entity";
 import { PaginatedResult } from "../interfaces/api.interface";
 
@@ -50,8 +53,13 @@ export class TVSeriesService {
 
   private transformTVSeries(
     tvSeries: TVSeries,
-    tmdbData?: any
+    tmdbData?: TMDBTVDetails
   ): TVSeriesResponse {
+    const resolvedNumberOfSeasons =
+      tmdbData?.number_of_seasons ?? tvSeries.numberOfSeasons ?? undefined;
+    const resolvedNumberOfEpisodes =
+      tmdbData?.number_of_episodes ?? tvSeries.numberOfEpisodes ?? undefined;
+
     return {
       id: tvSeries.id,
       tmdbId: tvSeries.tmdbId,
@@ -72,11 +80,11 @@ export class TVSeriesService {
       originCountry: tvSeries.originCountry,
       createdAt: tvSeries.createdAt,
       lastUpdated: tvSeries.lastUpdated,
+      numberOfSeasons: resolvedNumberOfSeasons,
+      numberOfEpisodes: resolvedNumberOfEpisodes,
       // Add TMDB-specific data if available
       ...(tmdbData && {
         created_by: tmdbData.created_by,
-        numberOfSeasons: tmdbData.number_of_seasons,
-        numberOfEpisodes: tmdbData.number_of_episodes,
         episodeRunTime: tmdbData.episode_run_time,
         status: tmdbData.status,
         lastAirDate: tmdbData.last_air_date
@@ -249,7 +257,7 @@ export class TVSeriesService {
    * Find TV series by TMDB ID (prioritize TMDB ID over internal ID)
    */
   async findByTmdbId(tmdbId: number): Promise<TVSeriesResponse> {
-    const tvSeries = await this.tvSeriesRepository.findByTmdbId(tmdbId);
+    let tvSeries = await this.tvSeriesRepository.findByTmdbId(tmdbId);
 
     if (!tvSeries) {
       throw new NotFoundException(
@@ -257,7 +265,31 @@ export class TVSeriesService {
       );
     }
 
-    return this.transformTVSeries(tvSeries);
+    let tmdbData: TMDBTVDetails | undefined = undefined;
+    try {
+      tmdbData = await this.tmdbService.getTVDetailsEnhanced(tmdbId);
+
+      // Persist season/episode counts so /api/tv/:id can still return them
+      // when TMDB is temporarily unavailable.
+      if (
+        tmdbData &&
+        (tvSeries.numberOfSeasons !== tmdbData.number_of_seasons ||
+          tvSeries.numberOfEpisodes !== tmdbData.number_of_episodes)
+      ) {
+        tvSeries = await this.tvSeriesRepository.update(tvSeries.id, {
+          numberOfSeasons: tmdbData.number_of_seasons ?? null,
+          numberOfEpisodes: tmdbData.number_of_episodes ?? null,
+        });
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to enrich TV series ${tmdbId} with TMDB details: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+
+    return this.transformTVSeries(tvSeries, tmdbData);
   }
 
   /**

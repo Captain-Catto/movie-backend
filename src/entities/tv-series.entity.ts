@@ -53,6 +53,12 @@ export class TVSeries {
   @Column("text", { array: true, default: [] })
   originCountry: string[];
 
+  @Column({ type: "integer", nullable: true })
+  numberOfSeasons: number | null;
+
+  @Column({ type: "integer", nullable: true })
+  numberOfEpisodes: number | null;
+
   @Column({ type: "integer", default: 0 })
   viewCount: number;
 
