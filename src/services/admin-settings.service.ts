@@ -148,7 +148,6 @@ export class AdminSettingsService {
 
     await this.settingRepository.save(record);
     this.logger.log("Effect settings updated");
-
     return merged;
   }
 }
