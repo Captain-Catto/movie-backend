@@ -5,10 +5,13 @@ import { Setting } from "../entities";
 import {
   RegistrationSettingsDto,
   EffectSettingsDto,
+  StreamDomainSettingsDto,
 } from "../dto/admin-settings.dto";
+import { STREAM_EMBED_DEFAULT_DOMAINS } from "../constants/stream.constants";
 
 const REGISTRATION_SETTINGS_KEY = "registration";
 const EFFECT_SETTINGS_KEY = "effectSettings";
+const STREAM_DOMAIN_SETTINGS_KEY = "streamDomainSettings";
 
 const DEFAULT_REGISTRATION_SETTINGS: RegistrationSettingsDto = {
   nickname: { min: 3, max: 16 },
@@ -37,6 +40,10 @@ const DEFAULT_EFFECT_SETTINGS: EffectSettingsDto = {
   redEnvelopeSettings: DEFAULT_RED_ENVELOPE_SETTINGS,
   snowSettings: DEFAULT_SNOW_SETTINGS,
   excludedPaths: [],
+};
+
+const DEFAULT_STREAM_DOMAIN_SETTINGS: StreamDomainSettingsDto = {
+  domains: [...STREAM_EMBED_DEFAULT_DOMAINS],
 };
 
 @Injectable()
@@ -148,6 +155,80 @@ export class AdminSettingsService {
 
     await this.settingRepository.save(record);
     this.logger.log("Effect settings updated");
+    return merged;
+  }
+
+  private normalizeStreamDomain(domain: string): string | null {
+    const trimmed = domain.trim().replace(/\/+$/, "");
+    if (!trimmed) return null;
+
+    const withProtocol = /^https?:\/\//i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+
+    try {
+      const parsed = new URL(withProtocol);
+      return `${parsed.protocol}//${parsed.host}`;
+    } catch {
+      return null;
+    }
+  }
+
+  private sanitizeStreamDomains(domains: string[]): string[] {
+    const normalized = domains
+      .map((domain) => this.normalizeStreamDomain(domain))
+      .filter((domain): domain is string => !!domain);
+
+    return [...new Set(normalized)];
+  }
+
+  async getStreamDomainSettings(): Promise<StreamDomainSettingsDto> {
+    const existing = await this.settingRepository.findOne({
+      where: { key: STREAM_DOMAIN_SETTINGS_KEY },
+    });
+
+    if (!existing) {
+      return DEFAULT_STREAM_DOMAIN_SETTINGS;
+    }
+
+    const existingValue = existing.value as StreamDomainSettingsDto;
+    const sanitized = this.sanitizeStreamDomains(existingValue.domains || []);
+
+    return {
+      domains:
+        sanitized.length > 0
+          ? sanitized
+          : DEFAULT_STREAM_DOMAIN_SETTINGS.domains,
+    };
+  }
+
+  async updateStreamDomainSettings(
+    payload: StreamDomainSettingsDto
+  ): Promise<StreamDomainSettingsDto> {
+    const sanitized = this.sanitizeStreamDomains(payload.domains || []);
+
+    const merged: StreamDomainSettingsDto = {
+      domains:
+        sanitized.length > 0
+          ? sanitized
+          : DEFAULT_STREAM_DOMAIN_SETTINGS.domains,
+    };
+
+    let record = await this.settingRepository.findOne({
+      where: { key: STREAM_DOMAIN_SETTINGS_KEY },
+    });
+
+    if (!record) {
+      record = this.settingRepository.create({
+        key: STREAM_DOMAIN_SETTINGS_KEY,
+        value: merged,
+      });
+    } else {
+      record.value = merged;
+    }
+
+    await this.settingRepository.save(record);
+    this.logger.log("Stream domain settings updated");
     return merged;
   }
 }

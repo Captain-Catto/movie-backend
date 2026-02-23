@@ -230,6 +230,34 @@ export class TVController {
     }
   }
 
+  @Get(":id/seasons/:season/episodes")
+  @HttpCode(HttpStatus.OK)
+  async getSeasonEpisodes(
+    @Param("id", ParseIntPipe) id: number,
+    @Param("season", ParseIntPipe) season: number,
+    @Query("language") language: string = "en-US"
+  ): Promise<ApiResponse> {
+    try {
+      const seasonDetails = await this.tvSeriesService.getSeasonEpisodes(
+        id,
+        season,
+        language
+      );
+
+      return {
+        success: true,
+        message: "Season episodes retrieved successfully",
+        data: seasonDetails,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to retrieve season episodes",
+        error: error.message,
+      };
+    }
+  }
+
   @Get(":id/videos")
   @HttpCode(HttpStatus.OK)
   async getTVVideos(

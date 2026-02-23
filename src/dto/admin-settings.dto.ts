@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsNumber,
   Max,
+  ArrayMinSize,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -112,4 +113,11 @@ export class EffectSettingsDto {
   @IsArray()
   @IsString({ each: true })
   excludedPaths?: string[];
+}
+
+export class StreamDomainSettingsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  domains: string[];
 }

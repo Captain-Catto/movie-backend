@@ -66,7 +66,7 @@ export class ContentController {
       const normalizedAutoNext =
         autoNext === undefined ? undefined : autoNext !== "0";
 
-      const streamData = this.streamEmbedService.buildStreamUrls({
+      const streamData = await this.streamEmbedService.buildStreamUrls({
         tmdbId,
         contentType,
         season: parsedSeason,

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, Logger } from "@nestjs/common";
 import { TVSeriesRepository } from "../repositories/tv-series.repository";
 import { RecommendationRepository } from "../repositories/recommendation.repository";
 import { TMDBService } from "./tmdb.service";
+import { TMDBSeasonDetails } from "../interfaces/tmdb-api.interface";
 import { TVSeries } from "../entities/tv-series.entity";
 import { PaginatedResult } from "../interfaces/api.interface";
 
@@ -38,6 +39,8 @@ export interface TVSeriesResponse {
 @Injectable()
 export class TVSeriesService {
   private readonly logger = new Logger(TVSeriesService.name);
+  private seasonCache = new Map<string, { data: TMDBSeasonDetails; timestamp: number }>();
+  private readonly SEASON_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor(
     private tvSeriesRepository: TVSeriesRepository,
@@ -279,6 +282,26 @@ export class TVSeriesService {
         `TV Series credits with TMDB ID ${tmdbId} not found`
       );
     }
+  }
+
+  async getSeasonEpisodes(
+    tmdbId: number,
+    seasonNumber: number,
+    language: string = "en-US"
+  ): Promise<TMDBSeasonDetails> {
+    const cacheKey = `${tmdbId}:${seasonNumber}:${language}`;
+    const cached = this.seasonCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.SEASON_CACHE_TTL) {
+      return cached.data;
+    }
+
+    const data = await this.tmdbService.getTVSeasonDetails(
+      tmdbId,
+      seasonNumber,
+      language
+    );
+    this.seasonCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
   }
 
   /**

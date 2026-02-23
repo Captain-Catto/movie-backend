@@ -1,4 +1,6 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
+import { AdminSettingsService } from "./admin-settings.service";
+import { STREAM_EMBED_DEFAULT_DOMAINS } from "../constants/stream.constants";
 
 export type StreamContentType = "movie" | "tv";
 
@@ -22,15 +24,35 @@ export interface StreamUrlResult {
 
 @Injectable()
 export class StreamEmbedService {
-  private readonly defaultDomains = [
-    "https://vsembed.ru",
-    "https://vidsrc-embed.ru",
-    "https://vidsrc-embed.su",
-    "https://vidsrcme.su",
-    "https://vsrc.su",
-  ];
+  private readonly logger = new Logger(StreamEmbedService.name);
+  private readonly defaultDomains = [...STREAM_EMBED_DEFAULT_DOMAINS];
+  private readonly settingsCacheTtlMs = 60_000;
+  private cachedDomains: string[] | null = null;
+  private cacheExpiresAt = 0;
 
-  private getEmbedDomains(): string[] {
+  constructor(private readonly adminSettingsService: AdminSettingsService) {}
+
+  private async getEmbedDomains(): Promise<string[]> {
+    const now = Date.now();
+    if (this.cachedDomains && now < this.cacheExpiresAt) {
+      return this.cachedDomains;
+    }
+
+    try {
+      const settings = await this.adminSettingsService.getStreamDomainSettings();
+      if (settings.domains && settings.domains.length > 0) {
+        this.cachedDomains = settings.domains;
+        this.cacheExpiresAt = now + this.settingsCacheTtlMs;
+        return settings.domains;
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to load stream domains from settings, using defaults: ${error}`
+      );
+    }
+
+    this.cachedDomains = this.defaultDomains;
+    this.cacheExpiresAt = now + this.settingsCacheTtlMs;
     return this.defaultDomains;
   }
 
@@ -63,8 +85,8 @@ export class StreamEmbedService {
     return url.toString();
   }
 
-  buildStreamUrls(query: StreamUrlQuery): StreamUrlResult {
-    const domains = this.getEmbedDomains();
+  async buildStreamUrls(query: StreamUrlQuery): Promise<StreamUrlResult> {
+    const domains = await this.getEmbedDomains();
     const urls = domains.map((domain) => this.buildEmbedUrl(domain, query));
 
     return {

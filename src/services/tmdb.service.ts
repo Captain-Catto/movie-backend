@@ -21,6 +21,7 @@ import {
   TMDBVideosResponse,
   TMDBMovieDetails,
   TMDBTVDetails,
+  TMDBSeasonDetails,
 } from "../interfaces/tmdb-api.interface";
 
 @Injectable()
@@ -698,6 +699,32 @@ export class TMDBService {
         this.logger.warn(`TV series ${tvId} not found in TMDB (404)`);
       } else {
         this.logger.error(`Error fetching TV series ${tvId}:`, error.message);
+      }
+      throw error;
+    }
+  }
+
+  async getTVSeasonDetails(
+    tvId: number,
+    seasonNumber: number,
+    language: string = "en-US"
+  ): Promise<TMDBSeasonDetails> {
+    try {
+      const response = await this.axiosInstance.get(
+        `/tv/${tvId}/season/${seasonNumber}`,
+        { params: { language } }
+      );
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        this.logger.warn(
+          `TV season ${tvId}/S${seasonNumber} not found in TMDB (404)`
+        );
+      } else {
+        this.logger.error(
+          `Error fetching TV season ${tvId}/S${seasonNumber}:`,
+          error.message
+        );
       }
       throw error;
     }

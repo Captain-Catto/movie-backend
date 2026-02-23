@@ -17,6 +17,7 @@ import { AdminSettingsService } from "../services/admin-settings.service";
 import {
   RegistrationSettingsDto,
   EffectSettingsDto,
+  StreamDomainSettingsDto,
 } from "../dto/admin-settings.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
@@ -71,6 +72,32 @@ export class AdminSettingsController {
     return {
       success: true,
       message: "Effect settings updated",
+      data,
+    };
+  }
+
+  @Get("stream-domains")
+  @HttpCode(HttpStatus.OK)
+  async getStreamDomainSettings(): Promise<ApiResponse> {
+    const data = await this.adminSettingsService.getStreamDomainSettings();
+    return {
+      success: true,
+      message: "Stream domain settings retrieved",
+      data,
+    };
+  }
+
+  @Put("stream-domains")
+  @HttpCode(HttpStatus.OK)
+  async updateStreamDomainSettings(
+    @Body() body: StreamDomainSettingsDto
+  ): Promise<ApiResponse> {
+    const data = await this.adminSettingsService.updateStreamDomainSettings(
+      body
+    );
+    return {
+      success: true,
+      message: "Stream domain settings updated",
       data,
     };
   }

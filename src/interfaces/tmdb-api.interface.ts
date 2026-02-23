@@ -333,3 +333,29 @@ export interface TMDBTVDetails extends TMDBTVSeries {
   tagline: string;
   last_air_date: string;
 }
+
+export interface TMDBEpisode {
+  air_date: string | null;
+  episode_number: number;
+  id: number;
+  name: string;
+  overview: string;
+  production_code: string;
+  runtime: number | null;
+  season_number: number;
+  still_path: string | null;
+  vote_average: number;
+  vote_count: number;
+}
+
+export interface TMDBSeasonDetails {
+  _id: string;
+  air_date: string | null;
+  episodes: TMDBEpisode[];
+  name: string;
+  overview: string;
+  id: number;
+  poster_path: string | null;
+  season_number: number;
+  vote_average: number;
+}
