@@ -32,7 +32,7 @@ export class ContentController {
     @Query("contentType") contentType: StreamContentType = "movie",
     @Query("season") season?: string,
     @Query("episode") episode?: string,
-    @Query("dsLang") dsLang?: string,
+    @Query("dsLang") dsLang: string = "vi",
     @Query("autoplay") autoplay?: string,
     @Query("autoNext") autoNext?: string
   ): Promise<ApiResponse> {
