@@ -2,6 +2,7 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
+import { CamelCaseInterceptor } from "./interceptors/camel-case.interceptor";
 import * as compression from "compression";
 import helmet from "helmet";
 import "reflect-metadata";
@@ -34,6 +35,9 @@ async function bootstrap() {
       level: 6, // Compression level (0-9, 6 is default and balanced)
     })
   );
+
+  // Global interceptor: convert all response keys to camelCase
+  app.useGlobalInterceptors(new CamelCaseInterceptor());
 
   // Global validation pipe
   app.useGlobalPipes(

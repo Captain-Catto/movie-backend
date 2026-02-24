@@ -6,7 +6,11 @@ import { TMDBService } from "./tmdb.service";
 import { Movie } from "../entities/movie.entity";
 import { SyncCategory } from "../entities/sync-status.entity";
 import { PaginatedResult } from "../interfaces/api.interface";
-import { TMDB_MAX_PAGES } from "../constants/tmdb.constants";
+import {
+  TMDB_MAX_PAGES,
+  TMDB_DEFAULT_LANGUAGE,
+} from "../constants/tmdb.constants";
+import { ContentTranslationRepository } from "../repositories/content-translation.repository";
 
 export interface MovieResponse {
   id: number;
@@ -35,7 +39,8 @@ export class MovieService {
     private movieRepository: MovieRepository,
     private syncStatusRepository: SyncStatusRepository,
     private tmdbService: TMDBService,
-    private recommendationRepository: RecommendationRepository
+    private recommendationRepository: RecommendationRepository,
+    private translationRepository: ContentTranslationRepository
   ) {}
 
   /**
@@ -338,7 +343,12 @@ export class MovieService {
       lastUpdated: movie.lastUpdated,
     }));
 
-    // Step 5: Use actual database pagination (not TMDB total)
+    // Step 5: Merge translations if non-default language
+    if (language && language !== TMDB_DEFAULT_LANGUAGE) {
+      await this.mergeTranslations(moviesWithImages, "movie", language);
+    }
+
+    // Step 6: Use actual database pagination (not TMDB total)
     const enhancedPagination = result.pagination;
 
     return {
@@ -377,7 +387,7 @@ export class MovieService {
     }
   }
 
-  async findById(id: number): Promise<MovieResponse> {
+  async findById(id: number, language: string = "en-US"): Promise<MovieResponse> {
     // First, try to find movie in database
     let movie = await this.movieRepository.findById(id);
 
@@ -425,7 +435,18 @@ export class MovieService {
       }
     }
 
-    return this.transformMovie(movie);
+    const transformed = this.transformMovie(movie);
+
+    // Merge translation if not default language
+    if (language !== TMDB_DEFAULT_LANGUAGE) {
+      await this.mergeTranslations(
+        [transformed as any],
+        "movie",
+        language
+      );
+    }
+
+    return transformed;
   }
 
   private transformMovie(movie: any): MovieResponse {
@@ -447,6 +468,38 @@ export class MovieService {
       createdAt: movie.createdAt,
       lastUpdated: movie.lastUpdated,
     };
+  }
+
+  /**
+   * Merge translations into response objects for non-default languages.
+   * Mutates items in place for performance.
+   */
+  private async mergeTranslations(
+    items: Array<{ tmdbId: number; title: string; overview: string }>,
+    contentType: "movie" | "tv",
+    language: string
+  ): Promise<void> {
+    const tmdbIds = items.map((item) => item.tmdbId);
+    const translations =
+      await this.translationRepository.findByTmdbIds(
+        tmdbIds,
+        contentType,
+        language
+      );
+
+    if (translations.length === 0) return;
+
+    const translationMap = new Map(
+      translations.map((t) => [t.tmdbId, t])
+    );
+
+    for (const item of items) {
+      const t = translationMap.get(item.tmdbId);
+      if (t) {
+        if (t.title) item.title = t.title;
+        if (t.overview) item.overview = t.overview;
+      }
+    }
   }
 
   async search(
@@ -650,7 +703,7 @@ export class MovieService {
   /**
    * Find movie by TMDB ID (prioritize TMDB ID over internal ID)
    */
-  async findByTmdbId(tmdbId: number): Promise<MovieResponse> {
+  async findByTmdbId(tmdbId: number, language: string = "en-US"): Promise<MovieResponse> {
     // First, try to find movie by TMDB ID in database
     let movie = await this.movieRepository.findByTmdbId(tmdbId);
 
@@ -692,7 +745,18 @@ export class MovieService {
       }
     }
 
-    return this.transformMovie(movie);
+    const transformed = this.transformMovie(movie);
+
+    // Merge translation if not default language
+    if (language !== TMDB_DEFAULT_LANGUAGE) {
+      await this.mergeTranslations(
+        [transformed as any],
+        "movie",
+        language
+      );
+    }
+
+    return transformed;
   }
 
   /**

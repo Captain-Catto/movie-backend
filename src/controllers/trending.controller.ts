@@ -13,7 +13,9 @@ export class TrendingController {
     try {
       const result = await this.trendingService.findAll(
         query.page || 1,
-        query.limit || 24
+        query.limit || 24,
+        {},
+        query.language || "en-US"
       );
 
       return {

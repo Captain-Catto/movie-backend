@@ -11,8 +11,12 @@ import { TrendingRepository } from "../repositories/trending.repository";
 import { Movie } from "../entities/movie.entity";
 import { TVSeries } from "../entities/tv-series.entity";
 import { Trending, MediaType } from "../entities/trending.entity";
-import { TMDB_MAX_PAGES } from "../constants/tmdb.constants";
+import {
+  TMDB_MAX_PAGES,
+  TRANSLATION_LANGUAGES,
+} from "../constants/tmdb.constants";
 import { SyncSettingsService } from "./sync-settings.service";
+import { ContentTranslationRepository } from "../repositories/content-translation.repository";
 
 type TrendingHiddenState = {
   isHidden: boolean;
@@ -38,7 +42,8 @@ export class DataSyncService {
     private movieRepository: MovieRepository,
     private tvSeriesRepository: TVSeriesRepository,
     private trendingRepository: TrendingRepository,
-    private syncSettingsService: SyncSettingsService
+    private syncSettingsService: SyncSettingsService,
+    private translationRepository: ContentTranslationRepository
   ) {}
 
   async syncPopularMovies(language: string = "en-US"): Promise<void> {
@@ -107,6 +112,9 @@ export class DataSyncService {
         for (const tmdbMovie of response.results) {
           await this.syncMovie(tmdbMovie);
         }
+
+        // Sync translations for additional languages
+        await this.syncMoviePageTranslations(currentPage);
 
         syncedPages = currentPage;
         currentPage++;
@@ -188,6 +196,9 @@ export class DataSyncService {
         for (const tmdbTV of response.results) {
           await this.syncTVSeries(tmdbTV);
         }
+
+        // Sync translations for additional languages
+        await this.syncTVPageTranslations(currentPage);
 
         syncedPages = currentPage;
         currentPage++;
@@ -293,6 +304,9 @@ export class DataSyncService {
           await this.syncTrendingItem(item, mediaType, hiddenState);
           totalSynced++;
         }
+
+        // Sync translations for trending items
+        await this.syncTrendingPageTranslations(page);
 
         if (remaining !== null && totalSynced >= trendingLimit) {
           this.logger.log(
@@ -420,6 +434,95 @@ export class DataSyncService {
     ]);
 
     this.logger.log("Full data sync completed");
+  }
+
+  /**
+   * Fetch movie translations for a page from TMDB and bulk upsert
+   */
+  private async syncMoviePageTranslations(page: number): Promise<void> {
+    for (const lang of TRANSLATION_LANGUAGES) {
+      try {
+        await this.delay(250);
+        const response = await this.tmdbService.getPopularMovies(page, lang);
+        if (!response.results?.length) continue;
+
+        const translations = response.results.map((movie) => ({
+          tmdbId: movie.id,
+          contentType: "movie" as const,
+          language: lang,
+          title: movie.title || null,
+          overview: movie.overview || null,
+        }));
+
+        await this.translationRepository.bulkUpsert(translations);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to sync movie translations for page ${page}, lang ${lang}: ${error}`
+        );
+      }
+    }
+  }
+
+  /**
+   * Fetch TV translations for a page from TMDB and bulk upsert
+   */
+  private async syncTVPageTranslations(page: number): Promise<void> {
+    for (const lang of TRANSLATION_LANGUAGES) {
+      try {
+        await this.delay(250);
+        const response = await this.tmdbService.getPopularTVSeries(page, lang);
+        if (!response.results?.length) continue;
+
+        const translations = response.results.map((tv) => ({
+          tmdbId: tv.id,
+          contentType: "tv" as const,
+          language: lang,
+          title: tv.name || null,
+          overview: tv.overview || null,
+        }));
+
+        await this.translationRepository.bulkUpsert(translations);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to sync TV translations for page ${page}, lang ${lang}: ${error}`
+        );
+      }
+    }
+  }
+
+  /**
+   * Fetch trending translations for a page from TMDB and bulk upsert
+   */
+  private async syncTrendingPageTranslations(page: number): Promise<void> {
+    for (const lang of TRANSLATION_LANGUAGES) {
+      try {
+        await this.delay(250);
+        const items = await this.tmdbService.getTrending(
+          "all",
+          "week",
+          lang,
+          page
+        );
+        if (!items?.length) continue;
+
+        const translations = items.map((item) => ({
+          tmdbId: item.id,
+          contentType:
+            item.media_type === "movie"
+              ? ("movie" as const)
+              : ("tv" as const),
+          language: lang,
+          title: (item.title || item.name) ?? null,
+          overview: item.overview || null,
+        }));
+
+        await this.translationRepository.bulkUpsert(translations);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to sync trending translations for page ${page}, lang ${lang}: ${error}`
+        );
+      }
+    }
   }
 
   private delay(ms: number): Promise<void> {

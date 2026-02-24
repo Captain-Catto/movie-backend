@@ -10,6 +10,11 @@ export const TMDB_DEFAULT_LANGUAGE = "en-US";
 export const TMDB_RATE_LIMIT_DELAY = 100; // milliseconds between requests
 export const TMDB_RETRY_DELAY = 500; // milliseconds for retries
 
+// Supported languages for content translations
+// Default language (en-US) is stored in main entity tables.
+// Additional languages are stored in content_translations table.
+export const TRANSLATION_LANGUAGES = ["vi"] as const;
+
 // TMDB Genre mappings
 export const MOVIE_GENRES: Record<number, string> = {
   28: "Action",

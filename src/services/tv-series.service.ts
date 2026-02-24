@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException, Logger } from "@nestjs/common";
 import { TVSeriesRepository } from "../repositories/tv-series.repository";
 import { RecommendationRepository } from "../repositories/recommendation.repository";
+import { ContentTranslationRepository } from "../repositories/content-translation.repository";
 import { TMDBService } from "./tmdb.service";
+import { TMDB_DEFAULT_LANGUAGE } from "../constants/tmdb.constants";
 import {
   TMDBSeasonDetails,
   TMDBTVDetails,
@@ -48,7 +50,8 @@ export class TVSeriesService {
   constructor(
     private tvSeriesRepository: TVSeriesRepository,
     private tmdbService: TMDBService,
-    private recommendationRepository: RecommendationRepository
+    private recommendationRepository: RecommendationRepository,
+    private translationRepository: ContentTranslationRepository
   ) {}
 
   private transformTVSeries(
@@ -99,6 +102,33 @@ export class TVSeriesService {
     };
   }
 
+  private async mergeTranslations(
+    items: Array<{ tmdbId: number; title: string; overview: string }>,
+    language: string
+  ): Promise<void> {
+    const tmdbIds = items.map((item) => item.tmdbId);
+    const translations =
+      await this.translationRepository.findByTmdbIds(
+        tmdbIds,
+        "tv",
+        language
+      );
+
+    if (translations.length === 0) return;
+
+    const translationMap = new Map(
+      translations.map((t) => [t.tmdbId, t])
+    );
+
+    for (const item of items) {
+      const t = translationMap.get(item.tmdbId);
+      if (t) {
+        if (t.title) item.title = t.title;
+        if (t.overview) item.overview = t.overview;
+      }
+    }
+  }
+
   async findAll(
     page: number = 1,
     limit: number = 24,
@@ -125,13 +155,18 @@ export class TVSeriesService {
       this.transformTVSeries(tvSeries)
     );
 
+    // Merge translations if not default language
+    if (language !== TMDB_DEFAULT_LANGUAGE) {
+      await this.mergeTranslations(tvSeriesWithImages, language);
+    }
+
     return {
       ...result,
       data: tvSeriesWithImages,
     };
   }
 
-  async findById(id: number): Promise<TVSeriesResponse> {
+  async findById(id: number, language: string = "en-US"): Promise<TVSeriesResponse> {
     const tvSeries = await this.tvSeriesRepository.findById(id);
 
     if (!tvSeries) {
@@ -140,7 +175,14 @@ export class TVSeriesService {
       );
     }
 
-    return this.transformTVSeries(tvSeries);
+    const transformed = this.transformTVSeries(tvSeries);
+
+    // Merge translation if not default language
+    if (language !== TMDB_DEFAULT_LANGUAGE) {
+      await this.mergeTranslations([transformed as any], language);
+    }
+
+    return transformed;
   }
 
   async search(
@@ -256,7 +298,7 @@ export class TVSeriesService {
   /**
    * Find TV series by TMDB ID (prioritize TMDB ID over internal ID)
    */
-  async findByTmdbId(tmdbId: number): Promise<TVSeriesResponse> {
+  async findByTmdbId(tmdbId: number, language: string = "en-US"): Promise<TVSeriesResponse> {
     let tvSeries = await this.tvSeriesRepository.findByTmdbId(tmdbId);
 
     if (!tvSeries) {
@@ -289,7 +331,14 @@ export class TVSeriesService {
       );
     }
 
-    return this.transformTVSeries(tvSeries, tmdbData);
+    const transformed = this.transformTVSeries(tvSeries, tmdbData);
+
+    // Merge translation if not default language
+    if (language !== TMDB_DEFAULT_LANGUAGE) {
+      await this.mergeTranslations([transformed as any], language);
+    }
+
+    return transformed;
   }
 
   /**

@@ -251,11 +251,12 @@ export class MovieController {
   @Get(":id")
   @HttpCode(HttpStatus.OK)
   async getMovieById(
-    @Param("id", ParseIntPipe) id: number
+    @Param("id", ParseIntPipe) id: number,
+    @Query("language") language: string = "en-US"
   ): Promise<ApiResponse> {
     try {
       // Use TMDB ID as primary identifier
-      const movie = await this.movieService.findByTmdbId(id);
+      const movie = await this.movieService.findByTmdbId(id, language);
 
       return {
         success: true,

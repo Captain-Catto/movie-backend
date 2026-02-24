@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { TrendingRepository } from "../repositories/trending.repository";
+import { ContentTranslationRepository } from "../repositories/content-translation.repository";
 import { TMDBService } from "./tmdb.service";
+import { TMDB_DEFAULT_LANGUAGE } from "../constants/tmdb.constants";
 import { Trending, MediaType } from "../entities/trending.entity";
 
 export interface TrendingResponse {
@@ -30,7 +32,8 @@ export interface TrendingResponse {
 export class TrendingService {
   constructor(
     private trendingRepository: TrendingRepository,
-    private tmdbService: TMDBService
+    private tmdbService: TMDBService,
+    private translationRepository: ContentTranslationRepository
   ) {}
 
   private transformTrending(trending: Trending): TrendingResponse {
@@ -61,10 +64,52 @@ export class TrendingService {
     };
   }
 
+  private async mergeTranslations(
+    items: TrendingResponse[],
+    language: string
+  ): Promise<void> {
+    // Split by media type since translations are stored per content type
+    const movieItems = items.filter((i) => i.mediaType === "movie");
+    const tvItems = items.filter((i) => i.mediaType === "tv");
+
+    const [movieTranslations, tvTranslations] = await Promise.all([
+      movieItems.length > 0
+        ? this.translationRepository.findByTmdbIds(
+            movieItems.map((i) => i.tmdbId),
+            "movie",
+            language
+          )
+        : [],
+      tvItems.length > 0
+        ? this.translationRepository.findByTmdbIds(
+            tvItems.map((i) => i.tmdbId),
+            "tv",
+            language
+          )
+        : [],
+    ]);
+
+    const translationMap = new Map(
+      [...movieTranslations, ...tvTranslations].map((t) => [
+        `${t.contentType}:${t.tmdbId}`,
+        t,
+      ])
+    );
+
+    for (const item of items) {
+      const t = translationMap.get(`${item.mediaType}:${item.tmdbId}`);
+      if (t) {
+        if (t.title) item.title = t.title;
+        if (t.overview) item.overview = t.overview;
+      }
+    }
+  }
+
   async findAll(
     page: number = 1,
     limit: number = 24,
-    options: { includeHidden?: boolean } = {}
+    options: { includeHidden?: boolean } = {},
+    language: string = "en-US"
   ): Promise<{
     data: TrendingResponse[];
     pagination: {
@@ -81,8 +126,15 @@ export class TrendingService {
       includeHidden
     );
 
+    const transformed = data.map((item) => this.transformTrending(item));
+
+    // Merge translations if not default language
+    if (language !== TMDB_DEFAULT_LANGUAGE) {
+      await this.mergeTranslations(transformed, language);
+    }
+
     return {
-      data: data.map((item) => this.transformTrending(item)),
+      data: transformed,
       pagination: {
         page,
         limit,

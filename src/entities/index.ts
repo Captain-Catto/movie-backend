@@ -38,3 +38,4 @@ export { SyncSettings } from "./sync-settings.entity";
 export { Setting } from "./setting.entity";
 export { ViewerAuditLog } from "./viewer-audit-log.entity";
 export { UserLog } from "./user-log.entity";
+export { ContentTranslation } from "./content-translation.entity";

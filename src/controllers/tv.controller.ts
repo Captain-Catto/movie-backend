@@ -186,11 +186,12 @@ export class TVController {
   @Get(":id")
   @HttpCode(HttpStatus.OK)
   async getTVSeriesById(
-    @Param("id", ParseIntPipe) id: number
+    @Param("id", ParseIntPipe) id: number,
+    @Query("language") language: string = "en-US"
   ): Promise<ApiResponse> {
     try {
       // Use TMDB ID as primary identifier
-      const tvSeries = await this.tvSeriesService.findByTmdbId(id);
+      const tvSeries = await this.tvSeriesService.findByTmdbId(id, language);
 
       return {
         success: true,
