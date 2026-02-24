@@ -16,6 +16,8 @@ export interface MovieResponse {
   id: number;
   tmdbId: number;
   title: string;
+  originalTitle?: string | null;
+  defaultTitle?: string | null;
   overview: string;
   posterUrl: string | null;
   backdropUrl: string | null;
@@ -180,6 +182,7 @@ export class MovieService {
         for (const tmdbMovie of tmdbResponse.results) {
           const movieData: Partial<Movie> = {
             title: tmdbMovie.title,
+            originalTitle: tmdbMovie.original_title,
             overview: tmdbMovie.overview,
             posterPath: tmdbMovie.poster_path,
             backdropPath: tmdbMovie.backdrop_path,
@@ -328,6 +331,8 @@ export class MovieService {
       id: movie.id,
       tmdbId: movie.tmdbId,
       title: movie.title,
+      originalTitle: movie.originalTitle || null,
+      defaultTitle: movie.title || null,
       overview: movie.overview,
       posterUrl: this.tmdbService.getPosterUrl(movie.posterPath, "w500"),
       backdropUrl: this.tmdbService.getBackdropUrl(movie.backdropPath, "w1280"),
@@ -411,6 +416,7 @@ export class MovieService {
         // Save the movie to database for future requests
         movie = await this.movieRepository.upsertByTmdbId(tmdbMovie.id, {
           title: tmdbMovie.title,
+          originalTitle: tmdbMovie.original_title,
           overview: tmdbMovie.overview,
           posterPath: tmdbMovie.poster_path,
           backdropPath: tmdbMovie.backdrop_path,
@@ -454,6 +460,8 @@ export class MovieService {
       id: movie.id,
       tmdbId: movie.tmdbId,
       title: movie.title,
+      originalTitle: movie.originalTitle || null,
+      defaultTitle: movie.title || null,
       overview: movie.overview,
       posterUrl: this.tmdbService.getPosterUrl(movie.posterPath, "w500"),
       backdropUrl: this.tmdbService.getBackdropUrl(movie.backdropPath, "w1280"),
@@ -723,6 +731,7 @@ export class MovieService {
         // Save the movie to database for future requests
         movie = await this.movieRepository.upsertByTmdbId(tmdbMovie.id, {
           title: tmdbMovie.title,
+          originalTitle: tmdbMovie.original_title,
           overview: tmdbMovie.overview,
           posterPath: tmdbMovie.poster_path,
           backdropPath: tmdbMovie.backdrop_path,
