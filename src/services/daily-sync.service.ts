@@ -4,8 +4,12 @@ import { TMDBService } from "./tmdb.service";
 import { TMDBMovie, TMDBTVSeries } from "../interfaces/tmdb-api.interface";
 import { MovieRepository } from "../repositories/movie.repository";
 import { TVSeriesRepository } from "../repositories/tv-series.repository";
+import { ContentTranslationRepository } from "../repositories/content-translation.repository";
 import { Movie } from "../entities/movie.entity";
 import { TVSeries } from "../entities/tv-series.entity";
+import {
+  TRANSLATION_LANGUAGES,
+} from "../constants/tmdb.constants";
 import axios from "axios";
 import * as zlib from "zlib";
 import { pipeline } from "stream";
@@ -28,8 +32,71 @@ export class DailySyncService {
     private configService: ConfigService,
     private tmdbService: TMDBService,
     private movieRepository: MovieRepository,
-    private tvSeriesRepository: TVSeriesRepository
+    private tvSeriesRepository: TVSeriesRepository,
+    private translationRepository: ContentTranslationRepository
   ) {}
+
+  private isTranslationSyncEnabled(): boolean {
+    return (
+      (this.configService.get<string>(
+        "DAILY_SYNC_TRANSLATIONS_ENABLED",
+        "true"
+      ) || "")
+        .toLowerCase() === "true"
+    );
+  }
+
+  private async syncMovieTranslationsByTmdbId(movieId: number): Promise<void> {
+    for (const language of TRANSLATION_LANGUAGES) {
+      try {
+        await this.delay(120);
+        const translatedMovie = await this.tmdbService.getMovieDetails(
+          movieId,
+          language
+        );
+
+        await this.translationRepository.upsert(
+          movieId,
+          "movie",
+          language,
+          translatedMovie.title || null,
+          translatedMovie.overview || null
+        );
+      } catch (error) {
+        this.logger.debug(
+          `Translation sync skipped for movie ${movieId} (${language}): ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+  }
+
+  private async syncTVTranslationsByTmdbId(tvId: number): Promise<void> {
+    for (const language of TRANSLATION_LANGUAGES) {
+      try {
+        await this.delay(120);
+        const translatedTV = await this.tmdbService.getTVSeriesDetails(
+          tvId,
+          language
+        );
+
+        await this.translationRepository.upsert(
+          tvId,
+          "tv",
+          language,
+          translatedTV.name || null,
+          translatedTV.overview || null
+        );
+      } catch (error) {
+        this.logger.debug(
+          `Translation sync skipped for TV ${tvId} (${language}): ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+  }
 
   /**
    * Generate TMDB daily export URL for specific date
@@ -189,6 +256,15 @@ export class DailySyncService {
       // Process in batches
       let processedCount = 0;
       let syncedCount = 0;
+      const syncTranslations = this.isTranslationSyncEnabled();
+
+      if (syncTranslations) {
+        this.logger.log(
+          `🌐 Daily movie translation sync enabled for: ${TRANSLATION_LANGUAGES.join(
+            ", "
+          )}`
+        );
+      }
 
       // Start from specified batch
       const startIndex = startFromBatch * batchSize;
@@ -218,6 +294,11 @@ export class DailySyncService {
               movieId
             );
             await this.syncMovieFromDetails(movieDetails);
+
+            if (syncTranslations) {
+              await this.syncMovieTranslationsByTmdbId(movieId);
+            }
+
             return true;
           } catch (error) {
             // Suppress individual movie errors to reduce log noise
@@ -288,6 +369,15 @@ export class DailySyncService {
       // Process in batches
       let processedCount = 0;
       let syncedCount = 0;
+      const syncTranslations = this.isTranslationSyncEnabled();
+
+      if (syncTranslations) {
+        this.logger.log(
+          `🌐 Daily TV translation sync enabled for: ${TRANSLATION_LANGUAGES.join(
+            ", "
+          )}`
+        );
+      }
 
       // Start from specified batch
       const startIndex = startFromBatch * batchSize;
@@ -315,6 +405,11 @@ export class DailySyncService {
 
             const tvDetails = await this.tmdbService.getTVSeriesDetails(tvId);
             await this.syncTVFromDetails(tvDetails);
+
+            if (syncTranslations) {
+              await this.syncTVTranslationsByTmdbId(tvId);
+            }
+
             return true;
           } catch (error) {
             // Suppress individual TV series errors to reduce log noise

@@ -1,16 +1,60 @@
 import { Injectable } from "@nestjs/common";
 import { MovieRepository } from "../repositories/movie.repository";
 import { TVSeriesRepository } from "../repositories/tv-series.repository";
+import { ContentTranslationRepository } from "../repositories/content-translation.repository";
 import { TMDBService } from "./tmdb.service";
 import { PaginatedResult } from "../interfaces/api.interface";
+import { TMDB_DEFAULT_LANGUAGE } from "../constants/tmdb.constants";
 
 @Injectable()
 export class SearchService {
   constructor(
     private movieRepository: MovieRepository,
     private tvSeriesRepository: TVSeriesRepository,
-    private tmdbService: TMDBService
+    private tmdbService: TMDBService,
+    private translationRepository: ContentTranslationRepository
   ) {}
+
+  private async mergeTranslations(
+    items: Array<{
+      tmdbId: number;
+      title: string;
+      overview: string;
+    }>,
+    contentType: "movie" | "tv",
+    language: string
+  ): Promise<void> {
+    if (language === TMDB_DEFAULT_LANGUAGE || items.length === 0) {
+      return;
+    }
+
+    const tmdbIds = items.map((item) => item.tmdbId);
+    const translations = await this.translationRepository.findByTmdbIds(
+      tmdbIds,
+      contentType,
+      language
+    );
+
+    if (translations.length === 0) {
+      return;
+    }
+
+    const translationMap = new Map(translations.map((t) => [t.tmdbId, t]));
+
+    for (const item of items) {
+      const translation = translationMap.get(item.tmdbId);
+      if (!translation) {
+        continue;
+      }
+
+      if (translation.title) {
+        item.title = translation.title;
+      }
+      if (translation.overview) {
+        item.overview = translation.overview;
+      }
+    }
+  }
 
   async searchMulti(
     query: string,
@@ -26,27 +70,34 @@ export class SearchService {
       switch (type) {
         case "movie":
           results = await this.movieRepository.search(query, page);
+          const movieItems = results.data.map((movie) => ({ ...movie }));
+          await this.mergeTranslations(movieItems, "movie", language);
           return {
             success: true,
             message: "Movie search results retrieved successfully",
             data: {
-              data: results.data.map((movie) => ({ ...movie, media_type: "movie" })),
+              data: movieItems.map((movie) => ({
+                ...movie,
+                media_type: "movie",
+              })),
               pagination: results.pagination,
             },
           };
         case "tv":
           results = await this.tvSeriesRepository.search(query, page);
+          const tvItems = results.data.map((tv) => ({ ...tv }));
+          await this.mergeTranslations(tvItems, "tv", language);
           return {
             success: true,
             message: "TV search results retrieved successfully",
             data: {
-              data: results.data.map((tv) => ({ ...tv, media_type: "tv" })),
+              data: tvItems.map((tv) => ({ ...tv, media_type: "tv" })),
               pagination: results.pagination,
             },
           };
         default:
           // Multi-search: combine movies and TV series from local DB
-          return await this.searchLocal(query, page);
+          return await this.searchLocal(query, page, language);
       }
     } catch (error) {
       console.error("Local search error:", error);
@@ -118,16 +169,28 @@ export class SearchService {
   }
 
   // Keep local search for fallback
-  async searchLocal(query: string, page: number = 1): Promise<any> {
+  async searchLocal(
+    query: string,
+    page: number = 1,
+    language: string = "en-US"
+  ): Promise<any> {
     const [movieResults, tvResults] = await Promise.all([
       this.movieRepository.search(query, page),
       this.tvSeriesRepository.search(query, page),
     ]);
 
+    const movieItems = movieResults.data.map((movie) => ({ ...movie }));
+    const tvItems = tvResults.data.map((tv) => ({ ...tv }));
+
+    await Promise.all([
+      this.mergeTranslations(movieItems, "movie", language),
+      this.mergeTranslations(tvItems, "tv", language),
+    ]);
+
     // Combine results with media_type indicator
     const combinedData = [
-      ...movieResults.data.map((movie) => ({ ...movie, media_type: "movie" })),
-      ...tvResults.data.map((tv) => ({ ...tv, media_type: "tv" })),
+      ...movieItems.map((movie) => ({ ...movie, media_type: "movie" })),
+      ...tvItems.map((tv) => ({ ...tv, media_type: "tv" })),
     ];
 
     // Sort by popularity

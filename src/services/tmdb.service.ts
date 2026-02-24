@@ -23,6 +23,7 @@ import {
   TMDBTVDetails,
   TMDBSeasonDetails,
 } from "../interfaces/tmdb-api.interface";
+import { normalizeLanguageTag } from "../constants/language.constants";
 
 @Injectable()
 export class TMDBService {
@@ -71,6 +72,22 @@ export class TMDBService {
       (config) => {
         // Add retry count using a custom property (TypeScript safe)
         (config as any).retryCount = (config as any).retryCount || 0;
+
+        if (config.params instanceof URLSearchParams) {
+          const language = config.params.get("language");
+          if (language) {
+            config.params.set("language", normalizeLanguageTag(language));
+          }
+        } else if (
+          config.params &&
+          typeof config.params === "object" &&
+          !Array.isArray(config.params)
+        ) {
+          const params = config.params as Record<string, unknown>;
+          if (typeof params.language === "string") {
+            params.language = normalizeLanguageTag(params.language);
+          }
+        }
 
         if (this.enableDebugLogs) {
           this.logger.debug(

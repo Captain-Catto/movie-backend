@@ -2,6 +2,10 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
 import { ContentTranslation } from "../entities/content-translation.entity";
+import {
+  getLanguageCandidates,
+  normalizeLanguageTag,
+} from "../constants/language.constants";
 
 @Injectable()
 export class ContentTranslationRepository {
@@ -20,18 +24,32 @@ export class ContentTranslationRepository {
     title: string | null,
     overview: string | null
   ): Promise<ContentTranslation> {
+    const normalizedLanguage = normalizeLanguageTag(language);
+    const languageCandidates = getLanguageCandidates(language);
+
     const existing = await this.repository.findOne({
-      where: { tmdbId, contentType, language },
+      where: {
+        tmdbId,
+        contentType,
+        language: In(languageCandidates),
+      },
     });
 
     if (existing) {
+      existing.language = normalizedLanguage;
       existing.title = title ?? existing.title;
       existing.overview = overview ?? existing.overview;
       return this.repository.save(existing);
     }
 
     return this.repository.save(
-      this.repository.create({ tmdbId, contentType, language, title, overview })
+      this.repository.create({
+        tmdbId,
+        contentType,
+        language: normalizedLanguage,
+        title,
+        overview,
+      })
     );
   }
 
@@ -48,10 +66,30 @@ export class ContentTranslationRepository {
     }>
   ): Promise<void> {
     if (translations.length === 0) return;
+    const normalizedMap = new Map<
+      string,
+      {
+        tmdbId: number;
+        contentType: "movie" | "tv";
+        language: string;
+        title: string | null;
+        overview: string | null;
+      }
+    >();
+
+    for (const translation of translations) {
+      const normalizedLanguage = normalizeLanguageTag(translation.language);
+      const key = `${translation.tmdbId}:${translation.contentType}:${normalizedLanguage}`;
+
+      normalizedMap.set(key, {
+        ...translation,
+        language: normalizedLanguage,
+      });
+    }
 
     // Use TypeORM upsert for batch operation
     await this.repository.upsert(
-      translations.map((t) =>
+      Array.from(normalizedMap.values()).map((t) =>
         this.repository.create({
           tmdbId: t.tmdbId,
           contentType: t.contentType,
@@ -75,8 +113,14 @@ export class ContentTranslationRepository {
     contentType: "movie" | "tv",
     language: string
   ): Promise<ContentTranslation | null> {
+    const languageCandidates = getLanguageCandidates(language);
+
     return this.repository.findOne({
-      where: { tmdbId, contentType, language },
+      where: {
+        tmdbId,
+        contentType,
+        language: In(languageCandidates),
+      },
     });
   }
 
@@ -89,12 +133,13 @@ export class ContentTranslationRepository {
     language: string
   ): Promise<ContentTranslation[]> {
     if (tmdbIds.length === 0) return [];
+    const languageCandidates = getLanguageCandidates(language);
 
     return this.repository.find({
       where: {
         tmdbId: In(tmdbIds),
         contentType,
-        language,
+        language: In(languageCandidates),
       },
     });
   }
