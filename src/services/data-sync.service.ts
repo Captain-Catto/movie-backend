@@ -109,12 +109,14 @@ export class DataSyncService {
           );
         }
 
+        const pageTmdbIds: number[] = [];
         for (const tmdbMovie of response.results) {
           await this.syncMovie(tmdbMovie);
+          pageTmdbIds.push(tmdbMovie.id);
         }
 
         // Sync translations for additional languages
-        await this.syncMoviePageTranslations(currentPage);
+        await this.syncMoviePageTranslations(pageTmdbIds);
 
         syncedPages = currentPage;
         currentPage++;
@@ -193,12 +195,14 @@ export class DataSyncService {
           );
         }
 
+        const pageTmdbIds: number[] = [];
         for (const tmdbTV of response.results) {
           await this.syncTVSeries(tmdbTV);
+          pageTmdbIds.push(tmdbTV.id);
         }
 
         // Sync translations for additional languages
-        await this.syncTVPageTranslations(currentPage);
+        await this.syncTVPageTranslations(pageTmdbIds);
 
         syncedPages = currentPage;
         currentPage++;
@@ -297,16 +301,21 @@ export class DataSyncService {
           `Syncing trending page ${page} with ${itemsToProcess.length} items`
         );
 
+        const pageTrendingItems: Array<{ tmdbId: number; mediaType: "movie" | "tv" }> = [];
         for (const item of itemsToProcess) {
           const mediaType =
             item.media_type === "movie" ? MediaType.MOVIE : MediaType.TV;
           const hiddenState = hiddenStateMap.get(`${item.id}:${mediaType}`);
           await this.syncTrendingItem(item, mediaType, hiddenState);
+          pageTrendingItems.push({
+            tmdbId: item.id,
+            mediaType: item.media_type === "movie" ? "movie" : "tv",
+          });
           totalSynced++;
         }
 
         // Sync translations for trending items
-        await this.syncTrendingPageTranslations(page);
+        await this.syncTrendingPageTranslations(pageTrendingItems);
 
         if (remaining !== null && totalSynced >= trendingLimit) {
           this.logger.log(
@@ -439,26 +448,44 @@ export class DataSyncService {
   /**
    * Fetch movie translations for a page from TMDB and bulk upsert
    */
-  private async syncMoviePageTranslations(page: number): Promise<void> {
+  private async syncMoviePageTranslations(tmdbIds: number[]): Promise<void> {
+    if (tmdbIds.length === 0) return;
+
     for (const lang of TRANSLATION_LANGUAGES) {
-      try {
-        await this.delay(250);
-        const response = await this.tmdbService.getPopularMovies(page, lang);
-        if (!response.results?.length) continue;
+      const translations: Array<{
+        tmdbId: number;
+        contentType: "movie";
+        language: string;
+        title: string | null;
+        overview: string | null;
+      }> = [];
 
-        const translations = response.results.map((movie) => ({
-          tmdbId: movie.id,
-          contentType: "movie" as const,
-          language: lang,
-          title: movie.title || null,
-          overview: movie.overview || null,
-        }));
+      for (const tmdbId of tmdbIds) {
+        try {
+          await this.delay(100);
+          const movie = await this.tmdbService.getMovieDetails(tmdbId, lang);
+          translations.push({
+            tmdbId: movie.id,
+            contentType: "movie",
+            language: lang,
+            title: movie.title || null,
+            overview: movie.overview || null,
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fetch movie ${tmdbId} translation for ${lang}: ${error.message}`
+          );
+        }
+      }
 
-        await this.translationRepository.bulkUpsert(translations);
-      } catch (error) {
-        this.logger.warn(
-          `Failed to sync movie translations for page ${page}, lang ${lang}: ${error}`
-        );
+      if (translations.length > 0) {
+        try {
+          await this.translationRepository.bulkUpsert(translations);
+        } catch (error) {
+          this.logger.warn(
+            `Failed to bulk upsert movie translations for ${lang}: ${error.message}`
+          );
+        }
       }
     }
   }
@@ -466,26 +493,44 @@ export class DataSyncService {
   /**
    * Fetch TV translations for a page from TMDB and bulk upsert
    */
-  private async syncTVPageTranslations(page: number): Promise<void> {
+  private async syncTVPageTranslations(tmdbIds: number[]): Promise<void> {
+    if (tmdbIds.length === 0) return;
+
     for (const lang of TRANSLATION_LANGUAGES) {
-      try {
-        await this.delay(250);
-        const response = await this.tmdbService.getPopularTVSeries(page, lang);
-        if (!response.results?.length) continue;
+      const translations: Array<{
+        tmdbId: number;
+        contentType: "tv";
+        language: string;
+        title: string | null;
+        overview: string | null;
+      }> = [];
 
-        const translations = response.results.map((tv) => ({
-          tmdbId: tv.id,
-          contentType: "tv" as const,
-          language: lang,
-          title: tv.name || null,
-          overview: tv.overview || null,
-        }));
+      for (const tmdbId of tmdbIds) {
+        try {
+          await this.delay(100);
+          const tv = await this.tmdbService.getTVSeriesDetails(tmdbId, lang);
+          translations.push({
+            tmdbId: tv.id,
+            contentType: "tv",
+            language: lang,
+            title: tv.name || null,
+            overview: tv.overview || null,
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fetch TV ${tmdbId} translation for ${lang}: ${error.message}`
+          );
+        }
+      }
 
-        await this.translationRepository.bulkUpsert(translations);
-      } catch (error) {
-        this.logger.warn(
-          `Failed to sync TV translations for page ${page}, lang ${lang}: ${error}`
-        );
+      if (translations.length > 0) {
+        try {
+          await this.translationRepository.bulkUpsert(translations);
+        } catch (error) {
+          this.logger.warn(
+            `Failed to bulk upsert TV translations for ${lang}: ${error.message}`
+          );
+        }
       }
     }
   }
@@ -493,34 +538,67 @@ export class DataSyncService {
   /**
    * Fetch trending translations for a page from TMDB and bulk upsert
    */
-  private async syncTrendingPageTranslations(page: number): Promise<void> {
+  private async syncTrendingPageTranslations(
+    items: Array<{ tmdbId: number; mediaType: "movie" | "tv" }>
+  ): Promise<void> {
+    if (items.length === 0) return;
+
+    const movieIds = items.filter((i) => i.mediaType === "movie").map((i) => i.tmdbId);
+    const tvIds = items.filter((i) => i.mediaType === "tv").map((i) => i.tmdbId);
+
     for (const lang of TRANSLATION_LANGUAGES) {
-      try {
-        await this.delay(250);
-        const items = await this.tmdbService.getTrending(
-          "all",
-          "week",
-          lang,
-          page
-        );
-        if (!items?.length) continue;
+      const translations: Array<{
+        tmdbId: number;
+        contentType: "movie" | "tv";
+        language: string;
+        title: string | null;
+        overview: string | null;
+      }> = [];
 
-        const translations = items.map((item) => ({
-          tmdbId: item.id,
-          contentType:
-            item.media_type === "movie"
-              ? ("movie" as const)
-              : ("tv" as const),
-          language: lang,
-          title: (item.title || item.name) ?? null,
-          overview: item.overview || null,
-        }));
+      for (const tmdbId of movieIds) {
+        try {
+          await this.delay(100);
+          const movie = await this.tmdbService.getMovieDetails(tmdbId, lang);
+          translations.push({
+            tmdbId: movie.id,
+            contentType: "movie",
+            language: lang,
+            title: movie.title || null,
+            overview: movie.overview || null,
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fetch trending movie ${tmdbId} translation for ${lang}: ${error.message}`
+          );
+        }
+      }
 
-        await this.translationRepository.bulkUpsert(translations);
-      } catch (error) {
-        this.logger.warn(
-          `Failed to sync trending translations for page ${page}, lang ${lang}: ${error}`
-        );
+      for (const tmdbId of tvIds) {
+        try {
+          await this.delay(100);
+          const tv = await this.tmdbService.getTVSeriesDetails(tmdbId, lang);
+          translations.push({
+            tmdbId: tv.id,
+            contentType: "tv",
+            language: lang,
+            title: tv.name || null,
+            overview: tv.overview || null,
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fetch trending TV ${tmdbId} translation for ${lang}: ${error.message}`
+          );
+        }
+      }
+
+      if (translations.length > 0) {
+        try {
+          await this.translationRepository.bulkUpsert(translations);
+        } catch (error) {
+          this.logger.warn(
+            `Failed to bulk upsert trending translations for ${lang}: ${error.message}`
+          );
+        }
       }
     }
   }
