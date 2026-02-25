@@ -14,7 +14,7 @@ const UAParser = require("ua-parser-js");
 interface TrackEventParams {
   contentId: string;
   contentType: "movie" | "tv_series";
-  actionType: "VIEW" | "CLICK" | "PLAY" | "COMPLETE";
+  actionType: "VIEW" | "CLICK" | "PLAY" | "COMPLETE" | "SEARCH";
   contentTitle?: string;
   duration?: number;
   metadata?: Record<string, any>;
