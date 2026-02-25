@@ -27,6 +27,7 @@ interface DailyExportItem {
 export class DailySyncService {
   private readonly logger = new Logger(DailySyncService.name);
   private readonly pipelineAsync = promisify(pipeline);
+  private readonly TRANSLATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
   constructor(
     private configService: ConfigService,
@@ -49,7 +50,20 @@ export class DailySyncService {
   private async syncMovieTranslationsByTmdbId(movieId: number): Promise<void> {
     for (const language of TRANSLATION_LANGUAGES) {
       try {
-        await this.delay(120);
+        // Skip if translation was updated within the last 7 days
+        const existing = await this.translationRepository.findByTmdbId(
+          movieId,
+          "movie",
+          language
+        );
+        if (existing?.title && existing?.overview) {
+          const ageMs = Date.now() - new Date(existing.updatedAt).getTime();
+          if (ageMs < this.TRANSLATION_TTL_MS) {
+            return;
+          }
+        }
+
+        await this.delay(250);
         const translatedMovie = await this.tmdbService.getMovieDetails(
           movieId,
           language
@@ -75,7 +89,20 @@ export class DailySyncService {
   private async syncTVTranslationsByTmdbId(tvId: number): Promise<void> {
     for (const language of TRANSLATION_LANGUAGES) {
       try {
-        await this.delay(120);
+        // Skip if translation was updated within the last 7 days
+        const existing = await this.translationRepository.findByTmdbId(
+          tvId,
+          "tv",
+          language
+        );
+        if (existing?.title && existing?.overview) {
+          const ageMs = Date.now() - new Date(existing.updatedAt).getTime();
+          if (ageMs < this.TRANSLATION_TTL_MS) {
+            return;
+          }
+        }
+
+        await this.delay(250);
         const translatedTV = await this.tmdbService.getTVSeriesDetails(
           tvId,
           language
@@ -284,12 +311,11 @@ export class DailySyncService {
           this.logger.log(`📈 Processing batch ${batchNum}/${totalBatches}...`);
         }
 
-        // Process batch in parallel with rate limiting
-        const promises = batch.map(async (movieId, index) => {
+        // Process batch sequentially to respect TMDB rate limits (~40 req/10s)
+        let batchSyncedCount = 0;
+        for (const movieId of batch) {
           try {
-            // Add small delay to respect rate limits
-            await this.delay(index * 50);
-
+            await this.delay(300);
             const movieDetails = await this.tmdbService.getMovieDetails(
               movieId
             );
@@ -299,25 +325,17 @@ export class DailySyncService {
               await this.syncMovieTranslationsByTmdbId(movieId);
             }
 
-            return true;
+            batchSyncedCount++;
           } catch (error) {
             // Suppress individual movie errors to reduce log noise
-            return false;
           }
-        });
-
-        const results = await Promise.allSettled(promises);
-        const batchSyncedCount = results.filter(
-          (r) => r.status === "fulfilled" && r.value
-        ).length;
+        }
 
         processedCount += batch.length;
         syncedCount += batchSyncedCount;
 
-        // Remove detailed batch completion logs
-
         // Delay between batches
-        await this.delay(1000);
+        await this.delay(500);
       }
 
       this.logger.log(
@@ -397,12 +415,11 @@ export class DailySyncService {
           this.logger.log(`📈 Processing batch ${batchNum}/${totalBatches}...`);
         }
 
-        // Process batch in parallel with rate limiting
-        const promises = batch.map(async (tvId, index) => {
+        // Process batch sequentially to respect TMDB rate limits (~40 req/10s)
+        let batchSyncedCount = 0;
+        for (const tvId of batch) {
           try {
-            // Add small delay to respect rate limits
-            await this.delay(index * 50);
-
+            await this.delay(300);
             const tvDetails = await this.tmdbService.getTVSeriesDetails(tvId);
             await this.syncTVFromDetails(tvDetails);
 
@@ -410,25 +427,17 @@ export class DailySyncService {
               await this.syncTVTranslationsByTmdbId(tvId);
             }
 
-            return true;
+            batchSyncedCount++;
           } catch (error) {
             // Suppress individual TV series errors to reduce log noise
-            return false;
           }
-        });
-
-        const results = await Promise.allSettled(promises);
-        const batchSyncedCount = results.filter(
-          (r) => r.status === "fulfilled" && r.value
-        ).length;
+        }
 
         processedCount += batch.length;
         syncedCount += batchSyncedCount;
 
-        // Remove detailed batch completion logs
-
         // Delay between batches
-        await this.delay(1000);
+        await this.delay(500);
       }
 
       this.logger.log(
@@ -449,11 +458,9 @@ export class DailySyncService {
     const startTime = Date.now();
 
     try {
-      // Run movie and TV sync in parallel
-      await Promise.all([
-        this.syncMoviesFromDailyExport(date),
-        this.syncTVFromDailyExport(date),
-      ]);
+      // Run movie and TV sync sequentially to avoid doubling TMDB rate limits
+      await this.syncMoviesFromDailyExport(date);
+      await this.syncTVFromDailyExport(date);
 
       const duration = Date.now() - startTime;
       this.logger.log(
