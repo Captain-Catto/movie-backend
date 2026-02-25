@@ -19,6 +19,7 @@ export enum ActionType {
   CLICK = "click", // Click vào phim
   PLAY = "play", // Bấm play
   COMPLETE = "complete", // Xem xong
+  SEARCH = "search", // Tìm kiếm
 }
 
 @Entity("view_analytics")

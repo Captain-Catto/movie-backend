@@ -22,10 +22,14 @@ import {
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ApiResponse } from "../interfaces/api.interface";
 import { UnauthorizedException } from "@nestjs/common";
+import { UserActivityLoggerService } from "../services/user-activity-logger.service";
 
 @Controller("comments")
 export class CommentController {
-  constructor(private commentService: CommentService) {}
+  constructor(
+    private commentService: CommentService,
+    private userActivityLogger: UserActivityLoggerService
+  ) {}
 
   // ✅ GET COMMENTS FOR MOVIE/TV SHOW
   @Get("movie/:movieId")
@@ -188,6 +192,17 @@ export class CommentController {
       }
       const comment = await this.commentService.createComment(dto, userId);
 
+      // Log comment activity
+      this.userActivityLogger
+        .logComment({
+          userId,
+          action: "CREATE",
+          commentId: comment.id,
+          movieId: dto.movieId || dto.tvId || 0,
+          content: dto.content?.substring(0, 200),
+        })
+        .catch(() => {});
+
       return {
         success: true,
         message: "Comment created successfully",
@@ -252,6 +267,16 @@ export class CommentController {
         userId,
         userRole
       );
+
+      // Log comment deletion
+      this.userActivityLogger
+        .logComment({
+          userId,
+          action: "DELETE",
+          commentId: id,
+          movieId: 0,
+        })
+        .catch(() => {});
 
       return {
         success: true,

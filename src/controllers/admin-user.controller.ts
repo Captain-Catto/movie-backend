@@ -232,4 +232,52 @@ export class AdminUserController {
       };
     }
   }
+
+  @Get(":id/activity")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  async getUserActivity(
+    @Param("id", ParseIntPipe) userId: number,
+    @Query("type") type?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    try {
+      const result = await this.adminUserService.getUserActivityTimeline(
+        userId,
+        { type, startDate, endDate },
+        parseInt(page || "1"),
+        parseInt(limit || "20")
+      );
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to fetch user activity",
+      };
+    }
+  }
+
+  @Get(":id/activity-stats")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  async getUserActivityStats(@Param("id", ParseIntPipe) userId: number) {
+    try {
+      const stats = await this.adminUserService.getPublicUserActivityStats(userId);
+
+      return {
+        success: true,
+        data: stats,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to fetch user activity stats",
+      };
+    }
+  }
 }

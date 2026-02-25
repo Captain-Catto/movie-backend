@@ -14,6 +14,8 @@ import { User } from "../entities/user.entity";
 // Services
 import { CommentService } from "../services/comment.service";
 import { ContentFilterService } from "../services/content-filter.service";
+import { UserActivityLoggerService } from "../services/user-activity-logger.service";
+import { UserLog } from "../entities/user-log.entity";
 
 // Repositories
 import {
@@ -37,6 +39,7 @@ import { NotificationModule } from "./notification.module";
       BannedWord,
       CommentReport,
       User,
+      UserLog,
     ]),
     NotificationModule,
   ],
@@ -49,6 +52,7 @@ import { NotificationModule } from "./notification.module";
     CommentReportRepository,
     BannedWordRepository,
     CommentMentionRepository,
+    UserActivityLoggerService,
   ],
   exports: [CommentService, ContentFilterService],
 })

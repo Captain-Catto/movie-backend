@@ -11,11 +11,15 @@ import {
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { GetUser } from "../decorators/get-user.decorator";
 import { FavoriteService } from "../services/favorite.service";
+import { UserActivityLoggerService } from "../services/user-activity-logger.service";
 
 @Controller("favorites")
 @UseGuards(JwtAuthGuard)
 export class FavoriteController {
-  constructor(private readonly favoriteService: FavoriteService) {}
+  constructor(
+    private readonly favoriteService: FavoriteService,
+    private readonly userActivityLogger: UserActivityLoggerService
+  ) {}
 
   @Get()
   async getUserFavorites(
@@ -37,11 +41,23 @@ export class FavoriteController {
     @GetUser("id") userId: number,
     @Body() body: { contentId: string; contentType: "movie" | "tv" }
   ) {
-    return this.favoriteService.addToFavorites(
+    const result = await this.favoriteService.addToFavorites(
       userId,
       body.contentId,
       body.contentType
     );
+
+    // Log favorite activity
+    this.userActivityLogger
+      .logFavoriteAction({
+        userId,
+        action: "ADD",
+        movieId: parseInt(body.contentId) || 0,
+        movieTitle: body.contentType === "movie" ? `Movie #${body.contentId}` : `TV #${body.contentId}`,
+      })
+      .catch(() => {});
+
+    return result;
   }
 
   @Delete()
@@ -55,7 +71,16 @@ export class FavoriteController {
       body.contentType
     );
 
-    // Return proper JSON response instead of void
+    // Log favorite removal
+    this.userActivityLogger
+      .logFavoriteAction({
+        userId,
+        action: "REMOVE",
+        movieId: parseInt(body.contentId) || 0,
+        movieTitle: body.contentType === "movie" ? `Movie #${body.contentId}` : `TV #${body.contentId}`,
+      })
+      .catch(() => {});
+
     return {
       message: "Removed from favorites successfully",
       success: true,

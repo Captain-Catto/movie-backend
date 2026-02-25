@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User, UserRole, UserActivity, ActivityType } from "../entities";
+import { ViewAnalytics } from "../entities/view-analytics.entity";
 import * as bcrypt from "bcrypt";
 
 export interface BanUserDto {
@@ -26,7 +27,9 @@ export class AdminUserService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     @InjectRepository(UserActivity)
-    private userActivityRepository: Repository<UserActivity>
+    private userActivityRepository: Repository<UserActivity>,
+    @InjectRepository(ViewAnalytics)
+    private viewAnalyticsRepository: Repository<ViewAnalytics>
   ) {}
 
   // Get users list with filters
@@ -327,12 +330,33 @@ export class AdminUserService {
         order: { createdAt: "DESC" },
       });
 
+      // Get analytics-based stats (ViewAnalytics table)
+      const analyticsViews = await this.viewAnalyticsRepository.count({
+        where: { userId, actionType: "view" as any },
+      });
+
+      const totalWatchTime = await this.viewAnalyticsRepository
+        .createQueryBuilder("va")
+        .select("COALESCE(SUM(va.duration), 0)", "total")
+        .where("va.userId = :userId", { userId })
+        .andWhere("va.duration IS NOT NULL")
+        .andWhere("va.duration > 0")
+        .getRawOne();
+
+      const commentCount = await this.userActivityRepository
+        .createQueryBuilder("ua")
+        .where("ua.userId = :userId", { userId })
+        .andWhere("ua.activityType LIKE :type", { type: "COMMENT%" })
+        .getCount();
+
       return {
         total: totalActivities,
         logins: loginCount,
         searches: searchCount,
-        views: viewCount,
+        views: viewCount + analyticsViews,
         favorites: favoriteCount,
+        comments: commentCount,
+        watchTimeSeconds: parseInt(totalWatchTime?.total || "0"),
         lastLogin: lastLogin?.createdAt || null,
       };
     } catch (error) {
@@ -343,7 +367,153 @@ export class AdminUserService {
         searches: 0,
         views: 0,
         favorites: 0,
+        comments: 0,
+        watchTimeSeconds: 0,
         lastLogin: null,
+      };
+    }
+  }
+
+  /**
+   * Public method to get user activity stats for admin detail page
+   */
+  async getPublicUserActivityStats(userId: number) {
+    return this.getUserActivityStats(userId);
+  }
+
+  /**
+   * Get unified activity timeline merging UserActivity + ViewAnalytics
+   */
+  async getUserActivityTimeline(
+    userId: number,
+    filters: {
+      type?: string;
+      startDate?: string;
+      endDate?: string;
+    },
+    page = 1,
+    limit = 20
+  ) {
+    try {
+      const offset = (page - 1) * limit;
+
+      // Build UserActivity query
+      const uaQuery = this.userActivityRepository
+        .createQueryBuilder("ua")
+        .where("ua.userId = :userId", { userId });
+
+      // Build ViewAnalytics query
+      const vaQuery = this.viewAnalyticsRepository
+        .createQueryBuilder("va")
+        .where("va.userId = :userId", { userId });
+
+      // Apply type filter
+      if (filters.type && filters.type !== "all") {
+        switch (filters.type) {
+          case "login":
+            uaQuery.andWhere("ua.activityType = :actType", { actType: ActivityType.LOGIN });
+            vaQuery.andWhere("1 = 0"); // exclude analytics
+            break;
+          case "search":
+            uaQuery.andWhere("ua.activityType = :actType", { actType: ActivityType.SEARCH });
+            vaQuery.andWhere("va.actionType = :vaType", { vaType: "search" });
+            break;
+          case "view":
+            uaQuery.andWhere("ua.activityType = :actType", { actType: ActivityType.VIEW_CONTENT });
+            vaQuery.andWhere("va.actionType = :vaType", { vaType: "view" });
+            break;
+          case "favorite":
+            uaQuery.andWhere("ua.activityType IN (:...types)", {
+              types: [ActivityType.FAVORITE_ADD, ActivityType.FAVORITE_REMOVE],
+            });
+            vaQuery.andWhere("1 = 0");
+            break;
+          case "comment":
+            uaQuery.andWhere("ua.activityType LIKE :type", { type: "COMMENT%" });
+            vaQuery.andWhere("1 = 0");
+            break;
+          case "click":
+            uaQuery.andWhere("1 = 0");
+            vaQuery.andWhere("va.actionType = :vaType", { vaType: "click" });
+            break;
+          case "play":
+            uaQuery.andWhere("1 = 0");
+            vaQuery.andWhere("va.actionType = :vaType", { vaType: "play" });
+            break;
+        }
+      }
+
+      // Apply date filters
+      if (filters.startDate) {
+        uaQuery.andWhere("ua.createdAt >= :start", { start: filters.startDate });
+        vaQuery.andWhere("va.createdAt >= :start", { start: filters.startDate });
+      }
+      if (filters.endDate) {
+        uaQuery.andWhere("ua.createdAt <= :end", { end: filters.endDate });
+        vaQuery.andWhere("va.createdAt <= :end", { end: filters.endDate });
+      }
+
+      // Get results from both tables
+      const [userActivities, vaResults] = await Promise.all([
+        uaQuery.orderBy("ua.createdAt", "DESC").getMany(),
+        vaQuery.orderBy("va.createdAt", "DESC").getMany(),
+      ]);
+
+      // Merge into unified timeline
+      const timeline = [
+        ...userActivities.map((ua) => ({
+          id: `ua-${ua.id}`,
+          type: ua.activityType,
+          description: ua.description,
+          metadata: ua.metadata || {},
+          ipAddress: ua.ipAddress,
+          deviceType: ua.deviceType,
+          country: ua.country,
+          createdAt: ua.createdAt,
+          source: "user_activity" as const,
+        })),
+        ...vaResults.map((va) => ({
+          id: `va-${va.id}`,
+          type: va.actionType.toUpperCase(),
+          description: va.contentTitle
+            ? `${va.actionType === "view" ? "Viewed" : va.actionType === "click" ? "Clicked" : va.actionType === "play" ? "Played" : va.actionType === "search" ? "Searched" : va.actionType} "${va.contentTitle}"`
+            : `${va.actionType} on ${va.contentType} #${va.contentId}`,
+          metadata: {
+            contentId: va.contentId,
+            contentType: va.contentType,
+            contentTitle: va.contentTitle,
+            duration: va.duration,
+            ...(va.metadata || {}),
+          },
+          ipAddress: va.ipAddress,
+          deviceType: va.deviceType,
+          country: va.country,
+          createdAt: va.createdAt,
+          source: "view_analytics" as const,
+        })),
+      ];
+
+      // Sort by createdAt DESC
+      timeline.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      const total = timeline.length;
+      const paginatedTimeline = timeline.slice(offset, offset + limit);
+
+      return {
+        data: paginatedTimeline,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      this.logger.error("Error getting user activity timeline:", error);
+      return {
+        data: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
       };
     }
   }
