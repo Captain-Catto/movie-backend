@@ -18,16 +18,20 @@ export class TrendingRepository {
     data: Trending[];
     total: number;
   }> {
-    const [data, total] = await this.repository.findAndCount({
-      where: includeHidden
-        ? {}
-        : {
-            isHidden: false,
-          },
-      order: { popularity: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const queryBuilder = this.repository.createQueryBuilder("trending");
+
+    queryBuilder.andWhere("trending.posterPath IS NOT NULL");
+
+    if (!includeHidden) {
+      queryBuilder.andWhere("trending.isHidden = :isHidden", { isHidden: false });
+    }
+
+    queryBuilder
+      .orderBy("trending.popularity", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [data, total] = await queryBuilder.getManyAndCount();
 
     return { data, total };
   }

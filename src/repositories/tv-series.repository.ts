@@ -70,6 +70,7 @@ export class TVSeriesRepository {
       case "on_the_air":
         queryBuilder
           .andWhere("tv.firstAirDate IS NOT NULL")
+          .andWhere("tv.posterPath IS NOT NULL")
           .andWhere("tv.firstAirDate <= :today", { today: todayString })
           .andWhere("tv.firstAirDate >= :threshold", {
             threshold: onAirThresholdString,
@@ -79,7 +80,9 @@ export class TVSeriesRepository {
         break;
       case "popularity":
         // TV đang hot, nhiều người quan tâm
-        queryBuilder.orderBy("tv.popularity", "DESC");
+        queryBuilder
+          .andWhere("tv.posterPath IS NOT NULL")
+          .orderBy("tv.popularity", "DESC");
         break;
       case "quality":
         // TV chất lượng cao kết hợp rating, vote count và popularity
@@ -103,6 +106,7 @@ export class TVSeriesRepository {
       case "top_rated":
         // TV chất lượng cao - kết hợp voteAverage và voteCount
         queryBuilder
+          .andWhere("tv.posterPath IS NOT NULL")
           .andWhere("tv.voteCount > :minVoteCount", { minVoteCount: 5 })
           .andWhere("tv.voteAverage > :minRating", { minRating: 6.0 })
           .orderBy("(tv.voteAverage * LOG(tv.voteCount + 1))", "DESC") // Weighted rating

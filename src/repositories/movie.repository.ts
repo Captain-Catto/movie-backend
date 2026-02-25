@@ -78,11 +78,14 @@ export class MovieRepository {
     switch (sortBy) {
       case "popularity":
         // Phim đang hot, nhiều người quan tâm
-        queryBuilder.orderBy("movie.popularity", "DESC");
+        queryBuilder
+          .andWhere("movie.posterPath IS NOT NULL")
+          .orderBy("movie.popularity", "DESC");
         break;
       case "top_rated":
         // Phim được đánh giá cao - sắp xếp theo vote_average DESC và yêu cầu vote_count tối thiểu
         queryBuilder
+          .andWhere("movie.posterPath IS NOT NULL")
           .andWhere("movie.voteCount > :minVoteCount", { minVoteCount: 100 })
           .orderBy("movie.voteAverage", "DESC")
           .addOrderBy("movie.voteCount", "DESC");
@@ -90,6 +93,7 @@ export class MovieRepository {
       case "now_playing":
         // Phim đang chiếu - sắp xếp theo popularity nhưng có filter ngày
         queryBuilder
+          .andWhere("movie.posterPath IS NOT NULL")
           .andWhere("movie.releaseDate <= :currentDate", {
             currentDate: new Date(),
           })
@@ -102,6 +106,7 @@ export class MovieRepository {
       case "upcoming":
         // Phim sắp ra mắt - chỉ lấy phim có ngày phát hành trong tương lai
         queryBuilder
+          .andWhere("movie.posterPath IS NOT NULL")
           .andWhere("movie.releaseDate > :currentDate", {
             currentDate: new Date(),
           })
