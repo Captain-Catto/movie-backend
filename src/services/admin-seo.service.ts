@@ -6,6 +6,7 @@ import { SeoMetadata, PageType } from "../entities";
 export interface CreateSeoDto {
   pageType: PageType;
   pageSlug?: string;
+  locale?: string;
   title: string;
   description: string;
   keywords?: string;
@@ -35,14 +36,36 @@ export class AdminSeoService {
     private seoMetadataRepository: Repository<SeoMetadata>
   ) {}
 
+  private normalizeLocale(input?: string | null): string {
+    const value = (input || "").trim().toLowerCase();
+    if (value.startsWith("en")) return "en";
+    return "vi";
+  }
+
+  private normalizePath(input?: string | null): string | null {
+    if (!input) return null;
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    if (withLeadingSlash.length > 1 && withLeadingSlash.endsWith("/")) {
+      return withLeadingSlash.slice(0, -1);
+    }
+    return withLeadingSlash;
+  }
+
   // Create SEO metadata
   async createSeoMetadata(dto: CreateSeoDto): Promise<SeoMetadata> {
     try {
-      const seoMetadata = this.seoMetadataRepository.create(dto);
+      const seoMetadata = this.seoMetadataRepository.create({
+        ...dto,
+        pageSlug: this.normalizePath(dto.pageSlug),
+        locale: this.normalizeLocale(dto.locale),
+      });
       const saved = await this.seoMetadataRepository.save(seoMetadata);
 
       this.logger.log(
-        `SEO metadata created for ${dto.pageType}:${dto.pageSlug || "/"}`
+        `SEO metadata created for ${dto.pageType}:${dto.pageSlug || "/"}:${saved.locale}`
       );
       return saved;
     } catch (error) {
@@ -62,7 +85,17 @@ export class AdminSeoService {
         throw new NotFoundException(`SEO metadata with ID ${id} not found`);
       }
 
-      Object.assign(seoMetadata, dto);
+      const normalized: UpdateSeoDto = {
+        ...dto,
+        ...(dto.pageSlug !== undefined
+          ? { pageSlug: this.normalizePath(dto.pageSlug) }
+          : {}),
+        ...(dto.locale !== undefined
+          ? { locale: this.normalizeLocale(dto.locale) }
+          : {}),
+      };
+
+      Object.assign(seoMetadata, normalized);
       const updated = await this.seoMetadataRepository.save(seoMetadata);
 
       this.logger.log(`SEO metadata ${id} updated`);
@@ -110,13 +143,16 @@ export class AdminSeoService {
   // Get SEO metadata by page
   async getSeoByPage(
     pageType: PageType,
-    pageSlug?: string
+    pageSlug?: string,
+    locale?: string
   ): Promise<SeoMetadata | null> {
     try {
+      const normalizedPath = this.normalizePath(pageSlug);
       const seoMetadata = await this.seoMetadataRepository.findOne({
         where: {
           pageType,
-          pageSlug: pageSlug || null,
+          pageSlug: normalizedPath,
+          locale: this.normalizeLocale(locale),
           isActive: true,
         },
       });
@@ -232,11 +268,16 @@ export class AdminSeoService {
       for (const pageData of defaultPages) {
         const existing = await this.getSeoByPage(
           pageData.pageType,
-          pageData.pageSlug
+          pageData.pageSlug,
+          "vi"
         );
 
         if (!existing) {
-          const seoMetadata = this.seoMetadataRepository.create(pageData);
+          const seoMetadata = this.seoMetadataRepository.create({
+            ...pageData,
+            pageSlug: this.normalizePath(pageData.pageSlug),
+            locale: "vi",
+          });
           const saved = await this.seoMetadataRepository.save(seoMetadata);
           created.push(saved);
         }
@@ -280,5 +321,35 @@ export class AdminSeoService {
       this.logger.error("Error getting SEO stats:", error);
       throw error;
     }
+  }
+
+  async resolveSeoByPath(
+    path: string,
+    locale?: string
+  ): Promise<SeoMetadata | null> {
+    const normalizedPath = this.normalizePath(path);
+    if (!normalizedPath) return null;
+
+    const requestedLocale = this.normalizeLocale(locale);
+    const fallbackLocales = Array.from(
+      new Set([requestedLocale, "vi", "en"])
+    );
+
+    for (const candidateLocale of fallbackLocales) {
+      const match = await this.seoMetadataRepository.findOne({
+        where: {
+          pageSlug: normalizedPath,
+          locale: candidateLocale,
+          isActive: true,
+        },
+        order: {
+          updatedAt: "DESC",
+        },
+      });
+
+      if (match) return match;
+    }
+
+    return null;
   }
 }

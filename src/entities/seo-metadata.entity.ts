@@ -20,7 +20,7 @@ export enum PageType {
 }
 
 @Entity("seo_metadata")
-@Unique(["pageType", "pageSlug"])
+@Unique(["pageType", "pageSlug", "locale"])
 @Index(["pageType"])
 @Index(["isActive"])
 export class SeoMetadata {
@@ -35,6 +35,9 @@ export class SeoMetadata {
 
   @Column({ type: "varchar", length: 255, nullable: true })
   pageSlug: string; // e.g., "/movies/action", "/movie/123"
+
+  @Column({ type: "varchar", length: 10, default: "vi" })
+  locale: string; // vi | en
 
   @Column({ type: "varchar", length: 255 })
   title: string; // SEO title
