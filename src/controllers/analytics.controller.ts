@@ -9,6 +9,7 @@ import {
 import { AnalyticsService } from "../services/analytics.service";
 import { Request } from "express";
 import * as geoip from "geoip-lite";
+import { ApiTags } from '@nestjs/swagger';
 
 interface TrackEventDto {
   contentId: string;
@@ -19,6 +20,7 @@ interface TrackEventDto {
   metadata?: Record<string, any>;
 }
 
+@ApiTags('Analytics')
 @Controller("analytics")
 export class AnalyticsController {
   constructor(private analyticsService: AnalyticsService) {}

@@ -26,7 +26,10 @@ import {
   BannedWordAction,
 } from "../entities/comment.entity";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Admin - Comments')
+@ApiBearerAuth('JWT')
 @Controller("admin/comments")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @UseInterceptors(ViewerReadOnlyInterceptor)

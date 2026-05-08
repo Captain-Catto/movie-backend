@@ -11,7 +11,9 @@ import {
 import { TMDBService } from "../services/tmdb.service";
 import { PeopleCacheService } from "../services/people-cache.service";
 import { ApiResponse } from "../interfaces/api.interface";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('People')
 @Controller("people")
 export class PeopleController {
   constructor(

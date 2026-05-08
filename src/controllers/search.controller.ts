@@ -17,7 +17,9 @@ import { RecentSearchService } from "../services/recent-search.service";
 import { SearchDto } from "../dto/query.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { TMDB_MAX_PAGES } from "../constants/tmdb.constants";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Search')
 @Controller("search")
 export class SearchController {
   constructor(

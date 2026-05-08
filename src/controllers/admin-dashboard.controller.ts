@@ -14,7 +14,10 @@ import { RolesGuard } from "../guards/roles.guard";
 import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Admin - Dashboard')
+@ApiBearerAuth('JWT')
 @Controller("admin/dashboard")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @UseInterceptors(ViewerReadOnlyInterceptor)

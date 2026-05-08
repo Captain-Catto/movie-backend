@@ -2,7 +2,9 @@ import { Controller, Get, HttpStatus, HttpCode, Query } from "@nestjs/common";
 import { TrendingService } from "../services/trending.service";
 import { ApiResponse } from "../interfaces/api.interface";
 import { PaginationDto } from "../dto/query.dto";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Trending')
 @Controller("trending")
 export class TrendingController {
   constructor(private trendingService: TrendingService) {}

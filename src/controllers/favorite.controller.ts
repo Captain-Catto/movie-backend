@@ -12,7 +12,10 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { GetUser } from "../decorators/get-user.decorator";
 import { FavoriteService } from "../services/favorite.service";
 import { UserActivityLoggerService } from "../services/user-activity-logger.service";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Favorites')
+@ApiBearerAuth('JWT')
 @Controller("favorites")
 @UseGuards(JwtAuthGuard)
 export class FavoriteController {

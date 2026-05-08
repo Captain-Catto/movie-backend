@@ -25,7 +25,10 @@ import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { PageType } from "../entities";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Admin - SEO')
+@ApiBearerAuth('JWT')
 @Controller("admin/seo")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @UseInterceptors(ViewerReadOnlyInterceptor)

@@ -22,7 +22,10 @@ import { ApiResponse } from "../interfaces/api.interface";
 import { SyncSettingsService } from "../services/sync-settings.service";
 import { UpdateSyncSettingsDto } from "../dto/sync-settings.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Admin - Sync')
+@ApiBearerAuth('JWT')
 @Controller("admin/sync")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @UseInterceptors(ViewerReadOnlyInterceptor)

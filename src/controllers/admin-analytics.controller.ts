@@ -15,7 +15,10 @@ import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { ContentType } from "../entities";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Admin - Analytics')
+@ApiBearerAuth('JWT')
 @Controller("admin/analytics")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @UseInterceptors(ViewerReadOnlyInterceptor)

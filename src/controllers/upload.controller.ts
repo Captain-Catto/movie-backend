@@ -11,7 +11,9 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import * as multer from "multer";
 import { S3Service } from "../services/s3.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Upload')
 @Controller("upload")
 export class UploadController {
   constructor(private readonly s3Service: S3Service) {}

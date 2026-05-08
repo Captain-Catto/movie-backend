@@ -1,40 +1,34 @@
 import { IsString, IsOptional, IsNumber, IsEnum } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ReportReason } from "../entities/comment.entity";
 
-/**
- * Create Comment DTO
- * Used for creating new comments on movies or TV shows
- */
 export class CreateCommentDto {
+  @ApiProperty({ example: "Great movie!" })
   @IsString()
   content: string;
 
+  @ApiPropertyOptional({ example: 550 })
   @IsOptional()
   @IsNumber()
   movieId?: number;
 
+  @ApiPropertyOptional({ example: 1396 })
   @IsOptional()
   @IsNumber()
   tvId?: number;
 
+  @ApiPropertyOptional({ example: 1, description: "Parent comment ID for replies" })
   @IsOptional()
   @IsNumber()
   parentId?: number;
 }
 
-/**
- * Update Comment DTO
- * Used for updating existing comments
- */
 export class UpdateCommentDto {
+  @ApiProperty({ example: "Updated comment text" })
   @IsString()
   content: string;
 }
 
-/**
- * Comment Response DTO
- * Structure of comment data returned to clients
- */
 export interface CommentResponseDto {
   id: number;
   content: string;
@@ -52,7 +46,7 @@ export interface CommentResponseDto {
     name: string;
     image?: string;
   };
-  userLike?: boolean | null; // User's like status
+  userLike?: boolean | null;
   canEdit?: boolean;
   canDelete?: boolean;
   isFiltered?: boolean;
@@ -63,14 +57,12 @@ export interface CommentResponseDto {
   }>;
 }
 
-/**
- * Report Comment DTO
- * Used for reporting inappropriate comments
- */
 export class ReportCommentDto {
+  @ApiProperty({ enum: ReportReason })
   @IsEnum(ReportReason)
   reason: ReportReason;
 
+  @ApiPropertyOptional({ example: "This comment contains spam" })
   @IsOptional()
   @IsString()
   description?: string;

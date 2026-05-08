@@ -12,7 +12,9 @@ import { TVSeriesService } from "../services/tv-series.service";
 import { TMDBService } from "../services/tmdb.service";
 import { TVQueryDto } from "../dto/query.dto";
 import { ApiResponse } from "../interfaces/api.interface";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('TV Shows')
 @Controller("tv")
 export class TVController {
   constructor(

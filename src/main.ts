@@ -1,6 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { CamelCaseInterceptor } from "./interceptors/camel-case.interceptor";
 import * as compression from "compression";
@@ -16,23 +17,25 @@ async function bootstrap() {
 
   logger.log(`⏰ Timezone: ${process.env.TZ}`);
 
-  // Enable standard security headers
-  app.use(helmet());
+  // Skip helmet for Swagger UI path (needs inline scripts/styles)
+  app.use((req: any, res: any, next: any) => {
+    if (req.path.startsWith("/api-docs")) {
+      return next();
+    }
+    return helmet()(req, res, next);
+  });
 
   // Enable response compression for better performance
   app.use(
     compression({
       filter: (req, res) => {
-        // Don't compress if request specifies no-transform
         if (req.headers["x-no-compression"]) {
           return false;
         }
-        // Use compression filter function
         return compression.filter(req, res);
       },
-      // Only compress responses larger than 1KB
       threshold: 1024,
-      level: 6, // Compression level (0-9, 6 is default and balanced)
+      level: 6,
     })
   );
 
@@ -65,10 +68,28 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix("api");
 
+  // Swagger / OpenAPI setup
   const port = configService.get("PORT") || 8080;
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle("Movie API")
+    .setDescription("REST API for the Movie streaming platform")
+    .setVersion("1.0")
+    .addBearerAuth(
+      { type: "http", scheme: "bearer", bearerFormat: "JWT", description: "Enter JWT token" },
+      "JWT"
+    )
+    .addServer(`http://localhost:${port}`, "Local")
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup("api-docs", app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  });
+
   await app.listen(port);
 
   logger.log(`🚀 Application is running on: http://localhost:${port}/api`);
+  logger.log(`📚 Swagger docs: http://localhost:${port}/api-docs`);
   logger.log(`🌟 Environment: ${configService.get("NODE_ENV")}`);
 }
 

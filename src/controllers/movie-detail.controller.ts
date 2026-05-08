@@ -9,7 +9,9 @@ import {
 } from "@nestjs/common";
 import { MovieService } from "../services/movie.service";
 import { ApiResponse } from "../interfaces/api.interface";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Movies')
 @Controller("movie")
 export class MovieDetailController {
   constructor(private movieService: MovieService) {}

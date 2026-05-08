@@ -29,7 +29,10 @@ import {
   NotificationTargetType,
   NotificationType,
 } from "../entities/notification-template.entity";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Admin - Notifications')
+@ApiBearerAuth('JWT')
 @Controller("admin/notifications")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @UseInterceptors(ViewerReadOnlyInterceptor)

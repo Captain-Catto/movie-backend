@@ -1,6 +1,8 @@
 import { Controller, Post, Get, Query, Logger } from "@nestjs/common";
 import { DailySyncService } from "../services/daily-sync.service";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Sync')
 @Controller("daily-sync")
 export class DailySyncController {
   private readonly logger = new Logger(DailySyncController.name);

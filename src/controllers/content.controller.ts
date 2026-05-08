@@ -16,7 +16,9 @@ import {
   StreamContentType,
   StreamEmbedService,
 } from "../services/stream-embed.service";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Content')
 @Controller("content")
 export class ContentController {
   constructor(

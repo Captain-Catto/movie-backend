@@ -228,58 +228,137 @@ export class AdminSeoService {
   // Bulk create default SEO for common pages
   async createDefaultSeoMetadata(): Promise<SeoMetadata[]> {
     try {
-      const defaultPages = [
-        SeoMetadata.createHomePage(),
-        SeoMetadata.createMoviesPage(),
-        {
-          pageType: PageType.TV_SERIES,
-          pageSlug: "/tv",
-          title: "Phim Bộ - Xem phim bộ hay nhất",
-          description:
-            "Tuyển tập phim bộ đặc sắc từ Hàn Quốc, Trung Quốc, Thái Lan và các quốc gia khác. Cập nhật tập mới liên tục.",
-          keywords: "phim bộ, phim hàn quốc, phim trung quốc, phim bộ hay",
-          ogType: "website",
-          twitterCard: "summary_large_image",
-        },
-        {
-          pageType: PageType.TRENDING,
-          pageSlug: "/trending",
-          title: "Trending - Phim đang hot",
-          description:
-            "Những bộ phim đang được yêu thích và thịnh hành nhất hiện nay. Cập nhật xu hướng xem phim mới nhất.",
-          keywords: "phim hot, phim trending, phim thịnh hành",
-          ogType: "website",
-          twitterCard: "summary_large_image",
-        },
-        {
-          pageType: PageType.BROWSE,
-          pageSlug: "/browse",
-          title: "Duyệt Phim - Khám phá kho phim đa dạng",
-          description:
-            "Duyệt qua hàng ngàn bộ phim theo thể loại, năm phát hành, quốc gia. Tìm ngay bộ phim yêu thích của bạn.",
-          keywords: "duyệt phim, tìm phim, thể loại phim",
-          ogType: "website",
-          twitterCard: "summary_large_image",
-        },
-      ];
+      const defaultsByLocale: Record<"vi" | "en", Omit<CreateSeoDto, "locale">[]> = {
+        vi: [
+          {
+            pageType: PageType.HOME,
+            pageSlug: "/",
+            title: "MovieStream - Xem phim trực tuyến miễn phí",
+            description:
+              "Xem phim lẻ, phim bộ, phim chiếu rạp mới nhất với chất lượng HD. Kho phim khổng lồ cập nhật liên tục mỗi ngày.",
+            keywords:
+              "xem phim, phim hay, phim mới, phim chiếu rạp, phim bộ, phim lẻ",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+          {
+            pageType: PageType.MOVIES,
+            pageSlug: "/movies",
+            title: "Phim Lẻ - Xem phim chiếu rạp mới nhất",
+            description:
+              "Tuyển tập phim lẻ hay nhất từ Hollywood, Châu Á và các quốc gia khác. Cập nhật liên tục phim mới mỗi ngày.",
+            keywords: "phim lẻ, phim chiếu rạp, phim hollywood, phim hành động",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+          {
+            pageType: PageType.TV_SERIES,
+            pageSlug: "/tv",
+            title: "Phim Bộ - Xem phim bộ hay nhất",
+            description:
+              "Tuyển tập phim bộ đặc sắc từ Hàn Quốc, Trung Quốc, Thái Lan và các quốc gia khác. Cập nhật tập mới liên tục.",
+            keywords: "phim bộ, phim hàn quốc, phim trung quốc, phim bộ hay",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+          {
+            pageType: PageType.TRENDING,
+            pageSlug: "/trending",
+            title: "Trending - Phim đang hot",
+            description:
+              "Những bộ phim đang được yêu thích và thịnh hành nhất hiện nay. Cập nhật xu hướng xem phim mới nhất.",
+            keywords: "phim hot, phim trending, phim thịnh hành",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+          {
+            pageType: PageType.BROWSE,
+            pageSlug: "/browse",
+            title: "Duyệt Phim - Khám phá kho phim đa dạng",
+            description:
+              "Duyệt qua hàng ngàn bộ phim theo thể loại, năm phát hành, quốc gia. Tìm ngay bộ phim yêu thích của bạn.",
+            keywords: "duyệt phim, tìm phim, thể loại phim",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+        ],
+        en: [
+          {
+            pageType: PageType.HOME,
+            pageSlug: "/",
+            title: "MovieStream - Watch Movies Online for Free",
+            description:
+              "Watch the latest movies and TV series in HD quality. A huge catalog updated every day.",
+            keywords:
+              "watch movies, free movies, online streaming, latest movies, tv series",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+          {
+            pageType: PageType.MOVIES,
+            pageSlug: "/movies",
+            title: "Movies - Watch the Latest Releases",
+            description:
+              "Discover top movie picks from Hollywood, Asia, and more. New titles added regularly.",
+            keywords: "movies, latest releases, hollywood movies, action movies",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+          {
+            pageType: PageType.TV_SERIES,
+            pageSlug: "/tv",
+            title: "TV Series - Watch Popular Shows",
+            description:
+              "Stream popular TV series from Korea, China, Thailand, and other countries with frequent episode updates.",
+            keywords: "tv series, korean drama, chinese drama, popular shows",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+          {
+            pageType: PageType.TRENDING,
+            pageSlug: "/trending",
+            title: "Trending - What's Hot Right Now",
+            description:
+              "Explore the most popular movies and TV shows trending right now.",
+            keywords: "trending movies, hot shows, popular streaming",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+          {
+            pageType: PageType.BROWSE,
+            pageSlug: "/browse",
+            title: "Browse - Explore Movies by Category",
+            description:
+              "Browse thousands of titles by genre, release year, and country to find your next watch.",
+            keywords: "browse movies, discover movies, movie categories",
+            ogType: "website",
+            twitterCard: "summary_large_image",
+          },
+        ],
+      };
 
       const created: SeoMetadata[] = [];
 
-      for (const pageData of defaultPages) {
-        const existing = await this.getSeoByPage(
-          pageData.pageType,
-          pageData.pageSlug,
-          "vi"
-        );
-
-        if (!existing) {
-          const seoMetadata = this.seoMetadataRepository.create({
-            ...pageData,
-            pageSlug: this.normalizePath(pageData.pageSlug),
-            locale: "vi",
+      for (const locale of Object.keys(defaultsByLocale) as Array<"vi" | "en">) {
+        for (const pageData of defaultsByLocale[locale]) {
+          const normalizedSlug = this.normalizePath(pageData.pageSlug);
+          const existing = await this.seoMetadataRepository.findOne({
+            where: {
+              pageType: pageData.pageType,
+              pageSlug: normalizedSlug,
+              locale,
+            },
           });
-          const saved = await this.seoMetadataRepository.save(seoMetadata);
-          created.push(saved);
+
+          if (!existing) {
+            const seoMetadata = this.seoMetadataRepository.create({
+              ...pageData,
+              pageSlug: normalizedSlug,
+              locale,
+            });
+            const saved = await this.seoMetadataRepository.save(seoMetadata);
+            created.push(saved);
+          }
         }
       }
 

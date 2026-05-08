@@ -13,7 +13,9 @@ import { AuthService } from "../services/auth.service";
 import { LoginDto } from "../dto/auth.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { User, UserRole } from "../entities/user.entity";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Admin - Auth')
 @Controller("admin/auth")
 export class AdminAuthController {
   constructor(

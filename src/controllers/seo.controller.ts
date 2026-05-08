@@ -1,7 +1,9 @@
 import { Controller, Get, HttpCode, HttpStatus, Query } from "@nestjs/common";
 import { ApiResponse } from "../interfaces/api.interface";
 import { AdminSeoService } from "../services/admin-seo.service";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('SEO')
 @Controller("seo")
 export class SeoController {
   constructor(private readonly adminSeoService: AdminSeoService) {}

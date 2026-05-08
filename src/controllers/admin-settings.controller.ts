@@ -20,7 +20,10 @@ import {
   StreamDomainSettingsDto,
 } from "../dto/admin-settings.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Admin - Settings')
+@ApiBearerAuth('JWT')
 @Controller("admin/settings")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @UseInterceptors(ViewerReadOnlyInterceptor)

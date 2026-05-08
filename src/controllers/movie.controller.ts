@@ -15,7 +15,9 @@ import { TMDBService } from "../services/tmdb.service";
 import { MovieQueryDto } from "../dto/query.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { SyncCategory } from "../entities/sync-status.entity";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Movies')
 @Controller("movies")
 export class MovieController {
   constructor(

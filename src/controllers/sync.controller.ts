@@ -2,7 +2,9 @@ import { Controller, Post, HttpCode, HttpStatus, Query } from "@nestjs/common";
 import { DataSyncService } from "../services/data-sync.service";
 import { ApiResponse } from "../interfaces/api.interface";
 import { SyncSettingsService } from "../services/sync-settings.service";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Sync')
 @Controller("sync")
 export class SyncController {
   constructor(

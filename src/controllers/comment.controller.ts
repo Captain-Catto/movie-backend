@@ -23,7 +23,9 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ApiResponse } from "../interfaces/api.interface";
 import { UnauthorizedException } from "@nestjs/common";
 import { UserActivityLoggerService } from "../services/user-activity-logger.service";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Comments')
 @Controller("comments")
 export class CommentController {
   constructor(

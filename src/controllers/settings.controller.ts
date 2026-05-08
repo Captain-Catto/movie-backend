@@ -1,7 +1,9 @@
 import { Controller, Get, HttpCode, HttpStatus } from "@nestjs/common";
 import { AdminSettingsService } from "../services/admin-settings.service";
 import { ApiResponse } from "../interfaces/api.interface";
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Settings')
 @Controller("settings")
 export class SettingsController {
   constructor(private readonly adminSettingsService: AdminSettingsService) {}

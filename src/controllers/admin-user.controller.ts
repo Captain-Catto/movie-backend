@@ -22,7 +22,10 @@ import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { UpdateUserDto } from "../dto/admin-user.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Admin - Users')
+@ApiBearerAuth('JWT')
 @Controller("admin/users")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @UseInterceptors(ViewerReadOnlyInterceptor)

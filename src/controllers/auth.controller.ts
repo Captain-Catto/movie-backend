@@ -17,6 +17,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { IsEmail, IsString, IsOptional } from "class-validator";
 import { UpdateProfileDto } from "../dto/profile.dto";
 import * as geoip from "geoip-lite";
+import { ApiTags } from '@nestjs/swagger';
 
 export class GoogleAuthDto {
   @IsEmail()
@@ -33,6 +34,7 @@ export class GoogleAuthDto {
   googleId: string;
 }
 
+@ApiTags('Authentication')
 @Controller("auth")
 export class AuthController {
   constructor(

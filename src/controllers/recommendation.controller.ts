@@ -7,11 +7,13 @@ import {
 } from '@nestjs/common';
 import { RecommendationCleanupService } from '../services/recommendation-cleanup.service';
 import { ApiResponse } from '../interfaces/api.interface';
+import { ApiTags } from '@nestjs/swagger';
 
 /**
  * Controller để monitor và quản lý recommendation cache
  * Các endpoint admin để theo dõi và maintain cache system
  */
+@ApiTags('Recommendations')
 @Controller('recommendations')
 export class RecommendationController {
   constructor(
