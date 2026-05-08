@@ -201,6 +201,27 @@ export class PeopleController {
     }
   }
 
+  @Get("poster/:tmdbId")
+  @HttpCode(HttpStatus.OK)
+  async getTmdbPoster(
+    @Param("tmdbId", ParseIntPipe) tmdbId: number,
+    @Query("type") type: "movie" | "tv" = "movie"
+  ): Promise<ApiResponse> {
+    try {
+      let posterPath: string | null = null;
+      if (type === "tv") {
+        const result = await this.tmdbService.getTVDetailsEnhanced(tmdbId);
+        posterPath = (result as Record<string, unknown>).poster_path as string | null ?? null;
+      } else {
+        const result = await this.tmdbService.getMovieDetails(tmdbId);
+        posterPath = (result as Record<string, unknown>).poster_path as string | null ?? null;
+      }
+      return { success: true, message: "Poster fetched", data: { posterPath } };
+    } catch (error) {
+      return { success: false, message: error.message, data: { posterPath: null } };
+    }
+  }
+
   /**
    * ===== ADMIN ENDPOINTS =====
    */
