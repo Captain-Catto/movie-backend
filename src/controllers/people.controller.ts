@@ -211,10 +211,10 @@ export class PeopleController {
       let posterPath: string | null = null;
       if (type === "tv") {
         const result = await this.tmdbService.getTVDetailsEnhanced(tmdbId);
-        posterPath = (result as Record<string, unknown>).poster_path as string | null ?? null;
+        posterPath = (result as unknown as Record<string, unknown>).poster_path as string | null ?? null;
       } else {
         const result = await this.tmdbService.getMovieDetails(tmdbId);
-        posterPath = (result as Record<string, unknown>).poster_path as string | null ?? null;
+        posterPath = (result as unknown as Record<string, unknown>).poster_path as string | null ?? null;
       }
       return { success: true, message: "Poster fetched", data: { posterPath } };
     } catch (error) {
