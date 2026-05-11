@@ -55,6 +55,12 @@ export class CreateNotificationDto {
   @IsOptional()
   targetValue?: string;
 
+  @ApiPropertyOptional({ example: "/movie/12345", description: "URL to navigate when notification is clicked" })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  actionUrl?: string;
+
   @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z", description: "ISO date for scheduled notifications" })
   @IsDateString()
   @IsOptional()
@@ -90,6 +96,12 @@ export class CreateBroadcastNotificationDto {
   @IsEnum(NotificationType)
   @IsOptional()
   type?: NotificationType = NotificationType.INFO;
+
+  @ApiPropertyOptional({ example: "/movie/12345" })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  actionUrl?: string;
 
   @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z" })
   @IsDateString()
@@ -139,6 +151,12 @@ export class CreateRoleNotificationDto {
   @IsString()
   role: string;
 
+  @ApiPropertyOptional({ example: "/movie/12345" })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  actionUrl?: string;
+
   @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z" })
   @IsDateString()
   @IsOptional()
@@ -178,6 +196,12 @@ export class CreateUserNotificationDto {
   @ApiProperty({ example: 42 })
   @IsNumber()
   userId: number;
+
+  @ApiPropertyOptional({ example: "/movie/12345" })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  actionUrl?: string;
 
   @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z" })
   @IsDateString()
@@ -236,6 +260,7 @@ export class NotificationResponseDto {
   updatedAt: Date;
   expiresAt?: Date;
   priority: number;
+  actionUrl?: string;
   metadata?: any;
   analytics?: {
     totalTargetedUsers: number;

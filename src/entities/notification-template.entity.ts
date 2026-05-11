@@ -70,6 +70,9 @@ export class NotificationTemplate {
   @Column({ type: "integer", default: 1 })
   priority: number; // 1=low, 2=medium, 3=high
 
+  @Column({ type: "varchar", length: 500, nullable: true })
+  actionUrl: string;
+
   @Column({ type: "jsonb", nullable: true })
   metadata: any;
 

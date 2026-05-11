@@ -182,6 +182,7 @@ export class NotificationService {
       targetType: NotificationTargetType.ALL,
       targetValue: "all",
       senderId,
+      actionUrl: dto.actionUrl,
       expiresAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
     });
 
@@ -249,6 +250,7 @@ export class NotificationService {
       targetType: NotificationTargetType.ROLE,
       targetValue: dto.role,
       senderId,
+      actionUrl: dto.actionUrl,
       expiresAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
     });
 
@@ -303,6 +305,7 @@ export class NotificationService {
       targetType: NotificationTargetType.USER,
       targetValue: dto.userId.toString(),
       senderId,
+      actionUrl: dto.actionUrl,
       expiresAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
       metadata: dto.metadata,
     });
@@ -519,6 +522,7 @@ export class NotificationService {
       message: template.message,
       messageVi: template.messageVi ?? undefined,
       type: template.type,
+      actionUrl: template.actionUrl ?? undefined,
       targetType: template.targetType,
       targetValue: template.targetValue,
       isRead: userState?.readAt ? true : false,
