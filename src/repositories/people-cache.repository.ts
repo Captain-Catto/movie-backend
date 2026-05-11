@@ -36,21 +36,14 @@ export class PeopleCacheRepository {
    * @returns PersonCache hoặc null nếu không có cache
    */
   async findPersonByTmdbId(tmdbId: number): Promise<PersonCache | null> {
-    this.logger.log(`🔍 Finding cached person details for TMDB ID ${tmdbId}`);
-
     const person = await this.personCacheRepository.findOne({
       where: { tmdbId }
     });
 
     if (person) {
-      this.logger.log(`✅ Found cached person: ${person.name}`);
-      
-      // Update usage stats (async, không block)
       setImmediate(() => {
         this.updatePersonUsageStats(tmdbId);
       });
-    } else {
-      this.logger.log(`❌ No cached person found for TMDB ID ${tmdbId}`);
     }
 
     return person;
@@ -62,7 +55,6 @@ export class PeopleCacheRepository {
    * @param personData - Data từ TMDB API
    */
   async upsertPersonCache(tmdbId: number, personData: any): Promise<PersonCache> {
-    this.logger.log(`💾 Caching person details for TMDB ID ${tmdbId} - ${personData.name}`);
 
     try {
       // Tìm existing cache
@@ -91,8 +83,6 @@ export class PeopleCacheRepository {
         await this.personCacheRepository.save(person);
       }
 
-      this.logger.log(`✅ Successfully cached person: ${person.name}`);
-
       // Check và warning nếu database lớn (không auto cleanup)
       const totalCount = await this.personCacheRepository.count();
       if (totalCount > this.CLEANUP_THRESHOLD) {
@@ -116,21 +106,14 @@ export class PeopleCacheRepository {
    * @returns PersonCreditsCache hoặc null nếu không có cache
    */
   async findCreditsByPersonTmdbId(personTmdbId: number): Promise<PersonCreditsCache | null> {
-    this.logger.log(`🔍 Finding cached credits for person TMDB ID ${personTmdbId}`);
-
     const credits = await this.creditsRepository.findOne({
       where: { personTmdbId }
     });
 
     if (credits) {
-      this.logger.log(`✅ Found cached credits: ${credits.totalCreditsCount} items`);
-      
-      // Update usage stats (async, không block)
       setImmediate(() => {
         this.updateCreditsUsageStats(personTmdbId);
       });
-    } else {
-      this.logger.log(`❌ No cached credits found for person TMDB ID ${personTmdbId}`);
     }
 
     return credits;
@@ -142,7 +125,6 @@ export class PeopleCacheRepository {
    * @param creditsData - Credits data từ TMDB API
    */
   async upsertCreditsCache(personTmdbId: number, creditsData: any): Promise<PersonCreditsCache> {
-    this.logger.log(`💾 Caching credits for person TMDB ID ${personTmdbId}`);
 
     try {
       // Xử lý metadata từ credits
@@ -174,8 +156,6 @@ export class PeopleCacheRepository {
         await this.creditsRepository.save(credits);
       }
 
-      this.logger.log(`✅ Successfully cached credits: ${credits.totalCreditsCount} items`);
-      
       return credits;
     } catch (error) {
       this.logger.error(`❌ Failed to cache credits for person TMDB ID ${personTmdbId}:`, error.message);
@@ -202,7 +182,6 @@ export class PeopleCacheRepository {
         .where({ tmdbId })
         .execute();
 
-      this.logger.log(`📈 Updated usage stats for person TMDB ID ${tmdbId}`);
     } catch (error) {
       this.logger.warn(`Failed to update person usage stats for ${tmdbId}:`, error.message);
     }
@@ -223,7 +202,6 @@ export class PeopleCacheRepository {
         .where({ personTmdbId })
         .execute();
 
-      this.logger.log(`📈 Updated credits usage stats for person TMDB ID ${personTmdbId}`);
     } catch (error) {
       this.logger.warn(`Failed to update credits usage stats for ${personTmdbId}:`, error.message);
     }

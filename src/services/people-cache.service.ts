@@ -26,19 +26,14 @@ export class PeopleCacheService {
    * @returns Person details từ cache hoặc TMDB
    */
   async getPersonDetails(tmdbId: number): Promise<any> {
-    this.logger.log(`🔍 Getting person details for TMDB ID ${tmdbId}`);
-
     try {
-      // 1. Check cache first
       const cachedPerson = await this.peopleCacheRepository.findPersonByTmdbId(tmdbId);
-      
+
       if (cachedPerson) {
-        this.logger.log(`✅ Cache hit for person ${cachedPerson.name}`);
         return this.formatPersonResponse(cachedPerson.personData, true);
       }
 
-      // 2. Cache miss - fetch từ TMDB
-      this.logger.log(`❌ Cache miss for person TMDB ID ${tmdbId}, fetching from TMDB...`);
+      // Cache miss - fetch từ TMDB
       
       const tmdbPersonData = await this.tmdbService.getPersonDetails(tmdbId);
       
@@ -55,7 +50,6 @@ export class PeopleCacheService {
           });
       });
 
-      this.logger.log(`✅ Fetched person from TMDB: ${tmdbPersonData.name}`);
       return this.formatPersonResponse(tmdbPersonData, false);
 
     } catch (error) {

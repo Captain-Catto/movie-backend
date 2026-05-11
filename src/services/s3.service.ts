@@ -149,6 +149,51 @@ export class S3Service {
   }
 
   /**
+   * Upload generic image (notifications, banners, etc.) to S3
+   */
+  async uploadImage(
+    file: Buffer,
+    fileName: string,
+    contentType: string,
+    folder: string = "images"
+  ): Promise<{
+    success: boolean;
+    url?: string;
+    key?: string;
+    message?: string;
+  }> {
+    try {
+      const sanitizedFileName = this.sanitizeFileName(fileName);
+      const key = `${folder}/${Date.now()}-${sanitizedFileName}`;
+
+      const command = new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        Body: file,
+        ContentType: contentType,
+        Metadata: {
+          "uploaded-at": new Date().toISOString(),
+          "original-name": fileName,
+        },
+      });
+
+      await this.s3Client.send(command);
+
+      const encodedKey = encodeURIComponent(key).replace(/%2F/g, "/");
+      const publicUrl = `https://${this.bucketName}.s3.${
+        process.env.AWS_REGION || "ap-southeast-1"
+      }.amazonaws.com/${encodedKey}`;
+
+      this.logger.log(`Image uploaded successfully: ${key}`);
+
+      return { success: true, url: publicUrl, key };
+    } catch (error) {
+      this.logger.error("Failed to upload image to S3:", error);
+      return { success: false, message: `Upload failed: ${error.message}` };
+    }
+  }
+
+  /**
    * Get signed URL for private streaming (expires in 1 hour)
    */
   async getSignedStreamUrl(key: string): Promise<string> {

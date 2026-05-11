@@ -616,15 +616,10 @@ export class MovieService {
     language: string = "en-US"
   ): Promise<any> {
     try {
-      this.logger.log(`Fetching movie with credits for TMDB ID: ${tmdbId}`);
-
-      // Get movie details with credits from TMDB
       const movieWithCredits = await this.tmdbService.getMovieWithCredits(
         tmdbId,
         language
       );
-
-      this.logger.log(`✅ Found movie with credits: ${movieWithCredits.title}`);
 
       return {
         // Basic movie info

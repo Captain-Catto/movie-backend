@@ -1004,8 +1004,6 @@ export class TMDBService {
         }
       );
 
-      this.logger.log(`Fetched credits for person ${personId}`);
-
       return response.data;
     } catch (error) {
       this.logger.error(`Error fetching person credits ${personId}:`, error);

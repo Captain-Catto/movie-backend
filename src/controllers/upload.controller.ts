@@ -6,6 +6,7 @@ import {
   BadRequestException,
   UseGuards,
   Request,
+  Query,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import * as multer from "multer";
@@ -102,6 +103,56 @@ export class UploadController {
       message: "Avatar uploaded successfully",
       url: uploadResult.url,
       key: uploadResult.key,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("image")
+  @UseInterceptors(
+    FileInterceptor("image", {
+      storage: multer.memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit
+      },
+      fileFilter: (req, file, callback) => {
+        if (file.mimetype.startsWith("image/")) {
+          callback(null, true);
+        } else {
+          callback(
+            new BadRequestException("Only image files are allowed"),
+            false
+          );
+        }
+      },
+    })
+  )
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Query("folder") folder: string = "images"
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+
+    const allowedFolders = ["images", "notifications", "banners"];
+    const targetFolder = allowedFolders.includes(folder) ? folder : "images";
+
+    const result = await this.s3Service.uploadImage(
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+      targetFolder
+    );
+
+    if (!result.success || !result.url) {
+      throw new BadRequestException(result.message || "Upload failed");
+    }
+
+    return {
+      success: true,
+      message: "Image uploaded successfully",
+      url: result.url,
+      key: result.key,
     };
   }
 }
