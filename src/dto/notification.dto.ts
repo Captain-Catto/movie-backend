@@ -157,6 +157,10 @@ export class CreateRoleNotificationDto {
   @MaxLength(500)
   actionUrl?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  metadata?: Record<string, any>;
+
   @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z" })
   @IsDateString()
   @IsOptional()

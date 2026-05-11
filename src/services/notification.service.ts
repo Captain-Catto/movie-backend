@@ -183,6 +183,7 @@ export class NotificationService {
       targetValue: "all",
       senderId,
       actionUrl: dto.actionUrl,
+      metadata: dto.metadata,
       expiresAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
     });
 
@@ -251,6 +252,7 @@ export class NotificationService {
       targetValue: dto.role,
       senderId,
       actionUrl: dto.actionUrl,
+      metadata: dto.metadata,
       expiresAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
     });
 
