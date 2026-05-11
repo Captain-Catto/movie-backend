@@ -38,6 +38,12 @@ export class NotificationTemplate {
   @Column({ type: "text" })
   message: string;
 
+  @Column({ name: "title_vi", type: "varchar", length: 255, nullable: true })
+  titleVi: string;
+
+  @Column({ name: "message_vi", type: "text", nullable: true })
+  messageVi: string;
+
   @Column({
     type: "enum",
     enum: NotificationType,

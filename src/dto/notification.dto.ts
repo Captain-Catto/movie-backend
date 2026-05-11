@@ -23,11 +23,23 @@ export class CreateNotificationDto {
   @MaxLength(255)
   title: string;
 
+  @ApiPropertyOptional({ example: "Bảo trì hệ thống", maxLength: 255 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  titleVi?: string;
+
   @ApiProperty({ example: "The system will be down for maintenance at 2am.", maxLength: 1000 })
   @IsString()
   @MinLength(1)
   @MaxLength(1000)
   message: string;
+
+  @ApiPropertyOptional({ example: "Hệ thống sẽ bảo trì lúc 2 giờ sáng.", maxLength: 1000 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  messageVi?: string;
 
   @ApiPropertyOptional({ enum: NotificationType, default: NotificationType.INFO })
   @IsEnum(NotificationType)
@@ -56,11 +68,23 @@ export class CreateBroadcastNotificationDto {
   @MaxLength(255)
   title: string;
 
+  @ApiPropertyOptional({ example: "Tính năng mới ra mắt", maxLength: 255 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  titleVi?: string;
+
   @ApiProperty({ example: "We just launched dark mode!", maxLength: 1000 })
   @IsString()
   @MinLength(1)
   @MaxLength(1000)
   message: string;
+
+  @ApiPropertyOptional({ example: "Chúng tôi vừa ra mắt chế độ tối!", maxLength: 1000 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  messageVi?: string;
 
   @ApiPropertyOptional({ enum: NotificationType, default: NotificationType.INFO })
   @IsEnum(NotificationType)
@@ -88,11 +112,23 @@ export class CreateRoleNotificationDto {
   @MaxLength(255)
   title: string;
 
+  @ApiPropertyOptional({ example: "Thông báo quản trị", maxLength: 255 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  titleVi?: string;
+
   @ApiProperty({ example: "Please review the pending reports.", maxLength: 1000 })
   @IsString()
   @MinLength(1)
   @MaxLength(1000)
   message: string;
+
+  @ApiPropertyOptional({ example: "Vui lòng xem xét các báo cáo đang chờ.", maxLength: 1000 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  messageVi?: string;
 
   @ApiPropertyOptional({ enum: NotificationType, default: NotificationType.INFO })
   @IsEnum(NotificationType)
@@ -116,11 +152,23 @@ export class CreateUserNotificationDto {
   @MaxLength(255)
   title: string;
 
+  @ApiPropertyOptional({ example: "Tài khoản của bạn đã được cập nhật", maxLength: 255 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  titleVi?: string;
+
   @ApiProperty({ example: "Your profile has been successfully updated.", maxLength: 1000 })
   @IsString()
   @MinLength(1)
   @MaxLength(1000)
   message: string;
+
+  @ApiPropertyOptional({ example: "Hồ sơ của bạn đã được cập nhật thành công.", maxLength: 1000 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  messageVi?: string;
 
   @ApiPropertyOptional({ enum: NotificationType, default: NotificationType.INFO })
   @IsEnum(NotificationType)
@@ -176,7 +224,9 @@ export class UpdateNotificationDto {
 export class NotificationResponseDto {
   id: number;
   title: string;
+  titleVi?: string;
   message: string;
+  messageVi?: string;
   type: NotificationType;
   targetType: NotificationTargetType;
   targetValue: string;

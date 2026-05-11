@@ -175,7 +175,9 @@ export class NotificationService {
     // Create single template
     const template = await this.templateRepository.create({
       title: dto.title,
+      titleVi: dto.titleVi,
       message: dto.message,
+      messageVi: dto.messageVi,
       type: dto.type || NotificationType.INFO,
       targetType: NotificationTargetType.ALL,
       targetValue: "all",
@@ -240,7 +242,9 @@ export class NotificationService {
     // Create single template
     const template = await this.templateRepository.create({
       title: dto.title,
+      titleVi: dto.titleVi,
       message: dto.message,
+      messageVi: dto.messageVi,
       type: dto.type || NotificationType.INFO,
       targetType: NotificationTargetType.ROLE,
       targetValue: dto.role,
@@ -292,7 +296,9 @@ export class NotificationService {
     // Create template for specific user
     const template = await this.templateRepository.create({
       title: dto.title,
+      titleVi: dto.titleVi,
       message: dto.message,
+      messageVi: dto.messageVi,
       type: dto.type || NotificationType.INFO,
       targetType: NotificationTargetType.USER,
       targetValue: dto.userId.toString(),
@@ -434,12 +440,13 @@ export class NotificationService {
   ): Promise<NotificationResponseDto> {
     const template = await this.templateRepository.create({
       title: "Welcome to our platform!",
-      message:
-        "Thank you for joining us. Explore our features and enjoy your experience!",
+      titleVi: "Chào mừng bạn đến với chúng tôi!",
+      message: "Thank you for joining us. Explore our features and enjoy your experience!",
+      messageVi: "Cảm ơn bạn đã tham gia. Khám phá các tính năng và tận hưởng trải nghiệm của bạn!",
       type: NotificationType.SUCCESS,
       targetType: NotificationTargetType.USER,
       targetValue: userId.toString(),
-      senderId: null, // System notification
+      senderId: null,
     });
 
     await this.analyticsRepository.create({
@@ -456,12 +463,13 @@ export class NotificationService {
   ): Promise<NotificationResponseDto> {
     const template = await this.templateRepository.create({
       title: "Password Reset Successful",
-      message:
-        "Your password has been successfully reset. If you didn't request this change, please contact support immediately.",
+      titleVi: "Đặt lại mật khẩu thành công",
+      message: "Your password has been successfully reset. If you didn't request this change, please contact support immediately.",
+      messageVi: "Mật khẩu của bạn đã được đặt lại thành công. Nếu bạn không yêu cầu thay đổi này, vui lòng liên hệ hỗ trợ ngay.",
       type: NotificationType.INFO,
       targetType: NotificationTargetType.USER,
       targetValue: userId.toString(),
-      senderId: null, // System notification
+      senderId: null,
     });
 
     await this.analyticsRepository.create({
@@ -507,7 +515,9 @@ export class NotificationService {
     const base = {
       id: template.id,
       title: template.title,
+      titleVi: template.titleVi ?? undefined,
       message: template.message,
+      messageVi: template.messageVi ?? undefined,
       type: template.type,
       targetType: template.targetType,
       targetValue: template.targetValue,
