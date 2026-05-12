@@ -89,8 +89,7 @@ export class NotificationGateway
         await client.join(`role:${client.userRole}`);
       }
 
-      // Simplified connection log - just show role and status
-      this.logger.log(`🔌 WebSocket connected: ${client.userEmail}`);
+      this.logger.debug(`🔌 WebSocket connected: ${client.userEmail}`);
 
       // Send unread count on connection
       try {
@@ -119,8 +118,7 @@ export class NotificationGateway
           this.connectedUsers.delete(client.userId);
         }
       }
-      // Simplified disconnect log
-      this.logger.log(`🔌 WebSocket disconnected: ${client.userEmail}`);
+      this.logger.debug(`🔌 WebSocket disconnected: ${client.userEmail}`);
     } else {
       // Suppress anonymous disconnect logs to reduce noise
     }

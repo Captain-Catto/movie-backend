@@ -10,7 +10,6 @@ import { Recommendation } from '../entities/recommendation.entity';
 @Injectable()
 export class RecommendationRepository {
   private readonly logger = new Logger(RecommendationRepository.name);
-  private lastCleanupWarningAt = 0;
   
   // Cleanup target: giữ lại 1000 recommendations tốt nhất sau khi cleanup
   private readonly CLEANUP_TARGET = 1000;
@@ -20,7 +19,6 @@ export class RecommendationRepository {
   
   // Số recommendations tối đa cho mỗi content
   private readonly MAX_PER_CONTENT = 12;
-  private readonly CLEANUP_WARNING_INTERVAL_MS = 30 * 60 * 1000;
 
   constructor(
     @InjectRepository(Recommendation)
@@ -101,13 +99,6 @@ export class RecommendationRepository {
       await this.repository.save(entities);
 
       this.logger.debug(`✅ Successfully cached ${entities.length} recommendations for ${contentType} ${contentId}`);
-
-      // 4. Không cần auto cleanup ngay - để background job xử lý
-      // Chỉ log warning nếu database lớn
-      const totalCount = await this.repository.count();
-      if (totalCount > this.CLEANUP_THRESHOLD && this.shouldLogCleanupWarning()) {
-        this.logger.warn(`⚠️ Database has ${totalCount} records, cleanup recommended`);
-      }
 
     } catch (error) {
       this.logger.error(`❌ Failed to cache recommendations for ${contentType} ${contentId}:`, error.message);
@@ -279,12 +270,4 @@ export class RecommendationRepository {
     return totalCount > this.CLEANUP_THRESHOLD;
   }
 
-  private shouldLogCleanupWarning(): boolean {
-    const now = Date.now();
-    if (now - this.lastCleanupWarningAt < this.CLEANUP_WARNING_INTERVAL_MS) {
-      return false;
-    }
-    this.lastCleanupWarningAt = now;
-    return true;
-  }
 }

@@ -12,14 +12,12 @@ import { PersonCreditsCache } from '../entities/person-credits-cache.entity';
 @Injectable()
 export class PeopleCacheRepository {
   private readonly logger = new Logger(PeopleCacheRepository.name);
-  private lastCleanupWarningAt = 0;
   
   // Cleanup target: giữ lại 10000 records tốt nhất sau khi cleanup
   private readonly CLEANUP_TARGET = 10000;
   
   // Trigger cleanup khi vượt quá số lượng này (50k records cho people)
   private readonly CLEANUP_THRESHOLD = 50000;
-  private readonly CLEANUP_WARNING_INTERVAL_MS = 30 * 60 * 1000;
 
   constructor(
     @InjectRepository(PersonCache)
@@ -83,12 +81,6 @@ export class PeopleCacheRepository {
           lastAccessed: null,
         });
         await this.personCacheRepository.save(person);
-      }
-
-      // Check và warning nếu database lớn (không auto cleanup)
-      const totalCount = await this.personCacheRepository.count();
-      if (totalCount > this.CLEANUP_THRESHOLD && this.shouldLogCleanupWarning()) {
-        this.logger.warn(`⚠️ Person cache has ${totalCount} records, cleanup recommended`);
       }
 
       return person;
@@ -432,12 +424,4 @@ export class PeopleCacheRepository {
     };
   }
 
-  private shouldLogCleanupWarning(): boolean {
-    const now = Date.now();
-    if (now - this.lastCleanupWarningAt < this.CLEANUP_WARNING_INTERVAL_MS) {
-      return false;
-    }
-    this.lastCleanupWarningAt = now;
-    return true;
-  }
 }

@@ -97,7 +97,7 @@ export class AdminAnalyticsGateway
         );
       }
 
-      this.logger.log(
+      this.logger.debug(
         `🔌 Admin analytics socket connected: ${client.userEmail || client.userId}`
       );
     } catch (error) {
@@ -108,7 +108,7 @@ export class AdminAnalyticsGateway
   }
 
   handleDisconnect(@ConnectedSocket() client: AuthenticatedSocket) {
-    this.logger.log(
+    this.logger.debug(
       `🔌 Admin analytics socket disconnected: ${client.userEmail || client.userId}`
     );
   }

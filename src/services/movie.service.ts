@@ -434,7 +434,7 @@ export class MovieService {
         const message = tmdbError instanceof Error ? tmdbError.message : String(tmdbError);
 
         if (status === 404) {
-          this.logger.warn(`Movie ID ${id} not found in TMDB (404)`);
+          this.logger.debug(`Movie ID ${id} not found in TMDB (404)`);
         } else {
           this.logger.error(`❌ Failed to fetch movie ID ${id} from TMDB:`, message);
         }
@@ -749,7 +749,7 @@ export class MovieService {
         const message = tmdbError instanceof Error ? tmdbError.message : String(tmdbError);
 
         if (status === 404) {
-          this.logger.warn(`Movie TMDB ID ${tmdbId} not found in TMDB (404)`);
+          this.logger.debug(`Movie TMDB ID ${tmdbId} not found in TMDB (404)`);
         } else {
           this.logger.error(`❌ Failed to fetch movie TMDB ID ${tmdbId} from TMDB:`, message);
         }

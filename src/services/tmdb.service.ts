@@ -193,7 +193,7 @@ export class TMDBService {
           if (status === 401) {
             this.logger.error("TMDB API Authentication failed - check API key");
           } else if (status === 404) {
-            this.logger.warn(`TMDB API 404: ${config?.url}`);
+            this.logger.debug(`TMDB API 404: ${config?.url}`);
           } else {
             this.logger.warn(`TMDB API ${status}: ${config?.url}`);
           }
@@ -697,7 +697,7 @@ export class TMDBService {
     } catch (error) {
       // Only log detailed error for non-404 errors
       if (error.response?.status === 404) {
-        this.logger.warn(`Movie ${movieId} not found in TMDB (404)`);
+        this.logger.debug(`Movie ${movieId} not found in TMDB (404)`);
       } else {
         this.logger.error(`Error fetching movie ${movieId}:`, error.message);
       }
@@ -717,7 +717,7 @@ export class TMDBService {
     } catch (error) {
       // Only log detailed error for non-404 errors
       if (error.response?.status === 404) {
-        this.logger.warn(`TV series ${tvId} not found in TMDB (404)`);
+        this.logger.debug(`TV series ${tvId} not found in TMDB (404)`);
       } else {
         this.logger.error(`Error fetching TV series ${tvId}:`, error.message);
       }
