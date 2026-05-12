@@ -1,5 +1,5 @@
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe, Logger } from "@nestjs/common";
+import { ValidationPipe, Logger, LogLevel } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
@@ -10,8 +10,29 @@ import "reflect-metadata";
 
 process.env.TZ = "UTC";
 
+function resolveLogLevels(): LogLevel[] {
+  const configuredLevels = process.env.LOG_LEVELS;
+
+  if (configuredLevels) {
+    return configuredLevels
+      .split(",")
+      .map((level) => level.trim())
+      .filter((level): level is LogLevel =>
+        ["log", "error", "warn", "debug", "verbose", "fatal"].includes(level)
+      );
+  }
+
+  if (process.env.ENABLE_DEBUG_LOGS === "true") {
+    return ["error", "warn", "log", "debug", "verbose"];
+  }
+
+  return ["error", "warn", "log"];
+}
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: resolveLogLevels(),
+  });
   const configService = app.get(ConfigService);
   const logger = new Logger("Bootstrap");
 
