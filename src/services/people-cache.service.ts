@@ -95,19 +95,19 @@ export class PeopleCacheService {
       cacheInfo?: any;
     };
   }> {
-    this.logger.log(`🔍 Getting paginated credits for person TMDB ID ${tmdbId} (page ${page}, limit ${limit})`);
+    this.logger.debug(`🔍 Getting paginated credits for person TMDB ID ${tmdbId} (page ${page}, limit ${limit})`);
 
     try {
       // 1. Check cache first
       const cachedCredits = await this.peopleCacheRepository.findCreditsByPersonTmdbId(tmdbId);
       
       if (cachedCredits) {
-        this.logger.log(`✅ Cache hit for person ${tmdbId} credits`);
+        this.logger.debug(`✅ Cache hit for person ${tmdbId} credits`);
         return this.paginateCreditsFromCache(cachedCredits, page, limit, mediaType, sortBy);
       }
 
       // 2. Cache miss - fetch từ TMDB
-      this.logger.log(`❌ Cache miss for person ${tmdbId} credits, fetching from TMDB...`);
+      this.logger.debug(`❌ Cache miss for person ${tmdbId} credits, fetching from TMDB...`);
       
       const tmdbCreditsData = await this.tmdbService.getPersonCredits(tmdbId);
       
@@ -124,7 +124,7 @@ export class PeopleCacheService {
           });
       });
 
-      this.logger.log(`✅ Fetched credits from TMDB for person ${tmdbId}`);
+      this.logger.debug(`✅ Fetched credits from TMDB for person ${tmdbId}`);
       return this.paginateCreditsFromTMDB(tmdbCreditsData, page, limit, mediaType, sortBy);
 
     } catch (error) {
@@ -388,19 +388,19 @@ export class PeopleCacheService {
       cacheInfo?: any;
     };
   }> {
-    this.logger.log(`🔍 Getting paginated cast for person TMDB ID ${tmdbId} (page ${page}, limit ${limit})`);
+    this.logger.debug(`🔍 Getting paginated cast for person TMDB ID ${tmdbId} (page ${page}, limit ${limit})`);
 
     try {
       // 1. Check cache first
       const cachedCredits = await this.peopleCacheRepository.findCreditsByPersonTmdbId(tmdbId);
       
       if (cachedCredits) {
-        this.logger.log(`💰 Using cached cast for person ${tmdbId}`);
+        this.logger.debug(`💰 Using cached cast for person ${tmdbId}`);
         return this.paginateCastFromCache(cachedCredits, page, limit, mediaType, sortBy);
       }
 
       // 2. If no cache, fetch from TMDB and paginate
-      this.logger.log(`🌐 Fetching fresh cast from TMDB for person ${tmdbId}`);
+      this.logger.debug(`🌐 Fetching fresh cast from TMDB for person ${tmdbId}`);
       const tmdbCreditsData = await this.tmdbService.getPersonCredits(tmdbId);
       
       if (tmdbCreditsData) {
@@ -442,19 +442,19 @@ export class PeopleCacheService {
       cacheInfo?: any;
     };
   }> {
-    this.logger.log(`🔍 Getting paginated crew for person TMDB ID ${tmdbId} (page ${page}, limit ${limit})`);
+    this.logger.debug(`🔍 Getting paginated crew for person TMDB ID ${tmdbId} (page ${page}, limit ${limit})`);
 
     try {
       // 1. Check cache first
       const cachedCredits = await this.peopleCacheRepository.findCreditsByPersonTmdbId(tmdbId);
       
       if (cachedCredits) {
-        this.logger.log(`💰 Using cached crew for person ${tmdbId}`);
+        this.logger.debug(`💰 Using cached crew for person ${tmdbId}`);
         return this.paginateCrewFromCache(cachedCredits, page, limit, mediaType, sortBy);
       }
 
       // 2. If no cache, fetch from TMDB and paginate
-      this.logger.log(`🌐 Fetching fresh crew from TMDB for person ${tmdbId}`);
+      this.logger.debug(`🌐 Fetching fresh crew from TMDB for person ${tmdbId}`);
       const tmdbCreditsData = await this.tmdbService.getPersonCredits(tmdbId);
       
       if (tmdbCreditsData) {

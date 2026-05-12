@@ -10,6 +10,7 @@ import { Recommendation } from '../entities/recommendation.entity';
 @Injectable()
 export class RecommendationRepository {
   private readonly logger = new Logger(RecommendationRepository.name);
+  private lastCleanupWarningAt = 0;
   
   // Cleanup target: giữ lại 1000 recommendations tốt nhất sau khi cleanup
   private readonly CLEANUP_TARGET = 1000;
@@ -19,6 +20,7 @@ export class RecommendationRepository {
   
   // Số recommendations tối đa cho mỗi content
   private readonly MAX_PER_CONTENT = 12;
+  private readonly CLEANUP_WARNING_INTERVAL_MS = 30 * 60 * 1000;
 
   constructor(
     @InjectRepository(Recommendation)
@@ -37,7 +39,7 @@ export class RecommendationRepository {
     contentId: number,
     limit: number = 12
   ): Promise<Recommendation[]> {
-    this.logger.log(`🔍 Finding cached recommendations for ${contentType} ${contentId}`);
+    this.logger.debug(`🔍 Finding cached recommendations for ${contentType} ${contentId}`);
 
     const recommendations = await this.repository.find({
       where: { contentType, contentId },
@@ -47,14 +49,14 @@ export class RecommendationRepository {
 
     // Nếu tìm thấy cache, update usage stats (async, không block)
     if (recommendations.length > 0) {
-      this.logger.log(`✅ Found ${recommendations.length} cached recommendations for ${contentType} ${contentId}`);
+      this.logger.debug(`✅ Found ${recommendations.length} cached recommendations for ${contentType} ${contentId}`);
       
       // Update usage stats bất đồng bộ
       setImmediate(() => {
         this.updateUsageStats(contentType, contentId);
       });
     } else {
-      this.logger.log(`❌ No cached recommendations found for ${contentType} ${contentId}`);
+      this.logger.debug(`❌ No cached recommendations found for ${contentType} ${contentId}`);
     }
 
     return recommendations;
@@ -72,7 +74,7 @@ export class RecommendationRepository {
     contentId: number,
     recommendations: any[]
   ): Promise<void> {
-    this.logger.log(`💾 Caching ${recommendations.length} recommendations for ${contentType} ${contentId}`);
+    this.logger.debug(`💾 Caching ${recommendations.length} recommendations for ${contentType} ${contentId}`);
 
     try {
       // 1. Xóa cache cũ của content này (nếu có)
@@ -98,12 +100,12 @@ export class RecommendationRepository {
       // 3. Lưu vào database
       await this.repository.save(entities);
 
-      this.logger.log(`✅ Successfully cached ${entities.length} recommendations for ${contentType} ${contentId}`);
+      this.logger.debug(`✅ Successfully cached ${entities.length} recommendations for ${contentType} ${contentId}`);
 
       // 4. Không cần auto cleanup ngay - để background job xử lý
       // Chỉ log warning nếu database lớn
       const totalCount = await this.repository.count();
-      if (totalCount > this.CLEANUP_THRESHOLD) {
+      if (totalCount > this.CLEANUP_THRESHOLD && this.shouldLogCleanupWarning()) {
         this.logger.warn(`⚠️ Database has ${totalCount} records, cleanup recommended`);
       }
 
@@ -130,7 +132,7 @@ export class RecommendationRepository {
         .where({ contentType, contentId })
         .execute();
 
-      this.logger.log(`📈 Updated usage stats for ${contentType} ${contentId}`);
+      this.logger.debug(`📈 Updated usage stats for ${contentType} ${contentId}`);
     } catch (error) {
       // Log error nhưng không throw để không ảnh hưởng main flow
       this.logger.warn(`Failed to update usage stats for ${contentType} ${contentId}:`, error.message);
@@ -275,5 +277,14 @@ export class RecommendationRepository {
   async needsMajorCleanup(): Promise<boolean> {
     const totalCount = await this.repository.count();
     return totalCount > this.CLEANUP_THRESHOLD;
+  }
+
+  private shouldLogCleanupWarning(): boolean {
+    const now = Date.now();
+    if (now - this.lastCleanupWarningAt < this.CLEANUP_WARNING_INTERVAL_MS) {
+      return false;
+    }
+    this.lastCleanupWarningAt = now;
+    return true;
   }
 }

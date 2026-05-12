@@ -138,7 +138,7 @@ export class TVSeriesService {
     language: string = "en-US",
     countries?: string
   ): Promise<PaginatedResult<TVSeriesResponse>> {
-    this.logger.log(
+    this.logger.debug(
       `🔍 TVSeriesService.findAll called with: page=${page}, limit=${limit}, genre=${genre}, year=${year}, sortBy=${sortBy}, language=${language}, countries=${countries}`
     );
 
@@ -213,7 +213,7 @@ export class TVSeriesService {
    */
   async getRecommendations(tmdbId: number, page: number = 1): Promise<any[]> {
     try {
-      this.logger.log(
+      this.logger.debug(
         `📺 Getting recommendations for TV series TMDB ID: ${tmdbId}`
       );
 
@@ -227,7 +227,7 @@ export class TVSeriesService {
 
       if (cachedRecommendations.length > 0) {
         // ✅ CÓ CACHE - Trả về ngay lập tức
-        this.logger.log(
+        this.logger.debug(
           `⚡ Found ${cachedRecommendations.length} CACHED recommendations for TV ${tmdbId}`
         );
 
@@ -236,7 +236,7 @@ export class TVSeriesService {
       }
 
       // ❌ CHƯA CÓ CACHE - Gọi TMDB API
-      this.logger.log(
+      this.logger.debug(
         `🌐 No cache found, fetching from TMDB API for TV ${tmdbId}...`
       );
 
@@ -271,7 +271,7 @@ export class TVSeriesService {
               tmdbId,
               formattedRecommendations
             );
-            this.logger.log(
+            this.logger.debug(
               `💾 Cached ${formattedRecommendations.length} recommendations for TV ${tmdbId}`
             );
           } catch (cacheError) {
@@ -346,12 +346,12 @@ export class TVSeriesService {
    */
   async getTVCredits(tmdbId: number, language: string = "en-US") {
     try {
-      this.logger.log(`Fetching TV credits for TMDB ID: ${tmdbId}`);
+      this.logger.debug(`Fetching TV credits for TMDB ID: ${tmdbId}`);
 
       // Get TV credits from TMDB
       const credits = await this.tmdbService.getTVCredits(tmdbId, language);
 
-      this.logger.log(`✅ Found TV credits for TMDB ID ${tmdbId}`);
+      this.logger.debug(`✅ Found TV credits for TMDB ID ${tmdbId}`);
 
       return credits;
     } catch (error) {

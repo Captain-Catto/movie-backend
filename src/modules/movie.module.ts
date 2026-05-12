@@ -8,7 +8,6 @@ import { MovieService } from "../services/movie.service";
 import { MovieRepository } from "../repositories/movie.repository";
 import { SyncStatusRepository } from "../repositories/sync-status.repository";
 import { RecommendationRepository } from "../repositories/recommendation.repository";
-import { RecommendationCleanupService } from "../services/recommendation-cleanup.service";
 import { DataSyncModule } from "./data-sync.module";
 import { TMDBModule } from "./tmdb.module";
 
@@ -24,14 +23,12 @@ import { TMDBModule } from "./tmdb.module";
     MovieRepository, 
     SyncStatusRepository,
     RecommendationRepository,
-    RecommendationCleanupService,
   ],
   exports: [
     MovieService, 
     MovieRepository, 
     SyncStatusRepository,
     RecommendationRepository,
-    RecommendationCleanupService,
   ],
 })
 export class MovieModule {}

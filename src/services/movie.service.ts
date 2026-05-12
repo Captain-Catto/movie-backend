@@ -397,7 +397,7 @@ export class MovieService {
     let movie = await this.movieRepository.findById(id);
 
     if (!movie) {
-      this.logger.log(
+      this.logger.debug(
         `🔍 Movie ID ${id} not found in database, trying TMDB...`
       );
 
@@ -405,7 +405,7 @@ export class MovieService {
         // Try to fetch from TMDB using the ID as TMDB ID
         const tmdbMovie = await this.tmdbService.getMovieDetails(id);
 
-        this.logger.log(
+        this.logger.debug(
           `✅ Found movie in TMDB: ${tmdbMovie.title}, saving to database...`
         );
         this.logger.debug(
@@ -429,7 +429,7 @@ export class MovieService {
           adult: tmdbMovie.adult || false,
         });
 
-        this.logger.log(`💾 Movie saved to database with ID: ${movie.id}`);
+        this.logger.debug(`💾 Movie saved to database with ID: ${movie.id}`);
       } catch (tmdbError) {
         this.logger.error(
           `❌ Movie ID ${id} not found in TMDB either:`,
@@ -529,7 +529,7 @@ export class MovieService {
    */
   async getRecommendations(tmdbId: number, page: number = 1): Promise<any[]> {
     try {
-      this.logger.log(
+      this.logger.debug(
         `🎬 Getting recommendations for movie TMDB ID: ${tmdbId}`
       );
 
@@ -543,7 +543,7 @@ export class MovieService {
 
       if (cachedRecommendations.length > 0) {
         // ✅ CÓ CACHE - Trả về ngay lập tức
-        this.logger.log(
+        this.logger.debug(
           `⚡ Found ${cachedRecommendations.length} CACHED recommendations for movie ${tmdbId}`
         );
 
@@ -552,7 +552,7 @@ export class MovieService {
       }
 
       // ❌ CHƯA CÓ CACHE - Gọi TMDB API
-      this.logger.log(
+      this.logger.debug(
         `🌐 No cache found, fetching from TMDB API for movie ${tmdbId}...`
       );
 
@@ -584,7 +584,7 @@ export class MovieService {
               tmdbId,
               formattedRecommendations
             );
-            this.logger.log(
+            this.logger.debug(
               `💾 Cached ${formattedRecommendations.length} recommendations for movie ${tmdbId}`
             );
           } catch (cacheError) {
@@ -711,7 +711,7 @@ export class MovieService {
     let movie = await this.movieRepository.findByTmdbId(tmdbId);
 
     if (!movie) {
-      this.logger.log(
+      this.logger.debug(
         `🔍 Movie TMDB ID ${tmdbId} not found in database, fetching from TMDB...`
       );
 
@@ -719,7 +719,7 @@ export class MovieService {
         // Fetch from TMDB API
         const tmdbMovie = await this.tmdbService.getMovieDetails(tmdbId);
 
-        this.logger.log(
+        this.logger.debug(
           `✅ Found movie in TMDB: ${tmdbMovie.title}, saving to database...`
         );
 
@@ -739,7 +739,7 @@ export class MovieService {
           adult: tmdbMovie.adult || false,
         });
 
-        this.logger.log(`💾 Movie saved to database with ID: ${movie.id}`);
+        this.logger.debug(`💾 Movie saved to database with ID: ${movie.id}`);
       } catch (tmdbError) {
         this.logger.error(
           `❌ Movie TMDB ID ${tmdbId} not found in TMDB:`,
