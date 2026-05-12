@@ -142,15 +142,16 @@ export class RecommendationRepository {
    * CHỈ gọi khi cần cleanup, không tự động chạy
    * Giữ lại những recommendations có usage cao nhất
    */
-  async performMajorCleanup(): Promise<{ 
+  async performMajorCleanup(targetLimit: number = this.CLEANUP_TARGET): Promise<{ 
     beforeCount: number; 
     afterCount: number; 
     removedCount: number; 
   }> {
     const beforeCount = await this.repository.count();
+    const normalizedTarget = Math.max(0, Math.floor(targetLimit));
     
-    if (beforeCount <= this.CLEANUP_TARGET) {
-      this.logger.log(`✅ Database (${beforeCount} records) already within target (${this.CLEANUP_TARGET})`);
+    if (beforeCount <= normalizedTarget) {
+      this.logger.log(`✅ Database (${beforeCount} records) already within target (${normalizedTarget})`);
       return {
         beforeCount,
         afterCount: beforeCount,
@@ -158,9 +159,9 @@ export class RecommendationRepository {
       };
     }
 
-    const excessCount = beforeCount - this.CLEANUP_TARGET;
+    const excessCount = beforeCount - normalizedTarget;
     
-    this.logger.log(`🗑️ Major cleanup: ${beforeCount} → ${this.CLEANUP_TARGET} records (removing ${excessCount})`);
+    this.logger.log(`🗑️ Major cleanup: ${beforeCount} → ${normalizedTarget} records (removing ${excessCount})`);
 
     // Xóa những recommendations có priority thấp nhất
     // Ưu tiên giữ lại: viewCount cao -> lastAccessed mới -> score cao

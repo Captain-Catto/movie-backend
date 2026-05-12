@@ -5,6 +5,7 @@ import { Recommendation } from '../entities/recommendation.entity';
 import { RecommendationController } from '../controllers/recommendation.controller';
 import { RecommendationRepository } from '../repositories/recommendation.repository';
 import { RecommendationCleanupService } from '../services/recommendation-cleanup.service';
+import { DataSyncModule } from './data-sync.module';
 
 /**
  * Module cho recommendation cache system
@@ -17,6 +18,7 @@ import { RecommendationCleanupService } from '../services/recommendation-cleanup
 @Module({
   imports: [
     TypeOrmModule.forFeature([Recommendation]),
+    DataSyncModule,
     ScheduleModule.forRoot(), // Enable cron jobs
   ],
   controllers: [RecommendationController],

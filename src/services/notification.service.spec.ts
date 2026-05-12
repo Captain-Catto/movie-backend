@@ -62,10 +62,13 @@ describe('NotificationService', () => {
       findByUserAndTemplates: vi.fn(),
       markAsRead: vi.fn(),
       markAllAsRead: vi.fn(),
+      dismiss: vi.fn(),
+      dismissAll: vi.fn(),
     };
 
     analyticsRepository = {
       incrementReadCount: vi.fn(),
+      incrementDismissedCount: vi.fn(),
       create: vi.fn(),
       findByTemplateId: vi.fn(),
       getAdminStats: vi.fn(),

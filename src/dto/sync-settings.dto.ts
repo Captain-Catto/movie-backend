@@ -15,4 +15,14 @@ export class UpdateSyncSettingsDto {
   @IsInt()
   @Min(0)
   trendingCatalogLimit?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  peopleCacheLimit?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  recommendationCacheLimit?: number;
 }

@@ -7,14 +7,14 @@ import { PersonCreditsCache } from '../entities/person-credits-cache.entity';
 /**
  * Repository cho People cache system
  * Quản lý cache cho cả person details và credits
- * Scaling: 50k+ records trong ngày, cleanup về 1000 records tốt nhất
+ * Scaling: 50k+ records trong ngày, cleanup về 10000 records tốt nhất
  */
 @Injectable()
 export class PeopleCacheRepository {
   private readonly logger = new Logger(PeopleCacheRepository.name);
   
-  // Cleanup target: giữ lại 1000 records tốt nhất sau khi cleanup
-  private readonly CLEANUP_TARGET = 1000;
+  // Cleanup target: giữ lại 10000 records tốt nhất sau khi cleanup
+  private readonly CLEANUP_TARGET = 10000;
   
   // Trigger cleanup khi vượt quá số lượng này (50k records cho people)
   private readonly CLEANUP_THRESHOLD = 50000;
@@ -289,16 +289,17 @@ export class PeopleCacheRepository {
   }
 
   /**
-   * Major cleanup - giữ lại 1000 records tốt nhất cho mỗi type
+   * Major cleanup - giữ lại 10000 records tốt nhất cho mỗi type
    */
-  async performMajorCleanup(): Promise<{
+  async performMajorCleanup(targetLimit: number = this.CLEANUP_TARGET): Promise<{
     personCache: { beforeCount: number; afterCount: number; removedCount: number };
     creditsCache: { beforeCount: number; afterCount: number; removedCount: number };
   }> {
-    this.logger.log('💪 Performing major cleanup for people cache...');
+    const normalizedTarget = Math.max(0, Math.floor(targetLimit));
+    this.logger.log(`💪 Performing major cleanup for people cache to ${normalizedTarget} records...`);
 
-    const personCleanup = await this.majorCleanupPersonCache();
-    const creditsCleanup = await this.majorCleanupCreditsCache();
+    const personCleanup = await this.majorCleanupPersonCache(normalizedTarget);
+    const creditsCleanup = await this.majorCleanupCreditsCache(normalizedTarget);
 
     return {
       personCache: personCleanup,
@@ -306,14 +307,14 @@ export class PeopleCacheRepository {
     };
   }
 
-  private async majorCleanupPersonCache(): Promise<{ beforeCount: number; afterCount: number; removedCount: number }> {
+  private async majorCleanupPersonCache(targetLimit: number): Promise<{ beforeCount: number; afterCount: number; removedCount: number }> {
     const beforeCount = await this.personCacheRepository.count();
     
-    if (beforeCount <= this.CLEANUP_TARGET) {
+    if (beforeCount <= targetLimit) {
       return { beforeCount, afterCount: beforeCount, removedCount: 0 };
     }
 
-    const excessCount = beforeCount - this.CLEANUP_TARGET;
+    const excessCount = beforeCount - targetLimit;
 
     const result = await this.personCacheRepository
       .createQueryBuilder()
@@ -340,14 +341,14 @@ export class PeopleCacheRepository {
     };
   }
 
-  private async majorCleanupCreditsCache(): Promise<{ beforeCount: number; afterCount: number; removedCount: number }> {
+  private async majorCleanupCreditsCache(targetLimit: number): Promise<{ beforeCount: number; afterCount: number; removedCount: number }> {
     const beforeCount = await this.creditsRepository.count();
     
-    if (beforeCount <= this.CLEANUP_TARGET) {
+    if (beforeCount <= targetLimit) {
       return { beforeCount, afterCount: beforeCount, removedCount: 0 };
     }
 
-    const excessCount = beforeCount - this.CLEANUP_TARGET;
+    const excessCount = beforeCount - targetLimit;
 
     const result = await this.creditsRepository
       .createQueryBuilder()

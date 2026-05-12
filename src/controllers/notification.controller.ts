@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Put,
   Param,
@@ -131,6 +132,49 @@ export class NotificationController {
       return {
         success: false,
         message: "Failed to mark all notifications as read",
+        error: error.message,
+      };
+    }
+  }
+
+  @Delete(":id")
+  @HttpCode(HttpStatus.OK)
+  async dismissNotification(
+    @Param("id", ParseIntPipe) id: number,
+    @Request() req
+  ): Promise<ApiResponse> {
+    try {
+      await this.notificationService.dismissNotification(id, req.user.id);
+
+      return {
+        success: true,
+        message: "Notification deleted",
+        data: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to delete notification",
+        error: error.message,
+      };
+    }
+  }
+
+  @Delete()
+  @HttpCode(HttpStatus.OK)
+  async dismissAllNotifications(@Request() req): Promise<ApiResponse> {
+    try {
+      await this.notificationService.dismissAllNotifications(req.user.id);
+
+      return {
+        success: true,
+        message: "All notifications deleted",
+        data: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to delete notifications",
         error: error.message,
       };
     }

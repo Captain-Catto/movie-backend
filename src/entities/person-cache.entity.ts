@@ -10,7 +10,7 @@ import {
 /**
  * Entity lưu trữ cache cho people details
  * Cache thông tin người từ TMDB API để giảm API calls và tăng performance
- * Scaling strategy: 50k+ records trong ngày, cleanup về 1000 records tốt nhất
+ * Scaling strategy: 50k+ records trong ngày, cleanup về 10000 records tốt nhất
  */
 @Entity('person_cache')
 @Index(['tmdbId'], { unique: true }) // Unique index cho TMDB ID

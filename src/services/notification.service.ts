@@ -416,6 +416,51 @@ export class NotificationService {
     await this.templateRepository.deleteById(templateId);
   }
 
+  async dismissNotification(
+    templateId: number,
+    userId: number
+  ): Promise<void> {
+    const template = await this.templateRepository.findById(templateId);
+
+    if (!template) {
+      throw new NotFoundException("Notification not found");
+    }
+
+    const userRoles = await this.getUserRoles(userId);
+    if (!this.isUserEligibleForTemplate(userId, userRoles, template)) {
+      throw new ForbiddenException("You can only delete your own notifications");
+    }
+
+    const wasNewDismissal = await this.userStateRepository.dismiss(
+      templateId,
+      userId
+    );
+    if (wasNewDismissal) {
+      await this.analyticsRepository.incrementDismissedCount(templateId);
+    }
+  }
+
+  async dismissAllNotifications(userId: number): Promise<void> {
+    const userRoles = await this.getUserRoles(userId);
+    const templateIds = await this.templateRepository.findIdsForUser(
+      userId,
+      userRoles
+    );
+
+    if (templateIds.length === 0) {
+      return;
+    }
+
+    await this.userStateRepository.dismissAll(userId, templateIds);
+
+    // Per-template analytics are incremented once per visible notification.
+    await Promise.all(
+      templateIds.map((templateId) =>
+        this.analyticsRepository.incrementDismissedCount(templateId)
+      )
+    );
+  }
+
   // Quick action methods for admin controller
   async sendMaintenanceNotification(
     dto: CreateBroadcastNotificationDto,

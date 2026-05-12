@@ -28,7 +28,7 @@ export class SyncSettingsService {
       });
       settings = await this.syncSettingsRepository.save(settings);
       this.logger.log(
-        `Initialized sync settings with defaults: movies=${defaults.movieCatalogLimit}, tv=${defaults.tvCatalogLimit}, trending=${defaults.trendingCatalogLimit}`
+        `Initialized sync settings with defaults: movies=${defaults.movieCatalogLimit}, tv=${defaults.tvCatalogLimit}, trending=${defaults.trendingCatalogLimit}, peopleCache=${defaults.peopleCacheLimit}, recommendations=${defaults.recommendationCacheLimit}`
       );
     }
 
@@ -50,6 +50,8 @@ export class SyncSettingsService {
     movieLimit: number;
     tvLimit: number;
     trendingLimit: number;
+    peopleCacheLimit: number;
+    recommendationCacheLimit: number;
   }> {
     const settings = await this.getSettings();
     const defaults = this.getDefaultLimits();
@@ -67,6 +69,14 @@ export class SyncSettingsService {
         settings.trendingCatalogLimit,
         defaults.trendingCatalogLimit
       ),
+      peopleCacheLimit: this.normalizeLimit(
+        settings.peopleCacheLimit,
+        defaults.peopleCacheLimit
+      ),
+      recommendationCacheLimit: this.normalizeLimit(
+        settings.recommendationCacheLimit,
+        defaults.recommendationCacheLimit
+      ),
     };
   }
 
@@ -74,6 +84,8 @@ export class SyncSettingsService {
     movieCatalogLimit: number;
     tvCatalogLimit: number;
     trendingCatalogLimit: number;
+    peopleCacheLimit: number;
+    recommendationCacheLimit: number;
   } {
     return {
       movieCatalogLimit: this.normalizeLimit(
@@ -87,6 +99,14 @@ export class SyncSettingsService {
       trendingCatalogLimit: this.normalizeLimit(
         this.configService.get<number>("TRENDING_CATALOG_LIMIT"),
         100
+      ),
+      peopleCacheLimit: this.normalizeLimit(
+        this.configService.get<number>("PEOPLE_CACHE_LIMIT"),
+        10_000
+      ),
+      recommendationCacheLimit: this.normalizeLimit(
+        this.configService.get<number>("RECOMMENDATION_CACHE_LIMIT"),
+        10_000
       ),
     };
   }

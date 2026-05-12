@@ -88,7 +88,8 @@ export class NotificationTemplateRepository {
       )
       .andWhere("(template.expiresAt IS NULL OR template.expiresAt > :now)", {
         now: new Date(),
-      });
+      })
+      .andWhere("state.dismissedAt IS NULL");
 
     if (unreadOnly) {
       queryBuilder.andWhere("state.readAt IS NULL");
@@ -154,6 +155,7 @@ export class NotificationTemplateRepository {
       .andWhere("(template.expiresAt IS NULL OR template.expiresAt > :now)", {
         now: new Date(),
       })
+      .andWhere("state.dismissedAt IS NULL")
       .andWhere("state.readAt IS NULL")
       .getCount();
 
@@ -311,6 +313,68 @@ export class UserNotificationStateRepository {
 
       await this.repository.insert(newStates);
     }
+  }
+
+  async dismiss(templateId: number, userId: number): Promise<boolean> {
+    const now = new Date();
+    let state = await this.repository.findOne({
+      where: { templateId, userId },
+    });
+    const wasAlreadyDismissed = Boolean(state?.dismissedAt);
+
+    if (state) {
+      state.state = NotificationState.DISMISSED;
+      state.dismissedAt = now;
+      state.updatedAt = now;
+    } else {
+      state = this.repository.create({
+        templateId,
+        userId,
+        state: NotificationState.DISMISSED,
+        dismissedAt: now,
+      });
+    }
+
+    await this.repository.save(state);
+    return !wasAlreadyDismissed;
+  }
+
+  async dismissAll(userId: number, templateIds: number[]): Promise<number> {
+    if (templateIds.length === 0) return 0;
+
+    const now = new Date();
+    const updateResult = await this.repository.update(
+      { userId, templateId: In(templateIds), dismissedAt: IsNull() },
+      {
+        state: NotificationState.DISMISSED,
+        dismissedAt: now,
+        updatedAt: now,
+      }
+    );
+
+    const existingStates = await this.repository.find({
+      where: { userId, templateId: In(templateIds) },
+      select: ["templateId"],
+    });
+    const existingTemplateIds = existingStates.map((state) => state.templateId);
+    const missingTemplateIds = templateIds.filter(
+      (id) => !existingTemplateIds.includes(id)
+    );
+
+    if (missingTemplateIds.length > 0) {
+      await this.repository.insert(
+        missingTemplateIds.map((templateId) => ({
+          userId,
+          templateId,
+          state: NotificationState.DISMISSED,
+          dismissedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        }))
+      );
+    }
+
+    return (updateResult.affected || 0) + missingTemplateIds.length;
   }
 
   async getUnreadCount(

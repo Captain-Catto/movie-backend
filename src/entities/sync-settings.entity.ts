@@ -20,6 +20,12 @@ export class SyncSettings {
   @Column({ type: "integer", default: 100 })
   trendingCatalogLimit: number;
 
+  @Column({ type: "integer", default: 10_000 })
+  peopleCacheLimit: number;
+
+  @Column({ type: "integer", default: 10_000 })
+  recommendationCacheLimit: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RecommendationRepository } from '../repositories/recommendation.repository';
+import { SyncSettingsService } from './sync-settings.service';
 
 /**
  * Service đơn giản để cleanup recommendations cache
@@ -12,7 +13,8 @@ export class RecommendationCleanupService {
   private readonly logger = new Logger(RecommendationCleanupService.name);
 
   constructor(
-    private recommendationRepository: RecommendationRepository
+    private recommendationRepository: RecommendationRepository,
+    private syncSettingsService: SyncSettingsService
   ) {}
 
   /**
@@ -27,11 +29,13 @@ export class RecommendationCleanupService {
 
       // Lấy thống kê hiện tại
       const stats = await this.recommendationRepository.getCacheStats();
+      const { recommendationCacheLimit } =
+        await this.syncSettingsService.getCatalogLimits();
       
       this.logger.log(`📊 Current cache stats:`, {
         totalRecords: stats.totalRecords,
         byContentType: stats.byContentType,
-        cleanupThreshold: stats.cleanupThreshold,
+        recommendationCacheLimit,
         needsCleanup: stats.needsCleanup,
       });
 
@@ -42,14 +46,19 @@ export class RecommendationCleanupService {
         this.logger.log(`🧹 Light cleanup: Removed ${removedOldCount} old unused recommendations`);
       }
 
-      // 2. Major cleanup nếu cần (> 100k records)
+      // 2. Major cleanup nếu vượt giới hạn cấu hình
       const updatedStats = await this.recommendationRepository.getCacheStats();
       
-      if (updatedStats.needsCleanup) {
-        this.logger.log(`⚠️ Database size (${updatedStats.totalRecords}) exceeds threshold (${updatedStats.cleanupThreshold})`);
-        this.logger.log(`💪 Performing MAJOR cleanup to ${updatedStats.cleanupTarget} records...`);
+      if (
+        recommendationCacheLimit > 0 &&
+        updatedStats.totalRecords > recommendationCacheLimit
+      ) {
+        this.logger.log(`⚠️ Database size (${updatedStats.totalRecords}) exceeds configured limit (${recommendationCacheLimit})`);
+        this.logger.log(`💪 Performing MAJOR cleanup to ${recommendationCacheLimit} records...`);
         
-        const majorCleanupResult = await this.recommendationRepository.performMajorCleanup();
+        const majorCleanupResult = await this.recommendationRepository.performMajorCleanup(
+          recommendationCacheLimit
+        );
         
         this.logger.log(`✅ Major cleanup completed:`, {
           before: majorCleanupResult.beforeCount,
@@ -57,7 +66,7 @@ export class RecommendationCleanupService {
           removed: majorCleanupResult.removedCount,
         });
       } else {
-        this.logger.log(`✅ Database size (${updatedStats.totalRecords}) is within threshold, no major cleanup needed`);
+        this.logger.log(`✅ Database size (${updatedStats.totalRecords}) is within configured limit, no major cleanup needed`);
       }
 
     } catch (error) {
@@ -86,6 +95,8 @@ export class RecommendationCleanupService {
     this.logger.log('🔧 Performing manual cleanup...');
 
     const statsBefore = await this.recommendationRepository.getCacheStats();
+    const { recommendationCacheLimit } =
+      await this.syncSettingsService.getCatalogLimits();
     
     // 1. Light cleanup - xóa cache cũ không sử dụng
     const removedOldCount = await this.recommendationRepository.cleanupOldUnusedCache(3); // Xóa cũ hơn 3 ngày
@@ -93,11 +104,15 @@ export class RecommendationCleanupService {
     // 2. Major cleanup nếu cần
     let majorCleanupResult: { performed: boolean; result?: any } = { performed: false };
     
-    const needsMajor = await this.recommendationRepository.needsMajorCleanup();
+    const needsMajor =
+      recommendationCacheLimit > 0 &&
+      statsBefore.totalRecords > recommendationCacheLimit;
     
     if (needsMajor) {
       this.logger.log('💪 Performing major cleanup...');
-      const result = await this.recommendationRepository.performMajorCleanup();
+      const result = await this.recommendationRepository.performMajorCleanup(
+        recommendationCacheLimit
+      );
       majorCleanupResult = { performed: true, result };
     } else {
       this.logger.log('✅ No major cleanup needed');
