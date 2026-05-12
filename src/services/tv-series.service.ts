@@ -324,11 +324,16 @@ export class TVSeriesService {
         });
       }
     } catch (error) {
-      this.logger.warn(
-        `Failed to enrich TV series ${tmdbId} with TMDB details: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+      const status = error?.response?.status;
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (status === 404) {
+        this.logger.debug(`TV series ${tmdbId} not found in TMDB (404)`);
+      } else {
+        this.logger.warn(
+          `Failed to enrich TV series ${tmdbId} with TMDB details: ${message}`
+        );
+      }
     }
 
     const transformed = this.transformTVSeries(tvSeries, tmdbData);

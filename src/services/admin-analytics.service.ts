@@ -37,7 +37,7 @@ export class AdminAnalyticsService {
     const { startDate, endDate, contentType } = query;
 
     // Debug logging
-    this.logger.log(`[Analytics] getViewStats called with: startDate=${startDate}, endDate=${endDate}, contentType=${contentType}`);
+    this.logger.debug(`[Analytics] getViewStats called with: startDate=${startDate}, endDate=${endDate}, contentType=${contentType}`);
 
     try {
       const queryBuilder = this.viewAnalyticsRepository
@@ -64,7 +64,7 @@ export class AdminAnalyticsService {
       }
 
       const totalViews = await queryBuilder.getCount();
-      this.logger.log(`[Analytics] getViewStats result: ${totalViews} views`);
+      this.logger.debug(`[Analytics] getViewStats result: ${totalViews} views`);
 
       // Views by content type
       const movieViews = await this.viewAnalyticsRepository.count({
@@ -253,7 +253,7 @@ export class AdminAnalyticsService {
     const { startDate, endDate, contentType } = query;
 
     // Debug logging
-    this.logger.log(`[Analytics] getClickStats called with: startDate=${startDate}, endDate=${endDate}, contentType=${contentType}`);
+    this.logger.debug(`[Analytics] getClickStats called with: startDate=${startDate}, endDate=${endDate}, contentType=${contentType}`);
 
     try {
       const queryBuilder = this.viewAnalyticsRepository
@@ -280,7 +280,7 @@ export class AdminAnalyticsService {
       }
 
       const totalClicks = await queryBuilder.getCount();
-      this.logger.log(`[Analytics] getClickStats result: ${totalClicks} clicks`);
+      this.logger.debug(`[Analytics] getClickStats result: ${totalClicks} clicks`);
 
       return {
         total: totalClicks,
@@ -296,7 +296,7 @@ export class AdminAnalyticsService {
     const { startDate, endDate, contentType } = query;
 
     // Debug logging
-    this.logger.log(`[Analytics] getPlayStats called with: startDate=${startDate}, endDate=${endDate}, contentType=${contentType}`);
+    this.logger.debug(`[Analytics] getPlayStats called with: startDate=${startDate}, endDate=${endDate}, contentType=${contentType}`);
 
     try {
       const queryBuilder = this.viewAnalyticsRepository
@@ -342,7 +342,7 @@ export class AdminAnalyticsService {
         {}
       );
 
-      this.logger.log(`[Analytics] getPlayStats result: ${totalPlays} plays`);
+      this.logger.debug(`[Analytics] getPlayStats result: ${totalPlays} plays`);
 
       return {
         total: totalPlays,

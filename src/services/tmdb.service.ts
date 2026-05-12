@@ -864,7 +864,7 @@ export class TMDBService {
       return response.data;
     } catch (error) {
       if (error.response?.status === 404) {
-        this.logger.warn(`Movie ${movieId} not found in TMDB (404)`);
+        this.logger.debug(`Movie ${movieId} not found in TMDB (404)`);
       } else {
         this.logger.error(`Error fetching enhanced movie details ${movieId}:`, error.message);
       }
@@ -886,7 +886,7 @@ export class TMDBService {
       return response.data;
     } catch (error) {
       if (error.response?.status === 404) {
-        this.logger.warn(`TV series ${tvId} not found in TMDB (404)`);
+        this.logger.debug(`TV series ${tvId} not found in TMDB (404)`);
       } else {
         this.logger.error(`Error fetching enhanced TV series details ${tvId}:`, error.message);
       }
