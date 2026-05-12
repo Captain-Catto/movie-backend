@@ -83,20 +83,11 @@ export class NotificationService {
 
   // ✅ OPTIMIZED: Efficient unread count
   async getUnreadCount(userId: number): Promise<number> {
-    // Get user's roles
     const userRoles = await this.getUserRoles(userId);
-
-    // Get all applicable template IDs (without pagination)
-    const { templates } = await this.templateRepository.findForUser(
+    return await this.templateRepository.getUnreadCountForUser(
       userId,
-      userRoles,
-      { limit: 1000 } // Get all applicable templates
+      userRoles
     );
-
-    const templateIds = templates.map((t) => t.id);
-
-    // Calculate unread count efficiently
-    return await this.userStateRepository.getUnreadCount(userId, templateIds);
   }
 
   // ✅ OPTIMIZED: Template-based mark as read
@@ -132,14 +123,10 @@ export class NotificationService {
     // Get user's roles to determine applicable templates
     const userRoles = await this.getUserRoles(userId);
 
-    // Get all applicable template IDs
-    const { templates } = await this.templateRepository.findForUser(
+    const templateIds = await this.templateRepository.findIdsForUser(
       userId,
-      userRoles,
-      { limit: 1000 } // Get all applicable templates
+      userRoles
     );
-
-    const templateIds = templates.map((t) => t.id);
 
     // Mark all applicable templates as read (create states if needed)
     if (templateIds.length > 0) {
@@ -157,7 +144,11 @@ export class NotificationService {
     });
 
     const unreadCount = await this.getUnreadCount(userId);
-    const totalCount = notifications.length;
+    const { total: totalCount } = await this.templateRepository.findForUser(
+      userId,
+      userRoles,
+      { page: 1, limit: 1 }
+    );
 
     return {
       total: totalCount,
@@ -184,7 +175,11 @@ export class NotificationService {
       senderId,
       actionUrl: dto.actionUrl,
       metadata: dto.metadata,
-      expiresAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+      expiresAt: dto.expiresAt
+        ? new Date(dto.expiresAt)
+        : dto.scheduledAt
+        ? new Date(dto.scheduledAt)
+        : null,
     });
 
     // Get count of active users for analytics
@@ -253,7 +248,11 @@ export class NotificationService {
       senderId,
       actionUrl: dto.actionUrl,
       metadata: dto.metadata,
-      expiresAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+      expiresAt: dto.expiresAt
+        ? new Date(dto.expiresAt)
+        : dto.scheduledAt
+        ? new Date(dto.scheduledAt)
+        : null,
     });
 
     // Get users count for analytics
@@ -308,7 +307,11 @@ export class NotificationService {
       targetValue: dto.userId.toString(),
       senderId,
       actionUrl: dto.actionUrl,
-      expiresAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+      expiresAt: dto.expiresAt
+        ? new Date(dto.expiresAt)
+        : dto.scheduledAt
+        ? new Date(dto.scheduledAt)
+        : null,
       metadata: dto.metadata,
     });
 
@@ -374,6 +377,8 @@ export class NotificationService {
     limit?: number;
     targetType?: NotificationTargetType;
     type?: NotificationType;
+    startDate?: string;
+    endDate?: string;
   }): Promise<{
     notifications: NotificationResponseDto[];
     total: number;

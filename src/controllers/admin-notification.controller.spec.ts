@@ -238,6 +238,8 @@ describe('AdminNotificationController', () => {
         limit: 20,
         targetType: undefined,
         type: undefined,
+        startDate: undefined,
+        endDate: undefined,
       });
     });
 
@@ -259,6 +261,8 @@ describe('AdminNotificationController', () => {
         limit: 10,
         targetType: NotificationTargetType.ROLE,
         type: NotificationType.WARNING,
+        startDate: undefined,
+        endDate: undefined,
       });
     });
 

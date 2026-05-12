@@ -150,7 +150,9 @@ export class AdminNotificationController {
     @Query("page") page?: number,
     @Query("limit") limit?: number,
     @Query("targetType") targetType?: NotificationTargetType,
-    @Query("type") type?: NotificationType
+    @Query("type") type?: NotificationType,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string
   ): Promise<ApiResponse> {
     try {
       const result = await this.notificationService.getAdminNotifications({
@@ -158,6 +160,8 @@ export class AdminNotificationController {
         limit: limit ? Number(limit) : 20,
         targetType,
         type,
+        startDate,
+        endDate,
       });
 
       return {

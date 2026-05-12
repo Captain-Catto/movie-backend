@@ -17,6 +17,7 @@ import { NotificationType } from "../entities/notification-template.entity";
 interface AuthenticatedSocket extends Socket {
   userId?: number;
   userEmail?: string;
+  userRole?: string;
 }
 
 @WebSocketGateway({
@@ -36,7 +37,7 @@ export class NotificationGateway
 {
   @WebSocketServer() server: Server;
   private logger: Logger = new Logger("NotificationGateway");
-  private connectedUsers = new Map<number, string>(); // userId -> socketId
+  private connectedUsers = new Map<number, Set<string>>();
 
   constructor(
     private jwtService: JwtService,
@@ -68,6 +69,7 @@ export class NotificationGateway
         const payload = this.jwtService.verify(token);
         client.userId = payload.sub;
         client.userEmail = payload.email;
+        client.userRole = payload.role;
       } catch (jwtError) {
         // Simplified error log
         this.logger.error(`WebSocket: Invalid token`);
@@ -77,10 +79,15 @@ export class NotificationGateway
       }
 
       // Store connection
-      this.connectedUsers.set(client.userId, client.id);
+      const userSockets = this.connectedUsers.get(client.userId) ?? new Set();
+      userSockets.add(client.id);
+      this.connectedUsers.set(client.userId, userSockets);
 
       // Join user to their personal room
       await client.join(`user:${client.userId}`);
+      if (client.userRole) {
+        await client.join(`role:${client.userRole}`);
+      }
 
       // Simplified connection log - just show role and status
       this.logger.log(`🔌 WebSocket connected: ${client.userEmail}`);
@@ -105,7 +112,13 @@ export class NotificationGateway
 
   handleDisconnect(client: AuthenticatedSocket) {
     if (client.userId) {
-      this.connectedUsers.delete(client.userId);
+      const userSockets = this.connectedUsers.get(client.userId);
+      if (userSockets) {
+        userSockets.delete(client.id);
+        if (userSockets.size === 0) {
+          this.connectedUsers.delete(client.userId);
+        }
+      }
       // Simplified disconnect log
       this.logger.log(`🔌 WebSocket disconnected: ${client.userEmail}`);
     } else {
@@ -186,9 +199,9 @@ export class NotificationGateway
       metadata?: Record<string, any>;
     }
   ) {
-    const socketId = this.connectedUsers.get(userId);
+    const sockets = this.connectedUsers.get(userId);
 
-    if (socketId) {
+    if (sockets?.size) {
       // Send to connected user
       this.server.to(`user:${userId}`).emit("notification:new", notification);
 
@@ -222,7 +235,7 @@ export class NotificationGateway
     this.server.emit("notification:new", notification);
 
     // Update unread counts for all connected users
-    for (const [userId, socketId] of this.connectedUsers.entries()) {
+    for (const [userId] of this.connectedUsers.entries()) {
       try {
         const unreadCount = await this.notificationService.getUnreadCount(
           userId
@@ -256,11 +269,40 @@ export class NotificationGateway
       createdAt: Date;
     }
   ) {
-    // This would require storing user roles in connection map
-    // For now, broadcast to all (can be optimized later)
-    await this.broadcastNotification(notification);
+    this.server.to(`role:${role}`).emit("notification:new", notification);
+
+    const room = this.server.sockets.adapter.rooms.get(`role:${role}`);
+    const connectedRoleUserIds = new Set<number>();
+
+    if (room) {
+      for (const socketId of room) {
+        const socket = this.server.sockets.sockets.get(socketId) as
+          | AuthenticatedSocket
+          | undefined;
+        if (socket?.userId) {
+          connectedRoleUserIds.add(socket.userId);
+        }
+      }
+    }
+
+    for (const userId of connectedRoleUserIds) {
+      try {
+        const unreadCount = await this.notificationService.getUnreadCount(
+          userId
+        );
+        this.server
+          .to(`user:${userId}`)
+          .emit("notification:unread-count", { count: unreadCount });
+      } catch (error) {
+        this.logger.error(
+          `Failed to update unread count for user ${userId}:`,
+          error
+        );
+      }
+    }
+
     this.logger.log(
-      `Sent role-based notification ${notification.id} for role: ${role}`
+      `Sent role-based notification ${notification.id} for role: ${role} to ${connectedRoleUserIds.size} connected users`
     );
   }
 

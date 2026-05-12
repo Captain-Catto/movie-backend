@@ -53,12 +53,13 @@ describe('NotificationService', () => {
       getAllActiveUsers: vi.fn(),
       getUsersByRole: vi.fn(),
       findAllForAdmin: vi.fn(),
+      findIdsForUser: vi.fn(),
+      getUnreadCountForUser: vi.fn(),
       deleteById: vi.fn(),
     };
 
     userStateRepository = {
       findByUserAndTemplates: vi.fn(),
-      getUnreadCount: vi.fn(),
       markAsRead: vi.fn(),
       markAllAsRead: vi.fn(),
     };
@@ -137,22 +138,16 @@ describe('NotificationService', () => {
   describe('getUnreadCount', () => {
     it('should get unread count for user', async () => {
       const mockUsers = [{ id: 1, role: UserRole.USER }];
-      const mockTemplates = [
-        { id: 1, title: 'Notification 1' },
-        { id: 2, title: 'Notification 2' },
-      ];
 
       templateRepository.getAllActiveUsers.mockResolvedValue(mockUsers);
-      templateRepository.findForUser.mockResolvedValue({
-        templates: mockTemplates,
-        total: 2,
-      });
-      userStateRepository.getUnreadCount.mockResolvedValue(2);
+      templateRepository.getUnreadCountForUser.mockResolvedValue(2);
 
       const count = await service.getUnreadCount(1);
 
       expect(count).toBe(2);
-      expect(userStateRepository.getUnreadCount).toHaveBeenCalledWith(1, [1, 2]);
+      expect(templateRepository.getUnreadCountForUser).toHaveBeenCalledWith(1, [
+        UserRole.USER,
+      ]);
     });
   });
 
@@ -220,16 +215,9 @@ describe('NotificationService', () => {
   describe('markAllAsRead', () => {
     it('should mark all notifications as read', async () => {
       const mockUsers = [{ id: 1, role: UserRole.USER }];
-      const mockTemplates = [
-        { id: 1, title: 'Notification 1' },
-        { id: 2, title: 'Notification 2' },
-      ];
 
       templateRepository.getAllActiveUsers.mockResolvedValue(mockUsers);
-      templateRepository.findForUser.mockResolvedValue({
-        templates: mockTemplates,
-        total: 2,
-      });
+      templateRepository.findIdsForUser.mockResolvedValue([1, 2]);
       userStateRepository.markAllAsRead.mockResolvedValue(undefined);
 
       await service.markAllAsRead(1);
@@ -241,10 +229,7 @@ describe('NotificationService', () => {
       const mockUsers = [{ id: 1, role: UserRole.USER }];
 
       templateRepository.getAllActiveUsers.mockResolvedValue(mockUsers);
-      templateRepository.findForUser.mockResolvedValue({
-        templates: [],
-        total: 0,
-      });
+      templateRepository.findIdsForUser.mockResolvedValue([]);
 
       await service.markAllAsRead(1);
 

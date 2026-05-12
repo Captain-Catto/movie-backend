@@ -61,7 +61,12 @@ export class CreateNotificationDto {
   @MaxLength(500)
   actionUrl?: string;
 
-  @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z", description: "ISO date for scheduled notifications" })
+  @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z", description: "ISO date when notification expires" })
+  @IsDateString()
+  @IsOptional()
+  expiresAt?: string;
+
+  @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z", description: "Deprecated: use expiresAt until scheduled delivery is implemented" })
   @IsDateString()
   @IsOptional()
   scheduledAt?: string;
@@ -104,6 +109,11 @@ export class CreateBroadcastNotificationDto {
   actionUrl?: string;
 
   @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z" })
+  @IsDateString()
+  @IsOptional()
+  expiresAt?: string;
+
+  @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z", description: "Deprecated: use expiresAt until scheduled delivery is implemented" })
   @IsDateString()
   @IsOptional()
   scheduledAt?: string;
@@ -164,6 +174,11 @@ export class CreateRoleNotificationDto {
   @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z" })
   @IsDateString()
   @IsOptional()
+  expiresAt?: string;
+
+  @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z", description: "Deprecated: use expiresAt until scheduled delivery is implemented" })
+  @IsDateString()
+  @IsOptional()
   scheduledAt?: string;
 }
 
@@ -208,6 +223,11 @@ export class CreateUserNotificationDto {
   actionUrl?: string;
 
   @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z" })
+  @IsDateString()
+  @IsOptional()
+  expiresAt?: string;
+
+  @ApiPropertyOptional({ example: "2025-12-31T00:00:00Z", description: "Deprecated: use expiresAt until scheduled delivery is implemented" })
   @IsDateString()
   @IsOptional()
   scheduledAt?: string;

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, In } from "typeorm";
+import { Repository, In, IsNull } from "typeorm";
 import {
   NotificationTemplate,
   NotificationType,
@@ -45,7 +45,7 @@ export class NotificationTemplateRepository {
       unreadOnly?: boolean;
     } = {}
   ): Promise<{ templates: NotificationTemplate[]; total: number }> {
-    const { page = 1, limit = 20 } = options;
+    const { page = 1, limit = 20, unreadOnly = false } = options;
     const skip = (page - 1) * limit;
 
     const user = await this.userRepository.findOne({
@@ -56,6 +56,12 @@ export class NotificationTemplateRepository {
     const queryBuilder = this.repository
       .createQueryBuilder("template")
       .leftJoinAndSelect("template.sender", "sender")
+      .leftJoin(
+        UserNotificationState,
+        "state",
+        "state.templateId = template.id AND state.userId = :stateUserId",
+        { stateUserId: userId }
+      )
       .where(
         `(
           template.targetType = :all OR 
@@ -82,7 +88,13 @@ export class NotificationTemplateRepository {
       )
       .andWhere("(template.expiresAt IS NULL OR template.expiresAt > :now)", {
         now: new Date(),
-      })
+      });
+
+    if (unreadOnly) {
+      queryBuilder.andWhere("state.readAt IS NULL");
+    }
+
+    queryBuilder
       .orderBy("template.priority", "DESC")
       .addOrderBy("template.createdAt", "DESC")
       .skip(skip)
@@ -92,15 +104,73 @@ export class NotificationTemplateRepository {
     return { templates, total };
   }
 
+  async findIdsForUser(
+    userId: number,
+    userRoles: UserRole[]
+  ): Promise<number[]> {
+    const { templates } = await this.findForUser(userId, userRoles, {
+      page: 1,
+      limit: 10000,
+    });
+
+    return templates.map((template) => template.id);
+  }
+
+  async getUnreadCountForUser(
+    userId: number,
+    userRoles: UserRole[]
+  ): Promise<number> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ["createdAt"],
+    });
+
+    const result = await this.repository
+      .createQueryBuilder("template")
+      .leftJoin(
+        UserNotificationState,
+        "state",
+        "state.templateId = template.id AND state.userId = :stateUserId",
+        { stateUserId: userId }
+      )
+      .where(
+        `(
+          template.targetType = :all OR 
+          (template.targetType = :user AND template.targetValue = :userId) OR
+          (template.targetType = :role AND template.targetValue IN (:...userRoles))
+        )`,
+        {
+          all: NotificationTargetType.ALL,
+          user: NotificationTargetType.USER,
+          role: NotificationTargetType.ROLE,
+          userId: userId.toString(),
+          userRoles,
+        }
+      )
+      .andWhere(
+        user?.createdAt ? "template.createdAt >= :userCreatedAt" : "1=1",
+        user?.createdAt ? { userCreatedAt: user.createdAt } : undefined
+      )
+      .andWhere("(template.expiresAt IS NULL OR template.expiresAt > :now)", {
+        now: new Date(),
+      })
+      .andWhere("state.readAt IS NULL")
+      .getCount();
+
+    return result;
+  }
+
   async findAllForAdmin(
     options: {
       page?: number;
       limit?: number;
       targetType?: NotificationTargetType;
       type?: NotificationType;
+      startDate?: string;
+      endDate?: string;
     } = {}
   ): Promise<{ templates: NotificationTemplate[]; total: number }> {
-    const { page = 1, limit = 20, targetType, type } = options;
+    const { page = 1, limit = 20, targetType, type, startDate, endDate } = options;
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.repository
@@ -118,6 +188,18 @@ export class NotificationTemplateRepository {
 
     if (type) {
       queryBuilder.andWhere("template.type = :type", { type });
+    }
+
+    if (startDate) {
+      queryBuilder.andWhere("template.createdAt >= :startDate", {
+        startDate: new Date(startDate),
+      });
+    }
+
+    if (endDate) {
+      queryBuilder.andWhere("template.createdAt <= :endDate", {
+        endDate: new Date(endDate),
+      });
     }
 
     const [templates, total] = await queryBuilder.getManyAndCount();
@@ -196,7 +278,7 @@ export class UserNotificationStateRepository {
 
     // Step 1: Update existing states with readAt: null to READ
     await this.repository.update(
-      { userId, readAt: null },
+      { userId, templateId: In(templateIds), readAt: IsNull() },
       {
         state: NotificationState.READ,
         readAt: now,
@@ -206,7 +288,7 @@ export class UserNotificationStateRepository {
 
     // Step 2: Get existing state template IDs
     const existingStates = await this.repository.find({
-      where: { userId },
+      where: { userId, templateId: In(templateIds) },
       select: ['templateId'],
     });
     const existingTemplateIds = existingStates.map((s) => s.templateId);
