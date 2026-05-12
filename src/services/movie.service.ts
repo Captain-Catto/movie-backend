@@ -11,6 +11,7 @@ import {
   TMDB_DEFAULT_LANGUAGE,
 } from "../constants/tmdb.constants";
 import { ContentTranslationRepository } from "../repositories/content-translation.repository";
+import { parseOptionalDate } from "../utils/date.util";
 
 export interface MovieResponse {
   id: number;
@@ -186,9 +187,7 @@ export class MovieService {
             overview: tmdbMovie.overview,
             posterPath: tmdbMovie.poster_path,
             backdropPath: tmdbMovie.backdrop_path,
-            releaseDate: tmdbMovie.release_date
-              ? new Date(tmdbMovie.release_date)
-              : null,
+            releaseDate: parseOptionalDate(tmdbMovie.release_date),
             voteAverage: tmdbMovie.vote_average,
             voteCount: tmdbMovie.vote_count,
             popularity: tmdbMovie.popularity,
@@ -420,7 +419,7 @@ export class MovieService {
           overview: tmdbMovie.overview,
           posterPath: tmdbMovie.poster_path,
           backdropPath: tmdbMovie.backdrop_path,
-          releaseDate: new Date(tmdbMovie.release_date),
+          releaseDate: parseOptionalDate(tmdbMovie.release_date),
           voteAverage: tmdbMovie.vote_average,
           voteCount: tmdbMovie.vote_count,
           popularity: tmdbMovie.popularity,
@@ -431,10 +430,15 @@ export class MovieService {
 
         this.logger.debug(`💾 Movie saved to database with ID: ${movie.id}`);
       } catch (tmdbError) {
-        this.logger.error(
-          `❌ Movie ID ${id} not found in TMDB either:`,
-          tmdbError.message
-        );
+        const status = tmdbError?.response?.status;
+        const message = tmdbError instanceof Error ? tmdbError.message : String(tmdbError);
+
+        if (status === 404) {
+          this.logger.warn(`Movie ID ${id} not found in TMDB (404)`);
+        } else {
+          this.logger.error(`❌ Failed to fetch movie ID ${id} from TMDB:`, message);
+        }
+
         throw new NotFoundException(
           `Movie with ID ${id} not found in database or TMDB`
         );
@@ -730,7 +734,7 @@ export class MovieService {
           overview: tmdbMovie.overview,
           posterPath: tmdbMovie.poster_path,
           backdropPath: tmdbMovie.backdrop_path,
-          releaseDate: new Date(tmdbMovie.release_date),
+          releaseDate: parseOptionalDate(tmdbMovie.release_date),
           voteAverage: tmdbMovie.vote_average,
           voteCount: tmdbMovie.vote_count,
           popularity: tmdbMovie.popularity,
@@ -741,10 +745,15 @@ export class MovieService {
 
         this.logger.debug(`💾 Movie saved to database with ID: ${movie.id}`);
       } catch (tmdbError) {
-        this.logger.error(
-          `❌ Movie TMDB ID ${tmdbId} not found in TMDB:`,
-          tmdbError.message
-        );
+        const status = tmdbError?.response?.status;
+        const message = tmdbError instanceof Error ? tmdbError.message : String(tmdbError);
+
+        if (status === 404) {
+          this.logger.warn(`Movie TMDB ID ${tmdbId} not found in TMDB (404)`);
+        } else {
+          this.logger.error(`❌ Failed to fetch movie TMDB ID ${tmdbId} from TMDB:`, message);
+        }
+
         throw new NotFoundException(`Movie with TMDB ID ${tmdbId} not found`);
       }
     }

@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Movie } from "../entities/movie.entity";
 import { TVSeries } from "../entities/tv-series.entity";
+import { parseOptionalDate } from "../utils/date.util";
 
 @Injectable()
 export class ContentService {
@@ -76,9 +77,7 @@ export class ContentService {
         overview: movieData.overview,
         posterPath: movieData.poster_path,
         backdropPath: movieData.backdrop_path,
-        releaseDate: movieData.release_date
-          ? new Date(movieData.release_date)
-          : null,
+        releaseDate: parseOptionalDate(movieData.release_date),
         voteAverage: movieData.vote_average || 0,
         voteCount: movieData.vote_count || 0,
         popularity: movieData.popularity || 0,
@@ -131,12 +130,8 @@ export class ContentService {
         overview: tvData.overview,
         posterPath: tvData.poster_path,
         backdropPath: tvData.backdrop_path,
-        releaseDate: tvData.first_air_date
-          ? new Date(tvData.first_air_date)
-          : null,
-        firstAirDate: tvData.first_air_date
-          ? new Date(tvData.first_air_date)
-          : null,
+        releaseDate: parseOptionalDate(tvData.first_air_date),
+        firstAirDate: parseOptionalDate(tvData.first_air_date),
         voteAverage: tvData.vote_average || 0,
         voteCount: tvData.vote_count || 0,
         popularity: tvData.popularity || 0,

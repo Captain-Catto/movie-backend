@@ -126,19 +126,23 @@ export class TMDBService {
         const retryCount = (config as any)?.retryCount || 0;
         const maxRetries = 3;
 
-        // Enhanced logging (compact format)
-        this.logger.error("TMDB API Error:", {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          url: config?.url,
-          method: config?.method?.toUpperCase(),
-          retryCount,
-          message: error.message,
-          data: error.response?.data,
-        });
+        const status = error.response?.status;
+
+        // 404 is common for stale TMDB IDs, so keep it out of error logs.
+        if (status !== 404) {
+          this.logger.error("TMDB API Error:", {
+            status,
+            statusText: error.response?.statusText,
+            url: config?.url,
+            method: config?.method?.toUpperCase(),
+            retryCount,
+            message: error.message,
+            data: error.response?.data,
+          });
+        }
 
         // Rate limiting (429) - exponential backoff
-        if (error.response?.status === 429 && retryCount < maxRetries) {
+        if (status === 429 && retryCount < maxRetries) {
           const backoffTime = Math.min(1000 * Math.pow(2, retryCount), 10000);
 
           this.logger.warn(
@@ -154,8 +158,8 @@ export class TMDBService {
 
         // Server errors (5xx) - retry with backoff
         if (
-          error.response?.status >= 500 &&
-          error.response?.status < 600 &&
+          status >= 500 &&
+          status < 600 &&
           retryCount < maxRetries
         ) {
           const backoffTime = 1000 * (retryCount + 1);
@@ -185,13 +189,13 @@ export class TMDBService {
         }
 
         // Client errors (4xx) - don't retry, but log appropriately
-        if (error.response?.status >= 400 && error.response?.status < 500) {
-          if (error.response.status === 401) {
+        if (status >= 400 && status < 500) {
+          if (status === 401) {
             this.logger.error("TMDB API Authentication failed - check API key");
-          } else if (error.response.status === 404) {
+          } else if (status === 404) {
             this.logger.warn(`TMDB API 404: ${config?.url}`);
           } else {
-            this.logger.warn(`TMDB API ${error.response.status}: ${config?.url}`);
+            this.logger.warn(`TMDB API ${status}: ${config?.url}`);
           }
         }
 

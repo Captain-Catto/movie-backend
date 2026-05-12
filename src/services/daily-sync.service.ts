@@ -5,6 +5,7 @@ import { TMDBMovie, TMDBTVSeries } from "../interfaces/tmdb-api.interface";
 import { MovieRepository } from "../repositories/movie.repository";
 import { TVSeriesRepository } from "../repositories/tv-series.repository";
 import { ContentTranslationRepository } from "../repositories/content-translation.repository";
+import { parseOptionalDate } from "../utils/date.util";
 import { Movie } from "../entities/movie.entity";
 import { TVSeries } from "../entities/tv-series.entity";
 import {
@@ -495,9 +496,7 @@ export class DailySyncService {
         overview: tmdbMovie.overview,
         posterPath: tmdbMovie.poster_path,
         backdropPath: tmdbMovie.backdrop_path,
-        releaseDate: tmdbMovie.release_date
-          ? new Date(tmdbMovie.release_date)
-          : null,
+        releaseDate: parseOptionalDate(tmdbMovie.release_date),
         voteAverage: tmdbMovie.vote_average,
         voteCount: tmdbMovie.vote_count,
         popularity: tmdbMovie.popularity,
@@ -524,17 +523,13 @@ export class DailySyncService {
         overview: tmdbTV.overview,
         posterPath: tmdbTV.poster_path,
         backdropPath: tmdbTV.backdrop_path,
-        releaseDate: tmdbTV.first_air_date
-          ? new Date(tmdbTV.first_air_date)
-          : null,
+        releaseDate: parseOptionalDate(tmdbTV.first_air_date),
         voteAverage: tmdbTV.vote_average,
         voteCount: tmdbTV.vote_count,
         popularity: tmdbTV.popularity,
         genreIds: tmdbTV.genre_ids,
         originalLanguage: tmdbTV.original_language,
-        firstAirDate: tmdbTV.first_air_date
-          ? new Date(tmdbTV.first_air_date)
-          : null,
+        firstAirDate: parseOptionalDate(tmdbTV.first_air_date),
         originCountry: tmdbTV.origin_country,
         numberOfSeasons: tmdbTV.number_of_seasons ?? null,
         numberOfEpisodes: tmdbTV.number_of_episodes ?? null,
