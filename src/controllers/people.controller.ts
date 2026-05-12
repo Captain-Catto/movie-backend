@@ -24,10 +24,16 @@ export class PeopleController {
   @Get("popular")
   @HttpCode(HttpStatus.OK)
   async getPopularPeople(
-    @Query("page") page: number = 1
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("limit", new DefaultValuePipe(24), ParseIntPipe) limit: number
   ): Promise<ApiResponse> {
     try {
-      const result = await this.tmdbService.getPopularPeople(page);
+      const normalizedLimit = Math.min(Math.max(limit, 1), 100);
+      const result = await this.tmdbService.getPopularPeople(
+        page,
+        "en-US",
+        normalizedLimit
+      );
 
       return {
         success: true,

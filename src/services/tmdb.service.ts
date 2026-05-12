@@ -950,22 +950,61 @@ export class TMDBService {
    */
   async getPopularPeople(
     page: number = 1,
-    language: string = "en-US"
+    language: string = "en-US",
+    limit: number = 20
   ): Promise<TMDBPeopleResponse> {
     try {
-      const response = await this.axiosInstance.get(`/person/popular`, {
-        params: { page, language },
-      });
+      const tmdbMaxPage = 500;
+      const tmdbPageSize = 20;
+      const pageSize = Math.min(Math.max(Math.floor(limit) || 20, 1), 100);
+      const maxLogicalPages = Math.ceil((tmdbMaxPage * tmdbPageSize) / pageSize);
+      const logicalPage = Math.min(Math.max(Math.floor(page) || 1, 1), maxLogicalPages);
+      const offset = (logicalPage - 1) * pageSize;
+      const firstTmdbPage = Math.floor(offset / tmdbPageSize) + 1;
+      const pageOffset = offset % tmdbPageSize;
+      const tmdbPagesNeeded = Math.min(
+        Math.ceil((pageOffset + pageSize) / tmdbPageSize),
+        tmdbMaxPage - firstTmdbPage + 1
+      );
+      const responses = await Promise.all(
+        Array.from({ length: tmdbPagesNeeded }, (_, index) =>
+          this.axiosInstance.get(`/person/popular`, {
+            params: { page: firstTmdbPage + index, language },
+          })
+        )
+      );
+
+      const firstResponse = responses[0].data as TMDBPeopleResponse;
+      const combinedResults = responses.flatMap(
+        (response) => (response.data as TMDBPeopleResponse).results || []
+      );
+      const results = combinedResults.slice(pageOffset, pageOffset + pageSize);
+      const totalResults = firstResponse.total_results || 0;
 
       if (this.enableDebugLogs) {
         this.logger.log(
-          `Fetched ${response.data.results.length} popular people from page ${page}`
+          `Fetched ${results.length} popular people from logical page ${logicalPage}`
         );
       }
 
-      return response.data;
+      return {
+        ...firstResponse,
+        page: logicalPage,
+        results,
+        total_pages: Math.min(
+          maxLogicalPages,
+          Math.max(1, Math.ceil(totalResults / pageSize))
+        ),
+        total_results: totalResults,
+      };
     } catch (error) {
-      this.logger.error(`Error fetching popular people page ${page}:`, error);
+      this.logger.error(`Error fetching popular people page ${page}:`, {
+        status: error?.response?.status,
+        url: error?.config?.url,
+        page: error?.config?.params?.page,
+        message: error instanceof Error ? error.message : String(error),
+        tmdbMessage: error?.response?.data?.status_message,
+      });
       throw error;
     }
   }
