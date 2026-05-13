@@ -50,7 +50,7 @@ export class SearchController {
       const result = await this.searchService.searchMulti(
         query.q,
         query.page,
-        searchType as "movie" | "tv" | "multi",
+        searchType as "movie" | "tv" | "person" | "multi",
         query.language
       );
 
@@ -106,7 +106,7 @@ export class SearchController {
   @HttpCode(HttpStatus.CREATED)
   async saveRecentSearch(
     @Req() req: any,
-    @Body() body: { query: string; type?: "movie" | "tv" | "all" }
+    @Body() body: { query: string; type?: "movie" | "tv" | "person" | "all" }
   ): Promise<ApiResponse> {
     try {
       const userId = req.user?.id;

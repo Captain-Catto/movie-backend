@@ -16,7 +16,7 @@ export class RecentSearchService {
   async saveSearch(
     userId: number,
     query: string,
-    type: "movie" | "tv" | "all" = "all"
+    type: "movie" | "tv" | "person" | "all" = "all"
   ): Promise<RecentSearch> {
     // Clean up old searches (keep only 20 most recent)
     await this.recentSearchRepository.deleteOldSearches(userId, 20);

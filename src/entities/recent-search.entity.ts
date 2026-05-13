@@ -17,8 +17,8 @@ export class RecentSearch {
   @Column({ type: "varchar", length: 255 })
   query: string;
 
-  @Column({ type: "enum", enum: ["movie", "tv", "all"], default: "all" })
-  type: "movie" | "tv" | "all";
+  @Column({ type: "enum", enum: ["movie", "tv", "person", "all"], default: "all" })
+  type: "movie" | "tv" | "person" | "all";
 
   @Column({ type: "int", nullable: true })
   userId: number;

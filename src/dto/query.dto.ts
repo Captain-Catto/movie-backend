@@ -81,7 +81,7 @@ export class SearchDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ example: "movie", description: "Filter by type: movie or tv" })
+  @ApiPropertyOptional({ example: "movie", description: "Filter by type: movie, tv, or person" })
   @IsOptional()
   @IsString()
   type?: string;

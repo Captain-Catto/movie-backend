@@ -5,6 +5,7 @@ import { ContentTranslationRepository } from "../repositories/content-translatio
 import { TMDBService } from "./tmdb.service";
 import { PaginatedResult } from "../interfaces/api.interface";
 import { TMDB_DEFAULT_LANGUAGE } from "../constants/tmdb.constants";
+import { TMDBPerson } from "../interfaces/tmdb-api.interface";
 
 @Injectable()
 export class SearchService {
@@ -59,7 +60,7 @@ export class SearchService {
   async searchMulti(
     query: string,
     page: number = 1,
-    type: "movie" | "tv" | "multi" = "multi",
+    type: "movie" | "tv" | "person" | "multi" = "multi",
     language: string = "en-US"
   ): Promise<any> {
     try {
@@ -95,6 +96,29 @@ export class SearchService {
               pagination: results.pagination,
             },
           };
+        case "person": {
+          const peopleResults = await this.tmdbService.searchPeople(
+            query,
+            page,
+            language,
+            20
+          );
+          return {
+            success: true,
+            message: "People search results retrieved successfully",
+            data: {
+              data: peopleResults.results.map((person) =>
+                this.mapPersonSearchResult(person)
+              ),
+              pagination: {
+                page: peopleResults.page || page,
+                limit: 20,
+                total: peopleResults.total_results || 0,
+                totalPages: peopleResults.total_pages || 0,
+              },
+            },
+          };
+        }
         default:
           // Multi-search: combine movies and TV series from local DB
           return await this.searchLocal(query, page, language);
@@ -112,7 +136,7 @@ export class SearchService {
   private async searchTMDB(
     query: string,
     page: number = 1,
-    type: "movie" | "tv" | "multi" = "multi",
+    type: "movie" | "tv" | "person" | "multi" = "multi",
     language: string = "en-US"
   ): Promise<any> {
     try {
@@ -129,6 +153,14 @@ export class SearchService {
         case "tv":
           tmdbResults = await this.tmdbService.searchTV(query, page, language);
           break;
+        case "person":
+          tmdbResults = await this.tmdbService.searchPeople(
+            query,
+            page,
+            language,
+            20
+          );
+          break;
         default:
           tmdbResults = await this.tmdbService.searchMulti(
             query,
@@ -141,7 +173,12 @@ export class SearchService {
         success: true,
         message: "Search results retrieved from TMDB",
         data: {
-          data: tmdbResults.results || [],
+          data:
+            type === "person"
+              ? (tmdbResults.results || []).map((person: TMDBPerson) =>
+                  this.mapPersonSearchResult(person)
+                )
+              : tmdbResults.results || [],
           pagination: {
             page: tmdbResults.page || page,
             limit: 24,
@@ -174,9 +211,15 @@ export class SearchService {
     page: number = 1,
     language: string = "en-US"
   ): Promise<any> {
-    const [movieResults, tvResults] = await Promise.all([
+    const [movieResults, tvResults, peopleResults] = await Promise.all([
       this.movieRepository.search(query, page),
       this.tvSeriesRepository.search(query, page),
+      this.tmdbService.searchPeople(query, page, language, 8).catch(() => ({
+        results: [],
+        page,
+        total_pages: 0,
+        total_results: 0,
+      })),
     ]);
 
     const movieItems = movieResults.data.map((movie) => ({ ...movie }));
@@ -191,6 +234,9 @@ export class SearchService {
     const combinedData = [
       ...movieItems.map((movie) => ({ ...movie, media_type: "movie" })),
       ...tvItems.map((tv) => ({ ...tv, media_type: "tv" })),
+      ...(peopleResults.results || []).map((person) =>
+        this.mapPersonSearchResult(person)
+      ),
     ];
 
     // Sort by popularity
@@ -213,6 +259,22 @@ export class SearchService {
           totalPages: Math.ceil(combinedData.length / limit),
         },
       },
+    };
+  }
+
+  private mapPersonSearchResult(person: TMDBPerson) {
+    return {
+      id: person.id,
+      tmdbId: person.id,
+      title: person.name,
+      originalTitle: person.original_name,
+      overview: person.known_for_department || "Person",
+      posterPath: person.profile_path,
+      profilePath: person.profile_path,
+      popularity: person.popularity || 0,
+      media_type: "person",
+      mediaType: "person",
+      adult: person.adult || false,
     };
   }
 
