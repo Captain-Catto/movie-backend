@@ -50,6 +50,37 @@ export class PeopleController {
     }
   }
 
+  @Get("search")
+  @HttpCode(HttpStatus.OK)
+  async searchPeople(
+    @Query("q") query: string = "",
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("limit", new DefaultValuePipe(24), ParseIntPipe) limit: number
+  ): Promise<ApiResponse> {
+    try {
+      const normalizedLimit = Math.min(Math.max(limit, 1), 100);
+      const result = await this.tmdbService.searchPeople(
+        query,
+        page,
+        "en-US",
+        normalizedLimit
+      );
+
+      return {
+        success: true,
+        message: "People search completed successfully",
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to search people: ${error.message}`,
+        data: null,
+        error: error.message,
+      };
+    }
+  }
+
   @Get(":id")
   @HttpCode(HttpStatus.OK)
   async getPersonDetails(

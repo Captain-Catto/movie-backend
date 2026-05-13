@@ -1009,6 +1009,78 @@ export class TMDBService {
     }
   }
 
+  async searchPeople(
+    query: string,
+    page: number = 1,
+    language: string = "en-US",
+    limit: number = 24
+  ): Promise<TMDBPeopleResponse> {
+    const normalizedQuery = query.trim();
+
+    if (!normalizedQuery) {
+      return {
+        page: 1,
+        results: [],
+        total_pages: 1,
+        total_results: 0,
+      };
+    }
+
+    try {
+      const tmdbMaxPage = 500;
+      const tmdbPageSize = 20;
+      const pageSize = Math.min(Math.max(Math.floor(limit) || 24, 1), 100);
+      const maxLogicalPages = Math.ceil((tmdbMaxPage * tmdbPageSize) / pageSize);
+      const logicalPage = Math.min(Math.max(Math.floor(page) || 1, 1), maxLogicalPages);
+      const offset = (logicalPage - 1) * pageSize;
+      const firstTmdbPage = Math.floor(offset / tmdbPageSize) + 1;
+      const pageOffset = offset % tmdbPageSize;
+      const tmdbPagesNeeded = Math.min(
+        Math.ceil((pageOffset + pageSize) / tmdbPageSize),
+        tmdbMaxPage - firstTmdbPage + 1
+      );
+      const responses = await Promise.all(
+        Array.from({ length: tmdbPagesNeeded }, (_, index) =>
+          this.axiosInstance.get(`/search/person`, {
+            params: {
+              query: normalizedQuery,
+              page: firstTmdbPage + index,
+              language,
+              include_adult: false,
+            },
+          })
+        )
+      );
+
+      const firstResponse = responses[0].data as TMDBPeopleResponse;
+      const combinedResults = responses.flatMap(
+        (response) => (response.data as TMDBPeopleResponse).results || []
+      );
+      const results = combinedResults.slice(pageOffset, pageOffset + pageSize);
+      const totalResults = firstResponse.total_results || 0;
+
+      return {
+        ...firstResponse,
+        page: logicalPage,
+        results,
+        total_pages: Math.min(
+          maxLogicalPages,
+          Math.max(1, Math.ceil(totalResults / pageSize))
+        ),
+        total_results: totalResults,
+      };
+    } catch (error) {
+      this.logger.error(`Error searching people for "${normalizedQuery}":`, {
+        status: error?.response?.status,
+        url: error?.config?.url,
+        page: error?.config?.params?.page,
+        message: error instanceof Error ? error.message : String(error),
+        tmdbMessage: error?.response?.data?.status_message,
+      });
+      throw error;
+    }
+  }
+
   /**
    * Get person details by ID
    */
