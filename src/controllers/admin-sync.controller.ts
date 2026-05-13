@@ -157,6 +157,10 @@ export class AdminSyncController {
           await this.runCleanup();
           break;
         }
+        case "trending": {
+          await this.dataSyncService.syncTrending("en-US");
+          break;
+        }
         case "all":
         default: {
           const syncDate = date ? new Date(date) : new Date();

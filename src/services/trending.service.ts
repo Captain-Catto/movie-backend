@@ -154,19 +154,21 @@ export class TrendingService {
       totalPages: number;
     };
   }> {
+    const normalizedPage = Math.max(Number(page) || 1, 1);
+    const normalizedLimit = Math.max(Number(limit) || 24, 1);
     const { includeHidden = false } = options;
     const { data, total } = await this.trendingRepository.findAll(
-      page,
-      limit,
+      normalizedPage,
+      normalizedLimit,
       includeHidden
     );
 
     let transformed = data.map((item) => this.transformTrending(item));
     let resultTotal = total;
 
-    if (!includeHidden && page === 1 && transformed.length === 0) {
+    if (!includeHidden && normalizedPage === 1 && transformed.length === 0) {
       this.logger.warn(
-        "Trending cache is empty; falling back to live TMDB trending data"
+        `Trending cache returned empty for page=${normalizedPage}, limit=${normalizedLimit}; falling back to live TMDB trending data`
       );
 
       const liveItems = await this.tmdbService.getTrending(
@@ -178,9 +180,13 @@ export class TrendingService {
 
       transformed = liveItems
         .filter((item) => item.poster_path)
-        .slice(0, limit)
+        .slice(0, normalizedLimit)
         .map((item) => this.transformTmdbTrending(item));
       resultTotal = transformed.length;
+
+      this.logger.log(
+        `Live TMDB trending fallback returned ${transformed.length} items`
+      );
     }
 
     // Merge translations if not default language
@@ -191,10 +197,10 @@ export class TrendingService {
     return {
       data: transformed,
       pagination: {
-        page,
-        limit,
+        page: normalizedPage,
+        limit: normalizedLimit,
         total: resultTotal,
-        totalPages: Math.ceil(resultTotal / limit),
+        totalPages: Math.ceil(resultTotal / normalizedLimit),
       },
     };
   }

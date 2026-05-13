@@ -8,8 +8,8 @@ import {
 
 export class AdminSyncRequestDto {
   @IsOptional()
-  @IsIn(["movies", "tv", "all", "today", "popular"])
-  target?: "movies" | "tv" | "all" | "today" | "popular";
+  @IsIn(["movies", "tv", "all", "today", "popular", "trending"])
+  target?: "movies" | "tv" | "all" | "today" | "popular" | "trending";
 
   @IsOptional()
   @IsISO8601()
