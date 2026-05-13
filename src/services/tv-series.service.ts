@@ -63,18 +63,21 @@ export class TVSeriesService {
       tmdbData?.number_of_seasons ?? tvSeries.numberOfSeasons ?? undefined;
     const resolvedNumberOfEpisodes =
       tmdbData?.number_of_episodes ?? tvSeries.numberOfEpisodes ?? undefined;
+    const resolvedPosterPath = tmdbData?.poster_path ?? tvSeries.posterPath;
+    const resolvedBackdropPath =
+      tmdbData?.backdrop_path ?? tvSeries.backdropPath;
 
     return {
       id: tvSeries.id,
       tmdbId: tvSeries.tmdbId,
       title: tvSeries.title,
       overview: tvSeries.overview,
-      posterUrl: this.tmdbService.getPosterUrl(tvSeries.posterPath, "w500"),
+      posterUrl: this.tmdbService.getPosterUrl(resolvedPosterPath, "w500"),
       backdropUrl: this.tmdbService.getBackdropUrl(
-        tvSeries.backdropPath,
+        resolvedBackdropPath,
         "w1280"
       ),
-      thumbnailUrl: this.tmdbService.getPosterUrl(tvSeries.posterPath, "w185"),
+      thumbnailUrl: this.tmdbService.getPosterUrl(resolvedPosterPath, "w185"),
       firstAirDate: tvSeries.firstAirDate,
       voteAverage: tvSeries.voteAverage,
       voteCount: tvSeries.voteCount,
@@ -124,6 +127,46 @@ export class TVSeriesService {
       numberOfSeasons: tmdbData.number_of_seasons ?? null,
       numberOfEpisodes: tmdbData.number_of_episodes ?? null,
     };
+  }
+
+  private buildTVSeriesRefreshData(
+    tvSeries: TVSeries,
+    tmdbData: TMDBTVDetails
+  ): Partial<TVSeries> {
+    const latest = this.toTVSeriesEntityData(tmdbData);
+    const updates: Partial<TVSeries> = {};
+
+    const setIfChanged = <K extends keyof TVSeries>(
+      key: K,
+      value: Partial<TVSeries>[K],
+      shouldUpdate = value !== undefined && value !== null
+    ) => {
+      if (shouldUpdate && tvSeries[key] !== value) {
+        updates[key] = value as TVSeries[K];
+      }
+    };
+
+    setIfChanged("title", latest.title);
+    setIfChanged("originalTitle", latest.originalTitle);
+    setIfChanged("overview", latest.overview);
+    setIfChanged("posterPath", latest.posterPath);
+    setIfChanged("backdropPath", latest.backdropPath);
+    setIfChanged("releaseDate", latest.releaseDate);
+    setIfChanged("voteAverage", latest.voteAverage);
+    setIfChanged("voteCount", latest.voteCount);
+    setIfChanged("popularity", latest.popularity);
+    setIfChanged("genreIds", latest.genreIds, Array.isArray(latest.genreIds));
+    setIfChanged("originalLanguage", latest.originalLanguage);
+    setIfChanged("firstAirDate", latest.firstAirDate);
+    setIfChanged(
+      "originCountry",
+      latest.originCountry,
+      Array.isArray(latest.originCountry)
+    );
+    setIfChanged("numberOfSeasons", latest.numberOfSeasons);
+    setIfChanged("numberOfEpisodes", latest.numberOfEpisodes);
+
+    return updates;
   }
 
   private async mergeTranslations(
@@ -357,17 +400,13 @@ export class TVSeriesService {
     try {
       tmdbData = tmdbData ?? (await this.tmdbService.getTVDetailsEnhanced(tmdbId, language));
 
-      // Persist season/episode counts so /api/tv/:id can still return them
-      // when TMDB is temporarily unavailable.
-      if (
-        tmdbData &&
-        (tvSeries.numberOfSeasons !== tmdbData.number_of_seasons ||
-          tvSeries.numberOfEpisodes !== tmdbData.number_of_episodes)
-      ) {
-        tvSeries = await this.tvSeriesRepository.update(tvSeries.id, {
-          numberOfSeasons: tmdbData.number_of_seasons ?? null,
-          numberOfEpisodes: tmdbData.number_of_episodes ?? null,
-        });
+      // Refresh stale DB rows so detail pages keep poster/backdrop and counts
+      // even when the item was originally synced before TMDB had full metadata.
+      if (tmdbData) {
+        const updates = this.buildTVSeriesRefreshData(tvSeries, tmdbData);
+        if (Object.keys(updates).length > 0) {
+          tvSeries = await this.tvSeriesRepository.update(tvSeries.id, updates);
+        }
       }
     } catch (error) {
       const status = error?.response?.status;
