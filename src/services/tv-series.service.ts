@@ -4,6 +4,7 @@ import { RecommendationRepository } from "../repositories/recommendation.reposit
 import { ContentTranslationRepository } from "../repositories/content-translation.repository";
 import { TMDBService } from "./tmdb.service";
 import { TMDB_DEFAULT_LANGUAGE } from "../constants/tmdb.constants";
+import { parseOptionalDate } from "../utils/date.util";
 import {
   TMDBSeasonDetails,
   TMDBTVDetails,
@@ -99,6 +100,29 @@ export class TVSeriesService {
         originalTitle: tmdbData.original_name,
         production_countries: tmdbData.production_countries,
       }),
+    };
+  }
+
+  private toTVSeriesEntityData(tmdbData: TMDBTVDetails): Partial<TVSeries> {
+    return {
+      title: tmdbData.name,
+      originalTitle: tmdbData.original_name,
+      overview: tmdbData.overview,
+      posterPath: tmdbData.poster_path,
+      backdropPath: tmdbData.backdrop_path,
+      releaseDate: parseOptionalDate(tmdbData.first_air_date),
+      voteAverage: tmdbData.vote_average,
+      voteCount: tmdbData.vote_count,
+      popularity: tmdbData.popularity,
+      genreIds:
+        tmdbData.genre_ids ??
+        tmdbData.genres?.map((genre) => genre.id) ??
+        [],
+      originalLanguage: tmdbData.original_language,
+      firstAirDate: parseOptionalDate(tmdbData.first_air_date),
+      originCountry: tmdbData.origin_country ?? [],
+      numberOfSeasons: tmdbData.number_of_seasons ?? null,
+      numberOfEpisodes: tmdbData.number_of_episodes ?? null,
     };
   }
 
@@ -300,16 +324,38 @@ export class TVSeriesService {
    */
   async findByTmdbId(tmdbId: number, language: string = "en-US"): Promise<TVSeriesResponse> {
     let tvSeries = await this.tvSeriesRepository.findByTmdbId(tmdbId);
+    let tmdbData: TMDBTVDetails | undefined = undefined;
 
     if (!tvSeries) {
-      throw new NotFoundException(
-        `TV Series with TMDB ID ${tmdbId} not found in database`
-      );
+      try {
+        this.logger.log(
+          `TV TMDB ID ${tmdbId} not found in database, fetching from TMDB...`
+        );
+        tmdbData = await this.tmdbService.getTVDetailsEnhanced(tmdbId, language);
+        tvSeries = await this.tvSeriesRepository.create({
+          ...this.toTVSeriesEntityData(tmdbData),
+          tmdbId: tmdbData.id,
+        });
+      } catch (error) {
+        const status = error?.response?.status;
+        const message = error instanceof Error ? error.message : String(error);
+
+        if (status === 404) {
+          this.logger.debug(`TV series ${tmdbId} not found in TMDB (404)`);
+        } else {
+          this.logger.warn(
+            `Failed to fetch TV series ${tmdbId} from TMDB: ${message}`
+          );
+        }
+
+        throw new NotFoundException(
+          `TV Series with TMDB ID ${tmdbId} not found`
+        );
+      }
     }
 
-    let tmdbData: TMDBTVDetails | undefined = undefined;
     try {
-      tmdbData = await this.tmdbService.getTVDetailsEnhanced(tmdbId);
+      tmdbData = tmdbData ?? (await this.tmdbService.getTVDetailsEnhanced(tmdbId, language));
 
       // Persist season/episode counts so /api/tv/:id can still return them
       // when TMDB is temporarily unavailable.
