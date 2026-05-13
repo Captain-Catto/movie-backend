@@ -93,7 +93,9 @@ export class ContentService {
 
       return movie;
     } catch (error) {
-      this.logger.error(`Failed to fetch movie ${tmdbId} from TMDB:`, error);
+      this.logger.error(`Failed to fetch movie ${tmdbId} from TMDB:`, {
+        message: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }
@@ -149,7 +151,7 @@ export class ContentService {
     } catch (error) {
       this.logger.error(
         `Failed to fetch TV series ${tmdbId} from TMDB:`,
-        error
+        { message: error instanceof Error ? error.message : String(error) }
       );
       throw error;
     }

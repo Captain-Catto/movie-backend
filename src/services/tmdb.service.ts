@@ -209,6 +209,17 @@ export class TMDBService {
     );
   }
 
+  private getSafeErrorDetails(error: any) {
+    return {
+      status: error?.response?.status,
+      url: error?.config?.url,
+      method: error?.config?.method?.toUpperCase?.(),
+      page: error?.config?.params?.page,
+      message: error instanceof Error ? error.message : String(error),
+      tmdbMessage: error?.response?.data?.status_message,
+    };
+  }
+
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -362,7 +373,7 @@ export class TMDBService {
         total_results: response.data.total_results,
       };
     } catch (error) {
-      this.logger.error("Error fetching top rated movies:", error);
+      this.logger.error("Error fetching top rated movies:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -385,7 +396,7 @@ export class TMDBService {
         total_results: response.data.total_results,
       };
     } catch (error) {
-      this.logger.error("Error fetching upcoming movies:", error);
+      this.logger.error("Error fetching upcoming movies:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -405,7 +416,7 @@ export class TMDBService {
         total_results: response.data.total_results,
       };
     } catch (error) {
-      this.logger.error("Error fetching popular TV series:", error);
+      this.logger.error("Error fetching popular TV series:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -425,7 +436,7 @@ export class TMDBService {
         total_results: response.data.total_results,
       };
     } catch (error) {
-      this.logger.error("Error fetching on the air TV series:", error);
+      this.logger.error("Error fetching on the air TV series:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -445,7 +456,7 @@ export class TMDBService {
         total_results: response.data.total_results,
       };
     } catch (error) {
-      this.logger.error("Error fetching top rated TV series:", error);
+      this.logger.error("Error fetching top rated TV series:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -474,7 +485,7 @@ export class TMDBService {
       );
       return response.data.results;
     } catch (error) {
-      this.logger.error("Error fetching trending:", error);
+      this.logger.error("Error fetching trending:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -495,7 +506,7 @@ export class TMDBService {
         total_results: response.data.total_results || 0,
       };
     } catch (error) {
-      this.logger.error("Error searching multi:", error);
+      this.logger.error("Error searching multi:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -516,7 +527,7 @@ export class TMDBService {
         total_results: response.data.total_results || 0,
       };
     } catch (error) {
-      this.logger.error("Error searching movies:", error);
+      this.logger.error("Error searching movies:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -537,7 +548,7 @@ export class TMDBService {
         total_results: response.data.total_results || 0,
       };
     } catch (error) {
-      this.logger.error("Error searching TV shows:", error);
+      this.logger.error("Error searching TV shows:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -582,7 +593,7 @@ export class TMDBService {
         total_results: response.data.total_results,
       };
     } catch (error) {
-      this.logger.error("Error fetching filtered movies:", error);
+      this.logger.error("Error fetching filtered movies:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -627,7 +638,7 @@ export class TMDBService {
         total_results: response.data.total_results,
       };
     } catch (error) {
-      this.logger.error("Error fetching filtered TV series:", error);
+      this.logger.error("Error fetching filtered TV series:", this.getSafeErrorDetails(error));
       throw error;
     }
   }
@@ -913,7 +924,10 @@ export class TMDBService {
         crew: credits.crew,
       };
     } catch (error) {
-      this.logger.error(`Error fetching movie with credits ${movieId}:`, error);
+      this.logger.error(
+        `Error fetching movie with credits ${movieId}:`,
+        this.getSafeErrorDetails(error)
+      );
       throw error;
     }
   }
@@ -1099,7 +1113,10 @@ export class TMDBService {
 
       return response.data;
     } catch (error) {
-      this.logger.error(`Error fetching person details ${personId}:`, error);
+      this.logger.error(
+        `Error fetching person details ${personId}:`,
+        this.getSafeErrorDetails(error)
+      );
       throw error;
     }
   }
@@ -1121,7 +1138,10 @@ export class TMDBService {
 
       return response.data;
     } catch (error) {
-      this.logger.error(`Error fetching person credits ${personId}:`, error);
+      this.logger.error(
+        `Error fetching person credits ${personId}:`,
+        this.getSafeErrorDetails(error)
+      );
       throw error;
     }
   }
@@ -1231,7 +1251,10 @@ export class TMDBService {
       }
       return response.data;
     } catch (error) {
-      this.logger.error(`Error fetching movie videos ${movieId}:`, error);
+      this.logger.error(
+        `Error fetching movie videos ${movieId}:`,
+        this.getSafeErrorDetails(error)
+      );
       throw error;
     }
   }
@@ -1253,7 +1276,10 @@ export class TMDBService {
       }
       return response.data;
     } catch (error) {
-      this.logger.error(`Error fetching TV videos ${tvId}:`, error);
+      this.logger.error(
+        `Error fetching TV videos ${tvId}:`,
+        this.getSafeErrorDetails(error)
+      );
       throw error;
     }
   }

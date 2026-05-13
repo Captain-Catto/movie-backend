@@ -1,9 +1,11 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { TrendingRepository } from "../repositories/trending.repository";
 import { ContentTranslationRepository } from "../repositories/content-translation.repository";
 import { TMDBService } from "./tmdb.service";
 import { TMDB_DEFAULT_LANGUAGE } from "../constants/tmdb.constants";
 import { Trending, MediaType } from "../entities/trending.entity";
+import { TMDBTrending } from "../interfaces/tmdb-api.interface";
+import { parseOptionalDate } from "../utils/date.util";
 
 export interface TrendingResponse {
   id: number;
@@ -30,6 +32,8 @@ export interface TrendingResponse {
 
 @Injectable()
 export class TrendingService {
+  private readonly logger = new Logger(TrendingService.name);
+
   constructor(
     private trendingRepository: TrendingRepository,
     private tmdbService: TMDBService,
@@ -61,6 +65,37 @@ export class TrendingService {
       hiddenAt: trending.hiddenAt,
       createdAt: trending.createdAt,
       lastUpdated: trending.lastUpdated,
+    };
+  }
+
+  private transformTmdbTrending(item: TMDBTrending): TrendingResponse {
+    const now = new Date();
+    const mediaType =
+      item.media_type === MediaType.TV ? MediaType.TV : MediaType.MOVIE;
+    const title =
+      item.title || item.name || item.original_title || item.original_name || "";
+
+    return {
+      id: item.id,
+      tmdbId: item.id,
+      mediaType,
+      title,
+      overview: item.overview || "",
+      posterUrl: this.tmdbService.getPosterUrl(item.poster_path, "w500"),
+      backdropUrl: this.tmdbService.getBackdropUrl(item.backdrop_path, "w1280"),
+      thumbnailUrl: this.tmdbService.getPosterUrl(item.poster_path, "w185"),
+      releaseDate: parseOptionalDate(item.release_date || item.first_air_date),
+      voteAverage: item.vote_average || 0,
+      voteCount: item.vote_count || 0,
+      popularity: item.popularity || 0,
+      genreIds: item.genre_ids || [],
+      originalLanguage: item.original_language || "",
+      adult: item.adult || false,
+      isHidden: false,
+      hiddenReason: null,
+      hiddenAt: null,
+      createdAt: now,
+      lastUpdated: now,
     };
   }
 
@@ -126,7 +161,27 @@ export class TrendingService {
       includeHidden
     );
 
-    const transformed = data.map((item) => this.transformTrending(item));
+    let transformed = data.map((item) => this.transformTrending(item));
+    let resultTotal = total;
+
+    if (!includeHidden && page === 1 && transformed.length === 0) {
+      this.logger.warn(
+        "Trending cache is empty; falling back to live TMDB trending data"
+      );
+
+      const liveItems = await this.tmdbService.getTrending(
+        "all",
+        "week",
+        language,
+        1
+      );
+
+      transformed = liveItems
+        .filter((item) => item.poster_path)
+        .slice(0, limit)
+        .map((item) => this.transformTmdbTrending(item));
+      resultTotal = transformed.length;
+    }
 
     // Merge translations if not default language
     if (language !== TMDB_DEFAULT_LANGUAGE) {
@@ -138,8 +193,8 @@ export class TrendingService {
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: resultTotal,
+        totalPages: Math.ceil(resultTotal / limit),
       },
     };
   }

@@ -142,34 +142,6 @@ export class MovieRepository {
       .take(limit)
       .getManyAndCount();
 
-    // Debug: Check releaseDate values for latest sort
-    if (sortBy === "latest" || !sortBy) {
-      const sampleDates = movies.slice(0, 5).map((m) => ({
-        id: m.id,
-        title: m.title,
-        releaseDate: m.releaseDate,
-        releaseDateString: m.releaseDate?.toISOString?.() || "NULL",
-      }));
-      console.log(`📅 Sample release dates:`, sampleDates);
-    }
-
-    // TEMP: If high page and no results, let's see what pages DO have data
-    if (movies.length === 0 && page > 10) {
-      const sampleQuery = await this.repository
-        .createQueryBuilder("movie")
-        .orderBy("movie.popularity", "DESC")
-        .take(5)
-        .getMany();
-      console.log(
-        `📄 Sample movies in DB:`,
-        sampleQuery.map((m) => ({
-          id: m.id,
-          title: m.title,
-          popularity: m.popularity,
-        }))
-      );
-    }
-
     return {
       data: movies,
       pagination: {

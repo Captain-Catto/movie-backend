@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UserRepository } from "../repositories/user.repository";
@@ -23,6 +24,8 @@ interface RequestMetadata {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private userRepository: UserRepository,
     private jwtService: JwtService,
@@ -107,7 +110,7 @@ export class AuthService {
     }
 
     const loginMetadata = this.buildLoginMetadata(requestMetadata);
-    console.log("[AUTH] Registration metadata:", {
+    this.logger.debug("[AUTH] Registration metadata:", {
       ip: loginMetadata.lastLoginIp,
       device: loginMetadata.lastLoginDevice,
       country: requestMetadata?.country || null,
@@ -179,7 +182,7 @@ export class AuthService {
     }
 
     const loginMetadata = this.buildLoginMetadata(requestMetadata);
-    console.log("[AUTH] Login metadata:", {
+    this.logger.debug("[AUTH] Login metadata:", {
       ip: loginMetadata.lastLoginIp,
       device: loginMetadata.lastLoginDevice,
       country: requestMetadata?.country || null,
@@ -288,7 +291,7 @@ export class AuthService {
 
     if (!user) {
       // Create new user from Google data
-      console.log(`👤 Google register: ${email}`);
+      this.logger.debug(`Google register: ${email}`);
 
       const userData = {
         email,
@@ -304,7 +307,7 @@ export class AuthService {
     } else {
       // Update existing user with Google data if needed
       if (!user.googleId) {
-        console.log(`� Google link: ${email}`);
+        this.logger.debug(`Google link: ${email}`);
 
         const updateData = {
           googleId,

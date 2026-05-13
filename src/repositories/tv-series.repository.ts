@@ -52,16 +52,13 @@ export class TVSeriesRepository {
     }
 
     if (countries) {
-      console.log(`🌍 Countries filter applied: ${countries}`);
       // For TV series, use originCountry array
       // Countries parameter comes as comma-separated string like "US,KR,JP"
       const countryList = countries.split(",").map((c) => c.trim());
-      console.log(`🌍 Country list parsed:`, countryList);
       // Build OR conditions for each country
       const orConditions = countryList
         .map((country) => `'${country}' = ANY(tv.originCountry)`)
         .join(" OR ");
-      console.log(`🌍 SQL condition:`, orConditions);
       queryBuilder.andWhere(`(${orConditions})`);
     }
 
@@ -132,8 +129,6 @@ export class TVSeriesRepository {
         queryBuilder.orderBy("tv.popularity", "DESC");
         break;
     }
-
-    console.log(`🔍 TV SQL Query for sortBy=${sortBy}:`, queryBuilder.getSql());
 
     const total = await queryBuilder.getCount();
     const tvSeries = await queryBuilder
