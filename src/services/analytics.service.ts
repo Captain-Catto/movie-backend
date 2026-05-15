@@ -14,7 +14,17 @@ const UAParser = require("ua-parser-js");
 interface TrackEventParams {
   contentId: string;
   contentType: "movie" | "tv_series";
-  actionType: "VIEW" | "CLICK" | "PLAY" | "COMPLETE" | "SEARCH";
+  actionType:
+    | "VIEW"
+    | "CLICK"
+    | "PLAY"
+    | "COMPLETE"
+    | "SEARCH"
+    | "view"
+    | "click"
+    | "play"
+    | "complete"
+    | "search";
   contentTitle?: string;
   duration?: number;
   metadata?: Record<string, any>;
@@ -54,6 +64,7 @@ export class AnalyticsService {
         ipAddress,
         userAgent,
       } = params;
+      const normalizedActionType = this.normalizeActionType(actionType);
 
       // Parse user agent for device info
       const deviceInfo = this.parseUserAgent(userAgent);
@@ -68,7 +79,7 @@ export class AnalyticsService {
       const analytics = this.viewAnalyticsRepository.create({
         contentId,
         contentType: mappedContentType,
-        actionType: actionType as ActionType,
+        actionType: normalizedActionType,
         contentTitle,
         duration,
         userId,
@@ -82,14 +93,16 @@ export class AnalyticsService {
       await this.viewAnalyticsRepository.save(analytics);
 
       // Update content counters asynchronously (don't block response)
-      this.updateContentCounters(contentId, contentType, actionType).catch(
+      this.updateContentCounters(contentId, contentType, normalizedActionType).catch(
         (error) => {
           this.logger.error("Error updating content counters:", error);
         }
       );
 
       // Push lightweight realtime snapshot updates for admin dashboard
-      this.realtimeService.trackAction(actionType).catch(() => undefined);
+      this.realtimeService
+        .trackAction(normalizedActionType)
+        .catch(() => undefined);
     } catch (error) {
       this.logger.error("Error tracking event:", error);
       throw error;
@@ -113,9 +126,9 @@ export class AnalyticsService {
           where: { tmdbId },
         });
         if (movie) {
-          if (actionType === "VIEW") {
+          if (actionType === ActionType.VIEW) {
             movie.viewCount = (movie.viewCount || 0) + 1;
-          } else if (actionType === "CLICK") {
+          } else if (actionType === ActionType.CLICK) {
             movie.clickCount = (movie.clickCount || 0) + 1;
           }
           await this.movieRepository.save(movie);
@@ -123,9 +136,9 @@ export class AnalyticsService {
       } else if (contentType === "tv_series") {
         const tv = await this.tvRepository.findOne({ where: { tmdbId } });
         if (tv) {
-          if (actionType === "VIEW") {
+          if (actionType === ActionType.VIEW) {
             tv.viewCount = (tv.viewCount || 0) + 1;
-          } else if (actionType === "CLICK") {
+          } else if (actionType === ActionType.CLICK) {
             tv.clickCount = (tv.clickCount || 0) + 1;
           }
           await this.tvRepository.save(tv);
@@ -158,5 +171,15 @@ export class AnalyticsService {
     } catch (error) {
       return { device: "unknown" };
     }
+  }
+
+  private normalizeActionType(actionType: TrackEventParams["actionType"]): ActionType {
+    const normalized = String(actionType || "").toLowerCase();
+
+    if (normalized === ActionType.CLICK) return ActionType.CLICK;
+    if (normalized === ActionType.PLAY) return ActionType.PLAY;
+    if (normalized === ActionType.COMPLETE) return ActionType.COMPLETE;
+    if (normalized === ActionType.SEARCH) return ActionType.SEARCH;
+    return ActionType.VIEW;
   }
 }

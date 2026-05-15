@@ -14,7 +14,17 @@ import { ApiTags } from '@nestjs/swagger';
 interface TrackEventDto {
   contentId: string;
   contentType: "movie" | "tv_series";
-  actionType: "VIEW" | "CLICK" | "PLAY" | "COMPLETE" | "SEARCH";
+  actionType:
+    | "VIEW"
+    | "CLICK"
+    | "PLAY"
+    | "COMPLETE"
+    | "SEARCH"
+    | "view"
+    | "click"
+    | "play"
+    | "complete"
+    | "search";
   contentTitle?: string;
   duration?: number;
   metadata?: Record<string, any>;
