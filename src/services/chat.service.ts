@@ -8,7 +8,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import axios from "axios";
-import { In, MoreThan, Repository } from "typeorm";
+import { In, IsNull, MoreThan, Repository } from "typeorm";
 import {
   ChatMessage,
   ChatMessageRole,
@@ -398,7 +398,7 @@ export class ChatService {
         take: 80,
       }),
       this.recentSearchRepository.find({
-        where: { userId },
+        where: { userId, dismissedAt: IsNull() },
         order: { createdAt: "DESC" },
         take: 20,
       }),

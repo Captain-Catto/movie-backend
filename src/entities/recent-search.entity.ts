@@ -32,4 +32,7 @@ export class RecentSearch {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column({ type: "timestamp", nullable: true })
+  dismissedAt: Date | null;
 }

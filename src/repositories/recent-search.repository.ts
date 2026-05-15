@@ -1,4 +1,4 @@
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { RecentSearch } from "../entities/recent-search.entity";
@@ -15,7 +15,7 @@ export class RecentSearchRepository {
     limit: number = 10
   ): Promise<RecentSearch[]> {
     return this.repository.find({
-      where: { userId },
+      where: { userId, dismissedAt: IsNull() },
       order: { createdAt: "DESC" },
       take: limit,
     });
@@ -33,8 +33,9 @@ export class RecentSearchRepository {
       });
 
       if (existing) {
-        // Update timestamp
+        // Update timestamp and restore if the user previously dismissed it.
         existing.updatedAt = new Date();
+        existing.dismissedAt = null;
         return this.repository.save(existing);
       }
     }
@@ -45,12 +46,15 @@ export class RecentSearchRepository {
   }
 
   async deleteByUserId(userId: number): Promise<void> {
-    await this.repository.delete({ userId });
+    await this.repository.update(
+      { userId, dismissedAt: IsNull() },
+      { dismissedAt: new Date() }
+    );
   }
 
   async deleteById(id: number, userId: number): Promise<void> {
-    // Delete only if it belongs to the user (security check)
-    await this.repository.delete({ id, userId });
+    // Dismiss only if it belongs to the user (security check).
+    await this.repository.update({ id, userId }, { dismissedAt: new Date() });
   }
 
   async deleteOldSearches(
@@ -58,14 +62,14 @@ export class RecentSearchRepository {
     keepCount: number = 20
   ): Promise<void> {
     const searches = await this.repository.find({
-      where: { userId },
+      where: { userId, dismissedAt: IsNull() },
       order: { createdAt: "DESC" },
       skip: keepCount,
     });
 
     if (searches.length > 0) {
       const idsToDelete = searches.map((s) => s.id);
-      await this.repository.delete(idsToDelete);
+      await this.repository.update(idsToDelete, { dismissedAt: new Date() });
     }
   }
 }
