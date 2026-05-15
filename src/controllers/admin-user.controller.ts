@@ -19,6 +19,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../guards/roles.guard";
 import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
+import { ActionType, ContentType } from "../entities/view-analytics.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { UpdateUserDto } from "../dto/admin-user.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
@@ -280,6 +281,39 @@ export class AdminUserController {
       return {
         success: false,
         message: error.message || "Failed to fetch user activity stats",
+      };
+    }
+  }
+
+  @Get(":id/watch-history")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  async getUserWatchHistory(
+    @Param("id", ParseIntPipe) userId: number,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("contentType") contentType?: "movie" | "tv_series" | "all",
+    @Query("actionType") actionType?: "view" | "play" | "complete" | "all",
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string
+  ) {
+    try {
+      const result = await this.adminUserService.getUserWatchHistory(userId, {
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 20,
+        contentType: contentType as ContentType | "all" | undefined,
+        actionType: actionType as ActionType | "all" | undefined,
+        startDate,
+        endDate,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to fetch user watch history",
       };
     }
   }

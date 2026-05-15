@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { User, UserRole, UserActivity, ActivityType } from "../entities";
-import { ViewAnalytics } from "../entities/view-analytics.entity";
+import { In, Repository } from "typeorm";
+import { User, UserRole, UserActivity, ActivityType, Movie, TVSeries } from "../entities";
+import { ActionType, ContentType, ViewAnalytics } from "../entities/view-analytics.entity";
 import * as bcrypt from "bcrypt";
 
 export interface BanUserDto {
@@ -19,6 +19,15 @@ export interface UserListQuery {
   search?: string;
 }
 
+export interface UserWatchHistoryQuery {
+  page?: number;
+  limit?: number;
+  contentType?: ContentType | "all";
+  actionType?: ActionType | "all";
+  startDate?: string;
+  endDate?: string;
+}
+
 @Injectable()
 export class AdminUserService {
   private readonly logger = new Logger(AdminUserService.name);
@@ -29,7 +38,11 @@ export class AdminUserService {
     @InjectRepository(UserActivity)
     private userActivityRepository: Repository<UserActivity>,
     @InjectRepository(ViewAnalytics)
-    private viewAnalyticsRepository: Repository<ViewAnalytics>
+    private viewAnalyticsRepository: Repository<ViewAnalytics>,
+    @InjectRepository(Movie)
+    private movieRepository: Repository<Movie>,
+    @InjectRepository(TVSeries)
+    private tvSeriesRepository: Repository<TVSeries>
   ) {}
 
   // Get users list with filters
@@ -379,6 +392,129 @@ export class AdminUserService {
    */
   async getPublicUserActivityStats(userId: number) {
     return this.getUserActivityStats(userId);
+  }
+
+  async getUserWatchHistory(userId: number, query: UserWatchHistoryQuery = {}) {
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+    const offset = (page - 1) * limit;
+    const watchActions = [ActionType.VIEW, ActionType.PLAY, ActionType.COMPLETE];
+    const requestedAction =
+      query.actionType && query.actionType !== "all" ? query.actionType : null;
+    const actionTypes =
+      requestedAction && watchActions.includes(requestedAction)
+        ? [requestedAction]
+        : watchActions;
+
+    const baseQuery = this.viewAnalyticsRepository
+      .createQueryBuilder("va")
+      .where("va.userId = :userId", { userId })
+      .andWhere("va.actionType IN (:...actionTypes)", { actionTypes });
+
+    if (query.contentType && query.contentType !== "all") {
+      baseQuery.andWhere("va.contentType = :contentType", {
+        contentType: query.contentType,
+      });
+    }
+
+    if (query.startDate) {
+      baseQuery.andWhere("va.createdAt >= :startDate", {
+        startDate: query.startDate,
+      });
+    }
+
+    if (query.endDate) {
+      baseQuery.andWhere("va.createdAt <= :endDate", {
+        endDate: query.endDate,
+      });
+    }
+
+    const [items, total] = await baseQuery
+      .clone()
+      .orderBy("va.createdAt", "DESC")
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    const movieTmdbIds = items
+      .filter((item) => item.contentType === ContentType.MOVIE)
+      .map((item) => Number(item.contentId))
+      .filter(Number.isFinite);
+    const tvTmdbIds = items
+      .filter((item) => item.contentType === ContentType.TV_SERIES)
+      .map((item) => Number(item.contentId))
+      .filter(Number.isFinite);
+
+    const [movies, tvSeries, summaryRaw, lastEvent] = await Promise.all([
+      movieTmdbIds.length
+        ? this.movieRepository.find({ where: { tmdbId: In(movieTmdbIds) } })
+        : Promise.resolve([]),
+      tvTmdbIds.length
+        ? this.tvSeriesRepository.find({ where: { tmdbId: In(tvTmdbIds) } })
+        : Promise.resolve([]),
+      baseQuery
+        .clone()
+        .select("COUNT(*) FILTER (WHERE va.actionType = :view)", "totalViews")
+        .addSelect("COUNT(*) FILTER (WHERE va.actionType = :play)", "totalPlays")
+        .addSelect("COUNT(*) FILTER (WHERE va.actionType = :complete)", "totalCompletes")
+        .addSelect("COALESCE(SUM(va.duration), 0)", "totalWatchTimeSeconds")
+        .setParameters({
+          view: ActionType.VIEW,
+          play: ActionType.PLAY,
+          complete: ActionType.COMPLETE,
+        })
+        .getRawOne(),
+      baseQuery.clone().orderBy("va.createdAt", "DESC").getOne(),
+    ]);
+
+    const movieByTmdbId = new Map(movies.map((movie) => [movie.tmdbId, movie]));
+    const tvByTmdbId = new Map(tvSeries.map((tv) => [tv.tmdbId, tv]));
+
+    const data = items.map((item) => {
+      const tmdbId = Number(item.contentId);
+      const content =
+        item.contentType === ContentType.MOVIE
+          ? movieByTmdbId.get(tmdbId)
+          : tvByTmdbId.get(tmdbId);
+      const posterPath = content?.posterPath || null;
+
+      return {
+        id: item.id,
+        contentId: item.contentId,
+        tmdbId: Number.isFinite(tmdbId) ? tmdbId : null,
+        contentType: item.contentType,
+        actionType: item.actionType,
+        contentTitle: content?.title || item.contentTitle || "Untitled",
+        duration: item.duration || 0,
+        deviceType: item.deviceType || null,
+        country: item.country || null,
+        createdAt: item.createdAt,
+        posterPath,
+        posterUrl: posterPath
+          ? `https://image.tmdb.org/t/p/w185${posterPath}`
+          : null,
+        href: Number.isFinite(tmdbId)
+          ? item.contentType === ContentType.TV_SERIES
+            ? `/tv/${tmdbId}`
+            : `/movie/${tmdbId}`
+          : null,
+      };
+    });
+
+    return {
+      data,
+      summary: {
+        totalViews: Number(summaryRaw?.totalViews || 0),
+        totalPlays: Number(summaryRaw?.totalPlays || 0),
+        totalCompletes: Number(summaryRaw?.totalCompletes || 0),
+        totalWatchTimeSeconds: Number(summaryRaw?.totalWatchTimeSeconds || 0),
+        lastWatchedAt: lastEvent?.createdAt || null,
+      },
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   /**
