@@ -113,10 +113,16 @@ export class ChatService {
     await this.assertActiveUser(userId);
 
     return this.sessionRepository.find({
-      where: { userId },
+      where: { userId, status: ChatSessionStatus.ACTIVE },
       order: { updatedAt: "DESC" },
       take: 20,
     });
+  }
+
+  async archiveSession(userId: number, sessionId: number) {
+    const session = await this.assertSessionOwner(userId, sessionId);
+    session.status = ChatSessionStatus.ARCHIVED;
+    await this.sessionRepository.save(session);
   }
 
   async getSessionMessages(userId: number, sessionId: number) {

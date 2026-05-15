@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Query,
   Param,
@@ -54,6 +55,18 @@ export class ChatController {
     return {
       success: true,
       data: messages,
+    };
+  }
+
+  @Delete("sessions/:id")
+  async deleteSession(
+    @GetUser("id") userId: number,
+    @Param("id", ParseIntPipe) sessionId: number
+  ): Promise<any> {
+    await this.chatService.archiveSession(userId, sessionId);
+    return {
+      success: true,
+      data: null,
     };
   }
 
