@@ -17,6 +17,7 @@ import {
   ChatModerationStatus,
   ChatSession,
   ChatSessionStatus,
+  ContentTranslation,
   Favorite,
   Movie,
   RecentSearch,
@@ -56,6 +57,8 @@ export class ChatService {
     private readonly messageRepository: Repository<ChatMessage>,
     @InjectRepository(ChatModerationFlag)
     private readonly flagRepository: Repository<ChatModerationFlag>,
+    @InjectRepository(ContentTranslation)
+    private readonly translationRepository: Repository<ContentTranslation>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Favorite)
@@ -94,6 +97,18 @@ export class ChatService {
     );
   }
 
+  async createSession(userId: number) {
+    await this.assertActiveUser(userId);
+
+    return this.sessionRepository.save(
+      this.sessionRepository.create({
+        userId,
+        title: "Movie assistant",
+        status: ChatSessionStatus.ACTIVE,
+      })
+    );
+  }
+
   async getUserSessions(userId: number) {
     await this.assertActiveUser(userId);
 
@@ -114,7 +129,12 @@ export class ChatService {
     });
   }
 
-  async sendMessage(userId: number, sessionId: number, content: string) {
+  async sendMessage(
+    userId: number,
+    sessionId: number,
+    content: string,
+    language = "en-US"
+  ) {
     const session = await this.assertSessionOwner(userId, sessionId);
     await this.assertDailyLimit(userId);
 
@@ -141,10 +161,15 @@ export class ChatService {
 
     const [history, shortlist] = await Promise.all([
       this.getContextMessages(userId, sessionId),
-      this.buildShortlist(userId, content),
+      this.buildShortlist(userId, content, language),
     ]);
 
-    const aiResult = await this.generateGeminiResponse(content, history, shortlist);
+    const aiResult = await this.generateGeminiResponse(
+      content,
+      history,
+      shortlist,
+      language
+    );
     const reply = aiResult.reply || this.buildFallbackReply(shortlist);
     const recommendations = this.filterRecommendations(
       aiResult.recommendations,
@@ -358,7 +383,8 @@ export class ChatService {
 
   private async buildShortlist(
     userId: number,
-    message: string
+    message: string,
+    language: string
   ): Promise<RecommendationItem[]> {
     const [favorites, analytics, searches] = await Promise.all([
       this.favoriteRepository.find({
@@ -461,7 +487,7 @@ export class ChatService {
     );
 
     const seen = new Set<string>();
-    return candidates
+    const shortlist = candidates
       .filter((item) => {
         const key = `${item.type}:${item.tmdbId}`;
         if (seen.has(key)) return false;
@@ -484,12 +510,16 @@ export class ChatService {
       .sort((a, b) => b.score - a.score)
       .slice(0, 12)
       .map(({ item }) => item);
+
+    await this.applyTranslations(shortlist, language);
+    return shortlist;
   }
 
   private async generateGeminiResponse(
     message: string,
     history: Array<{ role: string; content: string }>,
-    shortlist: RecommendationItem[]
+    shortlist: RecommendationItem[],
+    language: string
   ): Promise<{
     reply: string;
     recommendations: Array<{ tmdbId: number; type: ContentType }>;
@@ -507,7 +537,7 @@ export class ChatService {
     }
 
     const model = this.configService.get<string>("GEMINI_MODEL") || "gemini-1.5-flash";
-    const prompt = this.buildPrompt(message, history, shortlist);
+    const prompt = this.buildPrompt(message, history, shortlist, language);
 
     try {
       const response = await axios.post(
@@ -553,11 +583,17 @@ export class ChatService {
   private buildPrompt(
     message: string,
     history: Array<{ role: string; content: string }>,
-    shortlist: RecommendationItem[]
+    shortlist: RecommendationItem[],
+    language: string
   ) {
+    const responseLanguage = language.toLowerCase().startsWith("vi")
+      ? "Vietnamese"
+      : "English";
+
     return JSON.stringify({
       instruction:
-        "You are MovieStream's recommendation assistant. Answer in the user's language. Only recommend items from shortlist. Return strict JSON with reply, recommendations, followUpQuestions.",
+        `You are MovieStream's recommendation assistant. Answer in ${responseLanguage}. Only recommend items from shortlist. Return strict JSON with reply, recommendations, followUpQuestions.`,
+      language,
       userMessage: message,
       recentConversation: history,
       shortlist: shortlist.map((item) => ({
@@ -650,5 +686,56 @@ export class ChatService {
       genreIds: item.genreIds || [],
       href: item.mediaType === "tv" ? `/tv/${item.tmdbId}` : `/movie/${item.tmdbId}`,
     };
+  }
+
+  private async applyTranslations(
+    items: RecommendationItem[],
+    language: string
+  ) {
+    if (!language.toLowerCase().startsWith("vi") || items.length === 0) {
+      return;
+    }
+
+    const movieIds = items
+      .filter((item) => item.type === "movie")
+      .map((item) => item.tmdbId);
+    const tvIds = items
+      .filter((item) => item.type === "tv")
+      .map((item) => item.tmdbId);
+
+    const [movieTranslations, tvTranslations] = await Promise.all([
+      movieIds.length
+        ? this.translationRepository.find({
+            where: {
+              tmdbId: In(movieIds),
+              contentType: "movie",
+              language: In(["vi-VN", "vi"]),
+            },
+          })
+        : [],
+      tvIds.length
+        ? this.translationRepository.find({
+            where: {
+              tmdbId: In(tvIds),
+              contentType: "tv",
+              language: In(["vi-VN", "vi"]),
+            },
+          })
+        : [],
+    ]);
+
+    const translations = new Map(
+      [...movieTranslations, ...tvTranslations].map((translation) => [
+        `${translation.contentType}:${translation.tmdbId}`,
+        translation,
+      ])
+    );
+
+    for (const item of items) {
+      const translation = translations.get(`${item.type}:${item.tmdbId}`);
+      if (!translation) continue;
+      if (translation.title) item.title = translation.title;
+      if (translation.overview) item.overview = translation.overview;
+    }
   }
 }

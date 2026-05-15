@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Query,
   Param,
   ParseIntPipe,
   Post,
@@ -21,8 +22,14 @@ export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post("sessions")
-  async createSession(@GetUser("id") userId: number): Promise<any> {
-    const session = await this.chatService.createOrGetSession(userId);
+  async createSession(
+    @GetUser("id") userId: number,
+    @Query("new") createNew?: string
+  ): Promise<any> {
+    const session =
+      createNew === "true"
+        ? await this.chatService.createSession(userId)
+        : await this.chatService.createOrGetSession(userId);
     return {
       success: true,
       data: session,
@@ -59,7 +66,8 @@ export class ChatController {
     const result = await this.chatService.sendMessage(
       userId,
       sessionId,
-      dto.message
+      dto.message,
+      dto.language
     );
 
     return {

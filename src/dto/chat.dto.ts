@@ -6,6 +6,11 @@ export class SendChatMessageDto {
   @IsNotEmpty()
   @MaxLength(2000)
   message: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  language?: string;
 }
 
 export class ResolveChatFlagDto {
