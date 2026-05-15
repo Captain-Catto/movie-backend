@@ -39,3 +39,10 @@ export { Setting } from "./setting.entity";
 export { ViewerAuditLog } from "./viewer-audit-log.entity";
 export { UserLog } from "./user-log.entity";
 export { ContentTranslation } from "./content-translation.entity";
+export { ChatSession, ChatSessionStatus } from "./chat-session.entity";
+export { ChatMessage, ChatMessageRole } from "./chat-message.entity";
+export {
+  ChatModerationFlag,
+  ChatModerationSeverity,
+  ChatModerationStatus,
+} from "./chat-moderation-flag.entity";

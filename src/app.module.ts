@@ -18,6 +18,7 @@ import { FavoriteModule } from "./modules/favorite.module";
 import { CommentModule } from "./modules/comment.module";
 import { AdminModule } from "./modules/admin.module";
 import { AnalyticsModule } from "./modules/analytics.module";
+import { ChatModule } from "./modules/chat.module";
 import { SyncController } from "./controllers/sync.controller";
 import { DebugController } from "./controllers/debug.controller";
 import { UserRepository } from "./repositories/user.repository";
@@ -48,6 +49,9 @@ import {
   ViewerAuditLog,
   UserLog,
   ContentTranslation,
+  ChatSession,
+  ChatMessage,
+  ChatModerationFlag,
 } from "./entities";
 import { Recommendation } from "./entities/recommendation.entity";
 import { PersonCache } from "./entities/person-cache.entity";
@@ -98,6 +102,9 @@ import { RefreshToken } from "./entities/refresh-token.entity";
           ViewerAuditLog,
           UserLog,
           ContentTranslation,
+          ChatSession,
+          ChatMessage,
+          ChatModerationFlag,
         ],
         synchronize:
           configService.get("TYPEORM_SYNCHRONIZE") === "true" ||
@@ -148,6 +155,7 @@ import { RefreshToken } from "./entities/refresh-token.entity";
     CommentModule,
     AdminModule,
     AnalyticsModule,
+    ChatModule,
     SettingsModule,
     SeoModule,
     TypeOrmModule.forFeature([User]), // For DebugController
