@@ -509,6 +509,15 @@ export class MovieService {
     for (const item of items) {
       const t = translationMap.get(item.tmdbId);
       if (t) {
+        const titleLooksLikeFallback =
+          !t.title || t.title === item.title;
+        const overviewLooksLikeFallback =
+          !t.overview || t.overview === item.overview;
+
+        if (titleLooksLikeFallback && overviewLooksLikeFallback) {
+          continue;
+        }
+
         if (t.title) item.title = t.title;
         if (t.overview) item.overview = t.overview;
       }

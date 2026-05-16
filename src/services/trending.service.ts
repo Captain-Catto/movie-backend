@@ -12,6 +12,8 @@ export interface TrendingResponse {
   tmdbId: number;
   mediaType: string;
   title: string;
+  defaultTitle: string;
+  originalTitle: string | null;
   overview: string;
   posterUrl: string | null;
   backdropUrl: string | null;
@@ -46,6 +48,8 @@ export class TrendingService {
       tmdbId: trending.tmdbId,
       mediaType: trending.mediaType,
       title: trending.title,
+      defaultTitle: trending.title,
+      originalTitle: trending.title,
       overview: trending.overview,
       posterUrl: this.tmdbService.getPosterUrl(trending.posterPath, "w500"),
       backdropUrl: this.tmdbService.getBackdropUrl(
@@ -74,12 +78,16 @@ export class TrendingService {
       item.media_type === MediaType.TV ? MediaType.TV : MediaType.MOVIE;
     const title =
       item.title || item.name || item.original_title || item.original_name || "";
+    const originalTitle =
+      item.original_title || item.original_name || title;
 
     return {
       id: item.id,
       tmdbId: item.id,
       mediaType,
       title,
+      defaultTitle: title,
+      originalTitle,
       overview: item.overview || "",
       posterUrl: this.tmdbService.getPosterUrl(item.poster_path, "w500"),
       backdropUrl: this.tmdbService.getBackdropUrl(item.backdrop_path, "w1280"),
