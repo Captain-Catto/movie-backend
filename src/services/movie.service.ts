@@ -10,6 +10,7 @@ import {
   TMDB_MAX_PAGES,
   TMDB_DEFAULT_LANGUAGE,
 } from "../constants/tmdb.constants";
+import { normalizeLanguageTag } from "../constants/language.constants";
 import { ContentTranslationRepository } from "../repositories/content-translation.repository";
 import { parseOptionalDate } from "../utils/date.util";
 
@@ -514,6 +515,43 @@ export class MovieService {
     }
   }
 
+  private async ensureMovieTranslation(
+    tmdbId: number,
+    language: string
+  ): Promise<void> {
+    const normalizedLanguage = normalizeLanguageTag(language);
+    if (normalizedLanguage === TMDB_DEFAULT_LANGUAGE) return;
+
+    const existing = await this.translationRepository.findByTmdbId(
+      tmdbId,
+      "movie",
+      normalizedLanguage
+    );
+
+    if (existing?.title || existing?.overview) return;
+
+    try {
+      const translatedMovie = await this.tmdbService.getMovieDetails(
+        tmdbId,
+        normalizedLanguage
+      );
+
+      await this.translationRepository.upsert(
+        tmdbId,
+        "movie",
+        normalizedLanguage,
+        translatedMovie.title || null,
+        translatedMovie.overview || null
+      );
+    } catch (error) {
+      this.logger.debug(
+        `Movie translation unavailable for TMDB ID ${tmdbId} (${normalizedLanguage}): ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+
   async search(
     query: string,
     page: number = 1
@@ -711,6 +749,7 @@ export class MovieService {
    * Find movie by TMDB ID (prioritize TMDB ID over internal ID)
    */
   async findByTmdbId(tmdbId: number, language: string = "en-US"): Promise<MovieResponse> {
+    const normalizedLanguage = normalizeLanguageTag(language);
     // First, try to find movie by TMDB ID in database
     let movie = await this.movieRepository.findByTmdbId(tmdbId);
 
@@ -760,12 +799,12 @@ export class MovieService {
 
     const transformed = this.transformMovie(movie);
 
-    // Merge translation if not default language
-    if (language !== TMDB_DEFAULT_LANGUAGE) {
+    if (normalizedLanguage !== TMDB_DEFAULT_LANGUAGE) {
+      await this.ensureMovieTranslation(tmdbId, normalizedLanguage);
       await this.mergeTranslations(
         [transformed as any],
         "movie",
-        language
+        normalizedLanguage
       );
     }
 
