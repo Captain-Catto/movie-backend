@@ -716,6 +716,50 @@ export class TMDBService {
     }
   }
 
+  async getMovieTranslation(
+    movieId: number,
+    language: string
+  ): Promise<{ title: string | null; overview: string | null } | null> {
+    const normalizedLanguage = normalizeLanguageTag(language);
+    const [iso639, iso3166] = normalizedLanguage.split("-");
+
+    try {
+      const response = await this.axiosInstance.get(
+        `/movie/${movieId}/translations`
+      );
+      const translations = response.data?.translations || [];
+      const exactMatch = translations.find(
+        (translation: any) =>
+          translation.iso_639_1?.toLowerCase() === iso639.toLowerCase() &&
+          (!iso3166 ||
+            translation.iso_3166_1?.toUpperCase() === iso3166.toUpperCase())
+      );
+      const languageMatch =
+        exactMatch ||
+        translations.find(
+          (translation: any) =>
+            translation.iso_639_1?.toLowerCase() === iso639.toLowerCase()
+        );
+
+      if (!languageMatch?.data) return null;
+
+      return {
+        title: languageMatch.data.title || null,
+        overview: languageMatch.data.overview || null,
+      };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        this.logger.debug(`Movie translations ${movieId} not found (404)`);
+      } else {
+        this.logger.error(
+          `Error fetching movie translations ${movieId}:`,
+          error.message
+        );
+      }
+      throw error;
+    }
+  }
+
   async getTVSeriesDetails(
     tvId: number,
     language: string = "en-US"

@@ -517,7 +517,9 @@ export class MovieService {
 
   private async ensureMovieTranslation(
     tmdbId: number,
-    language: string
+    language: string,
+    defaultTitle?: string | null,
+    defaultOverview?: string | null
   ): Promise<void> {
     const normalizedLanguage = normalizeLanguageTag(language);
     if (normalizedLanguage === TMDB_DEFAULT_LANGUAGE) return;
@@ -528,20 +530,34 @@ export class MovieService {
       normalizedLanguage
     );
 
-    if (existing?.title || existing?.overview) return;
+    const existingLooksLikeFallback =
+      existing &&
+      (existing.title || "") === (defaultTitle || "") &&
+      (existing.overview || "") === (defaultOverview || "");
+
+    if ((existing?.title || existing?.overview) && !existingLooksLikeFallback) {
+      return;
+    }
 
     try {
-      const translatedMovie = await this.tmdbService.getMovieDetails(
+      const translation = await this.tmdbService.getMovieTranslation(
         tmdbId,
         normalizedLanguage
       );
+
+      if (!translation?.title && !translation?.overview) {
+        this.logger.debug(
+          `No TMDB movie translation found for TMDB ID ${tmdbId} (${normalizedLanguage})`
+        );
+        return;
+      }
 
       await this.translationRepository.upsert(
         tmdbId,
         "movie",
         normalizedLanguage,
-        translatedMovie.title || null,
-        translatedMovie.overview || null
+        translation.title,
+        translation.overview
       );
     } catch (error) {
       this.logger.debug(
@@ -800,7 +816,12 @@ export class MovieService {
     const transformed = this.transformMovie(movie);
 
     if (normalizedLanguage !== TMDB_DEFAULT_LANGUAGE) {
-      await this.ensureMovieTranslation(tmdbId, normalizedLanguage);
+      await this.ensureMovieTranslation(
+        tmdbId,
+        normalizedLanguage,
+        transformed.defaultTitle,
+        transformed.overview
+      );
       await this.mergeTranslations(
         [transformed as any],
         "movie",
