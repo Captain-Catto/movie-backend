@@ -337,37 +337,51 @@ export class AdminUserService {
       const loginCount = await this.userActivityRepository.count({
         where: { userId, activityType: ActivityType.LOGIN },
       });
-      const loginLogCount = await this.userLogRepository.count({
-        where: { userId, action: "LOGIN" },
-      });
+      const loginLogCount = await this.countUserLogsByPattern(userId, [
+        "LOGIN",
+        "LOGGED IN",
+      ]);
 
       const searchCount = await this.userActivityRepository.count({
         where: { userId, activityType: ActivityType.SEARCH },
       });
-      const searchLogCount = await this.userLogRepository.count({
-        where: { userId, action: "SEARCH" },
-      });
+      const searchLogCount = await this.countUserLogsByPattern(userId, [
+        "SEARCH",
+        "SEARCHED",
+      ]);
 
       const viewCount = await this.userActivityRepository.count({
         where: { userId, activityType: ActivityType.VIEW_CONTENT },
       });
+      const viewLogCount = await this.countUserLogsByPattern(userId, [
+        "VIEW",
+        "WATCH",
+        "WATCHED",
+      ]);
 
       const favoriteCount = await this.userActivityRepository.count({
         where: { userId, activityType: ActivityType.FAVORITE_ADD },
       });
-      const favoriteLogCount = await this.userLogRepository.count({
-        where: { userId, action: "FAVORITE_ADD" },
-      });
+      const favoriteLogCount = await this.countUserLogsByPattern(userId, [
+        "FAVORITE_ADD",
+        "ADDED",
+        "FAVORITES",
+      ]);
 
       // Get last login
       const lastLogin = await this.userActivityRepository.findOne({
         where: { userId, activityType: ActivityType.LOGIN },
         order: { createdAt: "DESC" },
       });
-      const lastLoginLog = await this.userLogRepository.findOne({
-        where: { userId, action: "LOGIN" },
-        order: { createdAt: "DESC" },
-      });
+      const lastLoginLog = await this.userLogRepository
+        .createQueryBuilder("ul")
+        .where("ul.userId = :userId", { userId })
+        .andWhere(
+          "(UPPER(ul.action) LIKE :login OR UPPER(ul.description) LIKE :loggedIn)",
+          { login: "%LOGIN%", loggedIn: "%LOGGED IN%" }
+        )
+        .orderBy("ul.createdAt", "DESC")
+        .getOne();
 
       // Get analytics-based stats (ViewAnalytics table)
       const analyticsViews = await this.viewAnalyticsRepository.count({
@@ -390,7 +404,10 @@ export class AdminUserService {
       const commentLogCount = await this.userLogRepository
         .createQueryBuilder("ul")
         .where("ul.userId = :userId", { userId })
-        .andWhere("ul.action LIKE :type", { type: "COMMENT%" })
+        .andWhere(
+          "(UPPER(ul.action) LIKE :type OR UPPER(ul.description) LIKE :descType)",
+          { type: "%COMMENT%", descType: "%COMMENT%" }
+        )
         .getCount();
 
       const lastLoginAt =
@@ -403,7 +420,7 @@ export class AdminUserService {
         total: totalActivities + totalLogs,
         logins: loginCount + loginLogCount,
         searches: searchCount + searchLogCount,
-        views: viewCount + analyticsViews,
+        views: viewCount + viewLogCount + analyticsViews,
         favorites: favoriteCount + favoriteLogCount,
         comments: commentCount + commentLogCount,
         watchTimeSeconds: parseInt(totalWatchTime?.total || "0"),
@@ -727,5 +744,28 @@ export class AdminUserService {
       return "mobile";
     }
     return "desktop";
+  }
+
+  private async countUserLogsByPattern(
+    userId: number,
+    patterns: string[]
+  ): Promise<number> {
+    const query = this.userLogRepository
+      .createQueryBuilder("ul")
+      .where("ul.userId = :userId", { userId });
+
+    const conditions = patterns
+      .map(
+        (_, index) =>
+          `(UPPER(ul.action) LIKE :pattern${index} OR UPPER(ul.description) LIKE :pattern${index})`
+      )
+      .join(" OR ");
+
+    const params = patterns.reduce<Record<string, string>>((acc, pattern, index) => {
+      acc[`pattern${index}`] = `%${pattern.toUpperCase()}%`;
+      return acc;
+    }, {});
+
+    return query.andWhere(`(${conditions})`, params).getCount();
   }
 }
