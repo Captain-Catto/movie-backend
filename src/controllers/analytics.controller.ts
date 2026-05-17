@@ -5,12 +5,14 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  UseGuards,
 } from "@nestjs/common";
 import { AnalyticsService } from "../services/analytics.service";
 import { Request } from "express";
 import * as geoip from "geoip-lite";
 import { ApiBody, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
+import { OptionalJwtAuthGuard } from "../auth/optional-jwt-auth.guard";
 
 class TrackEventDto {
   @ApiProperty({ example: "1226863" })
@@ -47,6 +49,7 @@ class TrackEventDto {
 
 @ApiTags('Analytics')
 @Controller("analytics")
+@UseGuards(OptionalJwtAuthGuard)
 export class AnalyticsController {
   constructor(private analyticsService: AnalyticsService) {}
 

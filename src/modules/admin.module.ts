@@ -18,6 +18,7 @@ import {
   NotificationAnalytics,
   Setting,
   UserLog,
+  RecentSearch,
 } from "../entities";
 
 // Services
@@ -89,6 +90,7 @@ import { AuthModule } from "./auth.module";
       NotificationAnalytics,
       Setting,
       UserLog,
+      RecentSearch,
     ]),
   ],
   controllers: [

@@ -277,6 +277,16 @@ export class CommentController {
         userRole
       );
 
+      this.userActivityLogger
+        .logComment({
+          userId,
+          action: "UPDATE",
+          commentId: id,
+          movieId: 0,
+          content: dto.content?.substring(0, 200),
+        })
+        .catch(() => {});
+
       return {
         success: true,
         message: "Comment updated successfully",
@@ -360,6 +370,15 @@ export class CommentController {
       const result = await this.commentService.likeComment(id, userId, isLike);
       console.log(`✅ [CommentController] Result:`, result);
 
+      this.userActivityLogger
+        .logAction({
+          userId,
+          action: isLike ? "COMMENT_LIKE" : "COMMENT_DISLIKE",
+          description: `${isLike ? "Liked" : "Disliked"} comment ${id}`,
+          metadata: { commentId: id, isLike },
+        })
+        .catch(() => {});
+
       return {
         success: true,
         message: isLike
@@ -396,6 +415,15 @@ export class CommentController {
         throw new UnauthorizedException("User not authenticated");
       }
       const result = await this.commentService.reportComment(id, dto, userId);
+
+      this.userActivityLogger
+        .logAction({
+          userId,
+          action: "COMMENT_REPORT",
+          description: `Reported comment ${id}`,
+          metadata: { commentId: id, reason: dto.reason },
+        })
+        .catch(() => {});
 
       return {
         success: true,

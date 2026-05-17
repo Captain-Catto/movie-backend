@@ -8,6 +8,7 @@ import {
   ActivityType,
   Movie,
   TVSeries,
+  RecentSearch,
 } from "../entities";
 import { UserLog } from "../entities/user-log.entity";
 import { ActionType, ContentType, ViewAnalytics } from "../entities/view-analytics.entity";
@@ -47,6 +48,8 @@ export class AdminUserService {
     private userActivityRepository: Repository<UserActivity>,
     @InjectRepository(UserLog)
     private userLogRepository: Repository<UserLog>,
+    @InjectRepository(RecentSearch)
+    private recentSearchRepository: Repository<RecentSearch>,
     @InjectRepository(ViewAnalytics)
     private viewAnalyticsRepository: Repository<ViewAnalytics>,
     @InjectRepository(Movie)
@@ -349,6 +352,9 @@ export class AdminUserService {
         "SEARCH",
         "SEARCHED",
       ]);
+      const recentSearchCount = await this.recentSearchRepository.count({
+        where: { userId },
+      });
 
       const viewCount = await this.userActivityRepository.count({
         where: { userId, activityType: ActivityType.VIEW_CONTENT },
@@ -419,7 +425,7 @@ export class AdminUserService {
       return {
         total: totalActivities + totalLogs,
         logins: loginCount + loginLogCount,
-        searches: searchCount + searchLogCount,
+        searches: searchCount + searchLogCount + recentSearchCount,
         views: viewCount + viewLogCount + analyticsViews,
         favorites: favoriteCount + favoriteLogCount,
         comments: commentCount + commentLogCount,
@@ -602,22 +608,31 @@ export class AdminUserService {
         .createQueryBuilder("ul")
         .where("ul.userId = :userId", { userId });
 
+      const rsQuery = this.recentSearchRepository
+        .createQueryBuilder("rs")
+        .where("rs.userId = :userId", { userId });
+
       // Apply type filter
       if (filters.type && filters.type !== "all") {
         switch (filters.type) {
           case "login":
             uaQuery.andWhere("ua.activityType = :actType", { actType: ActivityType.LOGIN });
             ulQuery.andWhere("ul.action = :logType", { logType: "LOGIN" });
+            rsQuery.andWhere("1 = 0");
             vaQuery.andWhere("1 = 0"); // exclude analytics
             break;
           case "search":
             uaQuery.andWhere("ua.activityType = :actType", { actType: ActivityType.SEARCH });
-            ulQuery.andWhere("ul.action = :logType", { logType: "SEARCH" });
+            ulQuery.andWhere(
+              "(UPPER(ul.action) LIKE :logType OR UPPER(ul.description) LIKE :logType)",
+              { logType: "%SEARCH%" }
+            );
             vaQuery.andWhere("va.actionType = :vaType", { vaType: "search" });
             break;
           case "view":
             uaQuery.andWhere("ua.activityType = :actType", { actType: ActivityType.VIEW_CONTENT });
             ulQuery.andWhere("1 = 0");
+            rsQuery.andWhere("1 = 0");
             vaQuery.andWhere("va.actionType = :vaType", { vaType: "view" });
             break;
           case "favorite":
@@ -627,21 +642,25 @@ export class AdminUserService {
             ulQuery.andWhere("ul.action IN (:...logTypes)", {
               logTypes: ["FAVORITE_ADD", "FAVORITE_REMOVE"],
             });
+            rsQuery.andWhere("1 = 0");
             vaQuery.andWhere("1 = 0");
             break;
           case "comment":
             uaQuery.andWhere("ua.activityType LIKE :type", { type: "COMMENT%" });
             ulQuery.andWhere("ul.action LIKE :logType", { logType: "COMMENT%" });
+            rsQuery.andWhere("1 = 0");
             vaQuery.andWhere("1 = 0");
             break;
           case "click":
             uaQuery.andWhere("1 = 0");
             ulQuery.andWhere("1 = 0");
+            rsQuery.andWhere("1 = 0");
             vaQuery.andWhere("va.actionType = :vaType", { vaType: "click" });
             break;
           case "play":
             uaQuery.andWhere("1 = 0");
             ulQuery.andWhere("1 = 0");
+            rsQuery.andWhere("1 = 0");
             vaQuery.andWhere("va.actionType = :vaType", { vaType: "play" });
             break;
         }
@@ -652,17 +671,20 @@ export class AdminUserService {
         uaQuery.andWhere("ua.createdAt >= :start", { start: filters.startDate });
         vaQuery.andWhere("va.createdAt >= :start", { start: filters.startDate });
         ulQuery.andWhere("ul.createdAt >= :start", { start: filters.startDate });
+        rsQuery.andWhere("rs.createdAt >= :start", { start: filters.startDate });
       }
       if (filters.endDate) {
         uaQuery.andWhere("ua.createdAt <= :end", { end: filters.endDate });
         vaQuery.andWhere("va.createdAt <= :end", { end: filters.endDate });
         ulQuery.andWhere("ul.createdAt <= :end", { end: filters.endDate });
+        rsQuery.andWhere("rs.createdAt <= :end", { end: filters.endDate });
       }
 
       // Get results from both tables
-      const [userActivities, userLogs, vaResults] = await Promise.all([
+      const [userActivities, userLogs, recentSearches, vaResults] = await Promise.all([
         uaQuery.orderBy("ua.createdAt", "DESC").getMany(),
         ulQuery.orderBy("ul.createdAt", "DESC").getMany(),
+        rsQuery.orderBy("rs.createdAt", "DESC").getMany(),
         vaQuery.orderBy("va.createdAt", "DESC").getMany(),
       ]);
 
@@ -689,6 +711,21 @@ export class AdminUserService {
           country: ul.metadata?.country,
           createdAt: ul.createdAt,
           source: "user_logs" as const,
+        })),
+        ...recentSearches.map((search) => ({
+          id: `rs-${search.id}`,
+          type: "SEARCH",
+          description: `Searched for "${search.query}"`,
+          metadata: {
+            query: search.query,
+            type: search.type,
+            dismissedAt: search.dismissedAt,
+          },
+          ipAddress: undefined,
+          deviceType: undefined,
+          country: undefined,
+          createdAt: search.createdAt,
+          source: "recent_searches" as const,
         })),
         ...vaResults.map((va) => ({
           id: `va-${va.id}`,
