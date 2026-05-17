@@ -5,10 +5,11 @@ import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { CamelCaseInterceptor } from "./interceptors/camel-case.interceptor";
 import { enhanceOpenApiDocument } from "./swagger/openapi-postprocessor";
-import { UserRepository } from "./repositories/user.repository";
-import { UserRole } from "./entities/user.entity";
+import { AdminSettingsService } from "./services/admin-settings.service";
+import * as bcrypt from "bcrypt";
 import * as compression from "compression";
 import helmet from "helmet";
+import * as crypto from "crypto";
 import "reflect-metadata";
 
 process.env.TZ = "UTC";
@@ -32,59 +33,237 @@ function resolveLogLevels(): LogLevel[] {
   return ["error", "warn", "log"];
 }
 
-function parseBasicAuth(req: any) {
-  const authHeader = req.headers.authorization || "";
-  const [scheme, encoded] = authHeader.split(" ");
+const SWAGGER_SESSION_COOKIE = "ms_swagger_session";
+const SWAGGER_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
-  if (scheme !== "Basic" || !encoded) {
-    return null;
-  }
+function parseCookies(cookieHeader?: string): Record<string, string> {
+  if (!cookieHeader) return {};
 
-  const decoded = Buffer.from(encoded, "base64").toString("utf8");
-  const separatorIndex = decoded.indexOf(":");
-  if (separatorIndex < 0) {
-    return null;
-  }
-
-  return {
-    username: decoded.slice(0, separatorIndex),
-    password: decoded.slice(separatorIndex + 1),
-  };
+  return cookieHeader.split(";").reduce<Record<string, string>>((acc, part) => {
+    const index = part.indexOf("=");
+    if (index < 0) return acc;
+    const key = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    if (key) acc[key] = decodeURIComponent(value);
+    return acc;
+  }, {});
 }
 
-function swaggerAdminAuth(userRepository: UserRepository) {
-  const allowedRoles = [UserRole.VIEWER, UserRole.ADMIN, UserRole.SUPER_ADMIN];
+function signSwaggerSession(payload: string, secret: string) {
+  return crypto.createHmac("sha256", secret).update(payload).digest("hex");
+}
 
+function createSwaggerSession(username: string, secret: string) {
+  const expiresAt = Date.now() + SWAGGER_SESSION_TTL_MS;
+  const payload = `${username}:${expiresAt}`;
+  const signature = signSwaggerSession(payload, secret);
+  return Buffer.from(`${payload}:${signature}`, "utf8").toString("base64url");
+}
+
+function verifySwaggerSession(token: string | undefined, secret: string) {
+  if (!token) return false;
+
+  try {
+    const decoded = Buffer.from(token, "base64url").toString("utf8");
+    const parts = decoded.split(":");
+    if (parts.length !== 3) return false;
+
+    const [username, expiresAtRaw, signature] = parts;
+    const expiresAt = Number(expiresAtRaw);
+    if (!username || !Number.isFinite(expiresAt) || expiresAt < Date.now()) {
+      return false;
+    }
+
+    const payload = `${username}:${expiresAtRaw}`;
+    const expected = signSwaggerSession(payload, secret);
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
+function readFormBody(req: any): Promise<Record<string, string>> {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk: Buffer) => {
+      body += chunk.toString("utf8");
+      if (body.length > 10_000) {
+        reject(new Error("Request body too large"));
+      }
+    });
+    req.on("end", () => {
+      const params = new URLSearchParams(body);
+      resolve({
+        username: params.get("username") || "",
+        password: params.get("password") || "",
+      });
+    });
+    req.on("error", reject);
+  });
+}
+
+function renderSwaggerLogin(error?: string) {
+  const errorHtml = error
+    ? `<div class="error">${escapeHtml(error)}</div>`
+    : "";
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MovieStream API Docs Login</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b1220;
+      color: #f8fafc;
+    }
+    .panel {
+      width: min(420px, calc(100vw - 32px));
+      border: 1px solid #263247;
+      border-radius: 12px;
+      background: #111827;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
+      overflow: hidden;
+    }
+    .header { padding: 24px 24px 16px; border-bottom: 1px solid #263247; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 20px; }
+    .logo {
+      width: 36px; height: 36px; border-radius: 9px; background: #ef233c;
+      display: grid; place-items: center; font-weight: 900;
+    }
+    .subtitle { margin: 8px 0 0; color: #94a3b8; font-size: 14px; }
+    form { padding: 24px; display: grid; gap: 16px; }
+    label { display: grid; gap: 8px; color: #cbd5e1; font-size: 13px; font-weight: 600; }
+    input {
+      width: 100%; box-sizing: border-box; border: 1px solid #334155; border-radius: 9px;
+      background: #0f172a; color: #f8fafc; padding: 12px 13px; font-size: 15px;
+      outline: none;
+    }
+    input:focus { border-color: #ef233c; box-shadow: 0 0 0 3px rgba(239, 35, 60, .18); }
+    button {
+      border: 0; border-radius: 9px; background: #ef233c; color: white; padding: 12px 14px;
+      font-weight: 800; font-size: 15px; cursor: pointer;
+    }
+    button:hover { background: #dc1f36; }
+    .error {
+      border: 1px solid rgba(248, 113, 113, .35);
+      background: rgba(127, 29, 29, .35);
+      color: #fecaca;
+      border-radius: 9px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <div class="header">
+      <div class="brand"><div class="logo">▶</div><span>MovieStream API Docs</span></div>
+      <p class="subtitle">Sign in with the Swagger credentials configured in Admin Settings.</p>
+    </div>
+    <form method="post" action="/api-docs-login">
+      ${errorHtml}
+      <label>
+        Username
+        <input name="username" autocomplete="username" required autofocus />
+      </label>
+      <label>
+        Password
+        <input name="password" type="password" autocomplete="current-password" required />
+      </label>
+      <button type="submit">Open Swagger</button>
+    </form>
+  </main>
+</body>
+</html>`;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function swaggerSettingsAuth(
+  adminSettingsService: AdminSettingsService,
+  sessionSecret: string,
+  isProduction: boolean
+) {
   return async (req: any, res: any, next: any) => {
+    if (req.path === "/api-docs-login" && req.method === "GET") {
+      return res.type("html").send(renderSwaggerLogin());
+    }
+
+    if (req.path === "/api-docs-login" && req.method === "POST") {
+      try {
+        const credentials = await readFormBody(req);
+        const settings =
+          await adminSettingsService.getSwaggerAuthRuntimeSettings();
+        const hasAccess =
+          settings &&
+          credentials.username === settings.username &&
+          (await bcrypt.compare(credentials.password, settings.passwordHash));
+
+        if (!hasAccess) {
+          return res
+            .status(401)
+            .type("html")
+            .send(renderSwaggerLogin("Invalid Swagger credentials"));
+        }
+
+        const token = createSwaggerSession(credentials.username, sessionSecret);
+        res.cookie(SWAGGER_SESSION_COOKIE, token, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: isProduction,
+          maxAge: SWAGGER_SESSION_TTL_MS,
+          path: "/",
+        });
+        return res.redirect("/api-docs");
+      } catch {
+        return res
+          .status(400)
+          .type("html")
+          .send(renderSwaggerLogin("Unable to process login request"));
+      }
+    }
+
+    if (req.path === "/api-docs-logout") {
+      res.clearCookie(SWAGGER_SESSION_COOKIE, { path: "/" });
+      return res.redirect("/api-docs-login");
+    }
+
     if (!req.path.startsWith("/api-docs")) {
       return next();
     }
 
-    const credentials = parseBasicAuth(req);
-    if (!credentials) {
-      res.setHeader("WWW-Authenticate", 'Basic realm="MovieStream API Docs"');
-      return res.status(401).send("Authentication required");
-    }
+    const cookies = parseCookies(req.headers.cookie);
+    const hasSession = verifySwaggerSession(
+      cookies[SWAGGER_SESSION_COOKIE],
+      sessionSecret
+    );
 
-    try {
-      const user = await userRepository.findByEmail(credentials.username);
-      const hasAccess =
-        user &&
-        user.isActive &&
-        allowedRoles.includes(user.role) &&
-        user.password &&
-        (await user.comparePassword(credentials.password));
-
-      if (!hasAccess) {
-        res.setHeader("WWW-Authenticate", 'Basic realm="MovieStream API Docs"');
-        return res.status(401).send("Invalid admin credentials");
+    if (!hasSession) {
+      if (req.path === "/api-docs-json") {
+        return res.status(401).json({
+          success: false,
+          message: "Swagger login required",
+        });
       }
-
-      return next();
-    } catch {
-      res.setHeader("WWW-Authenticate", 'Basic realm="MovieStream API Docs"');
-      return res.status(401).send("Invalid credentials");
+      return res.redirect("/api-docs-login");
     }
+
+    return next();
   };
 }
 
@@ -93,13 +272,24 @@ async function bootstrap() {
     logger: resolveLogLevels(),
   });
   const configService = app.get(ConfigService);
-  const userRepository = app.get(UserRepository);
+  const adminSettingsService = app.get(AdminSettingsService);
   const logger = new Logger("Bootstrap");
+  const nodeEnv = configService.get<string>("NODE_ENV") || "development";
+  const sessionSecret =
+    configService.get<string>("JWT_SECRET") ||
+    configService.get<string>("SESSION_SECRET") ||
+    "moviestream-swagger-dev-secret";
 
   logger.log(`⏰ Timezone: ${process.env.TZ}`);
 
   // Protect Swagger before Helmet so docs can be explicitly enabled without exposing them publicly.
-  app.use(swaggerAdminAuth(userRepository));
+  app.use(
+    swaggerSettingsAuth(
+      adminSettingsService,
+      sessionSecret,
+      nodeEnv === "production"
+    )
+  );
 
   // Skip helmet for Swagger UI path (needs inline scripts/styles)
   app.use((req: any, res: any, next: any) => {

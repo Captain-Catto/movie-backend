@@ -18,6 +18,7 @@ import {
   RegistrationSettingsDto,
   EffectSettingsDto,
   StreamDomainSettingsDto,
+  SwaggerAuthSettingsDto,
 } from "../dto/admin-settings.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 import { ApiBody, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
@@ -117,6 +118,37 @@ export class AdminSettingsController {
     return {
       success: true,
       message: "Stream domain settings updated",
+      data,
+    };
+  }
+
+  @Get("swagger-auth")
+  @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get Swagger documentation auth settings", dataType: "Swagger auth settings" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
+  async getSwaggerAuthSettings(): Promise<ApiResponse> {
+    const data = await this.adminSettingsService.getSwaggerAuthSettings();
+    return {
+      success: true,
+      message: "Swagger auth settings retrieved",
+      data,
+    };
+  }
+
+  @Put("swagger-auth")
+  @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Update Swagger documentation auth settings", dataType: "Swagger auth settings" })
+  @ApiBody({ type: SwaggerAuthSettingsDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
+  async updateSwaggerAuthSettings(
+    @Body() body: SwaggerAuthSettingsDto
+  ): Promise<ApiResponse> {
+    const data = await this.adminSettingsService.updateSwaggerAuthSettings(
+      body
+    );
+    return {
+      success: true,
+      message: "Swagger auth settings updated",
       data,
     };
   }

@@ -11,6 +11,7 @@ import {
   IsNumber,
   Max,
   ArrayMinSize,
+  MinLength,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
@@ -141,4 +142,21 @@ export class StreamDomainSettingsDto {
   @ArrayMinSize(1)
   @IsString({ each: true })
   domains: string[];
+}
+
+export class SwaggerAuthSettingsDto {
+  @ApiProperty({ example: "docs-admin" })
+  @IsString()
+  @MinLength(3)
+  username: string;
+
+  @ApiPropertyOptional({
+    example: "change-this-strong-password",
+    description:
+      "New Swagger password. Omit when updating only the username.",
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  password?: string;
 }

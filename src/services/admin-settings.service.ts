@@ -6,12 +6,15 @@ import {
   RegistrationSettingsDto,
   EffectSettingsDto,
   StreamDomainSettingsDto,
+  SwaggerAuthSettingsDto,
 } from "../dto/admin-settings.dto";
 import { STREAM_EMBED_DEFAULT_DOMAINS } from "../constants/stream.constants";
+import * as bcrypt from "bcrypt";
 
 const REGISTRATION_SETTINGS_KEY = "registration";
 const EFFECT_SETTINGS_KEY = "effectSettings";
 const STREAM_DOMAIN_SETTINGS_KEY = "streamDomainSettings";
+const SWAGGER_AUTH_SETTINGS_KEY = "swaggerAuthSettings";
 
 const DEFAULT_REGISTRATION_SETTINGS: RegistrationSettingsDto = {
   nickname: { min: 3, max: 16 },
@@ -45,6 +48,18 @@ const DEFAULT_EFFECT_SETTINGS: EffectSettingsDto = {
 const DEFAULT_STREAM_DOMAIN_SETTINGS: StreamDomainSettingsDto = {
   domains: [...STREAM_EMBED_DEFAULT_DOMAINS],
 };
+
+export interface SwaggerAuthRuntimeSettings {
+  username: string;
+  passwordHash: string;
+  updatedAt?: string;
+}
+
+export interface SwaggerAuthPublicSettings {
+  username: string;
+  configured: boolean;
+  updatedAt?: string;
+}
 
 @Injectable()
 export class AdminSettingsService {
@@ -230,5 +245,88 @@ export class AdminSettingsService {
     await this.settingRepository.save(record);
     this.logger.log("Stream domain settings updated");
     return merged;
+  }
+
+  async getSwaggerAuthSettings(): Promise<SwaggerAuthPublicSettings> {
+    const existing = await this.settingRepository.findOne({
+      where: { key: SWAGGER_AUTH_SETTINGS_KEY },
+    });
+
+    if (!existing) {
+      return {
+        username: "",
+        configured: false,
+      };
+    }
+
+    const value = existing.value as Partial<SwaggerAuthRuntimeSettings>;
+
+    return {
+      username: value.username || "",
+      configured: Boolean(value.username && value.passwordHash),
+      updatedAt: value.updatedAt,
+    };
+  }
+
+  async getSwaggerAuthRuntimeSettings(): Promise<SwaggerAuthRuntimeSettings | null> {
+    const existing = await this.settingRepository.findOne({
+      where: { key: SWAGGER_AUTH_SETTINGS_KEY },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    const value = existing.value as Partial<SwaggerAuthRuntimeSettings>;
+    if (!value.username || !value.passwordHash) {
+      return null;
+    }
+
+    return {
+      username: value.username,
+      passwordHash: value.passwordHash,
+      updatedAt: value.updatedAt,
+    };
+  }
+
+  async updateSwaggerAuthSettings(
+    payload: SwaggerAuthSettingsDto
+  ): Promise<SwaggerAuthPublicSettings> {
+    const username = payload.username.trim();
+    const existing = await this.settingRepository.findOne({
+      where: { key: SWAGGER_AUTH_SETTINGS_KEY },
+    });
+
+    const currentValue = (existing?.value || {}) as Partial<SwaggerAuthRuntimeSettings>;
+    const passwordHash = payload.password
+      ? await bcrypt.hash(payload.password, 10)
+      : currentValue.passwordHash;
+
+    if (!passwordHash) {
+      throw new Error("Password is required when configuring Swagger auth");
+    }
+
+    const value: SwaggerAuthRuntimeSettings = {
+      username,
+      passwordHash,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const record =
+      existing ||
+      this.settingRepository.create({
+        key: SWAGGER_AUTH_SETTINGS_KEY,
+        value,
+      });
+
+    record.value = value;
+    await this.settingRepository.save(record);
+    this.logger.log("Swagger auth settings updated");
+
+    return {
+      username: value.username,
+      configured: true,
+      updatedAt: value.updatedAt,
+    };
   }
 }
