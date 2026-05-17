@@ -385,4 +385,42 @@ export class AdminUserController {
       };
     }
   }
+
+  @Get(":id/watch-time-summary")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  @ApiSuccess({ summary: "Get user's watch time grouped by content", dataType: "Watch time summary" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv_series", "all"] })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
+  async getUserWatchTimeSummary(
+    @Param("id", ParseIntPipe) userId: number,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("contentType") contentType?: "movie" | "tv_series" | "all",
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string
+  ) {
+    try {
+      const result = await this.adminUserService.getUserWatchTimeSummary(userId, {
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 20,
+        contentType: contentType as ContentType | "all" | undefined,
+        startDate,
+        endDate,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to fetch user watch time summary",
+      };
+    }
+  }
 }

@@ -82,16 +82,9 @@ export class AnalyticsController {
       const userAgent = req.headers["user-agent"] || null;
       const country = this.resolveCountry(req, ipAddress);
 
-      this.logger.debug("Tracking analytics event", {
-        contentId: dto.contentId,
-        contentType: dto.contentType,
-        actionType: dto.actionType,
-        duration: dto.duration,
-        userId,
-        ipAddress,
-        userAgent: userAgent ? "present" : "missing",
-        country,
-      });
+      this.logger.debug(
+        `Tracking analytics event: action=${dto.actionType} userId=${userId ?? "guest"} content=${dto.contentType}:${dto.contentId} duration=${dto.duration ?? 0}s country=${country ?? "unknown"}`
+      );
 
       await this.analyticsService.trackEvent({
         ...dto,
@@ -100,6 +93,10 @@ export class AnalyticsController {
         userAgent: Array.isArray(userAgent) ? userAgent[0] : userAgent,
         country,
       });
+
+      this.logger.debug(
+        `Tracked analytics event: action=${dto.actionType} userId=${userId ?? "guest"} content=${dto.contentType}:${dto.contentId} duration=${dto.duration ?? 0}s`
+      );
 
       return {
         success: true,

@@ -587,6 +587,131 @@ export class AdminUserService {
     };
   }
 
+  async getUserWatchTimeSummary(userId: number, query: UserWatchHistoryQuery = {}) {
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+    const offset = (page - 1) * limit;
+
+    const baseQuery = this.viewAnalyticsRepository
+      .createQueryBuilder("va")
+      .where("va.userId = :userId", { userId })
+      .andWhere("va.duration IS NOT NULL")
+      .andWhere("va.duration > 0");
+
+    if (query.contentType && query.contentType !== "all") {
+      baseQuery.andWhere("va.contentType = :contentType", {
+        contentType: query.contentType,
+      });
+    }
+
+    if (query.startDate) {
+      baseQuery.andWhere("va.createdAt >= :startDate", {
+        startDate: query.startDate,
+      });
+    }
+
+    if (query.endDate) {
+      baseQuery.andWhere("va.createdAt <= :endDate", {
+        endDate: query.endDate,
+      });
+    }
+
+    const groupedQuery = baseQuery
+      .clone()
+      .select("va.contentId", "contentId")
+      .addSelect("va.contentType", "contentType")
+      .addSelect("COALESCE(SUM(va.duration), 0)", "totalWatchTimeSeconds")
+      .addSelect("COUNT(*)", "durationEvents")
+      .addSelect(
+        "COUNT(*) FILTER (WHERE va.actionType = :playAction)",
+        "totalPlays"
+      )
+      .addSelect("MAX(va.createdAt)", "lastWatchedAt")
+      .addSelect("MAX(va.contentTitle)", "contentTitle")
+      .setParameter("playAction", ActionType.PLAY)
+      .groupBy("va.contentId")
+      .addGroupBy("va.contentType");
+
+    const [rows, totalRaw, summaryRaw] = await Promise.all([
+      groupedQuery
+        .clone()
+        .orderBy('"totalWatchTimeSeconds"', "DESC")
+        .offset(offset)
+        .limit(limit)
+        .getRawMany(),
+      groupedQuery.clone().select("COUNT(*)", "total").getRawMany(),
+      baseQuery
+        .clone()
+        .select("COALESCE(SUM(va.duration), 0)", "totalWatchTimeSeconds")
+        .addSelect("COUNT(DISTINCT (va.contentType, va.contentId))", "totalContent")
+        .getRawOne(),
+    ]);
+
+    const movieTmdbIds = rows
+      .filter((row) => row.contentType === ContentType.MOVIE)
+      .map((row) => Number(row.contentId))
+      .filter(Number.isFinite);
+    const tvTmdbIds = rows
+      .filter((row) => row.contentType === ContentType.TV_SERIES)
+      .map((row) => Number(row.contentId))
+      .filter(Number.isFinite);
+
+    const [movies, tvSeries] = await Promise.all([
+      movieTmdbIds.length
+        ? this.movieRepository.find({ where: { tmdbId: In(movieTmdbIds) } })
+        : Promise.resolve([]),
+      tvTmdbIds.length
+        ? this.tvSeriesRepository.find({ where: { tmdbId: In(tvTmdbIds) } })
+        : Promise.resolve([]),
+    ]);
+
+    const movieByTmdbId = new Map(movies.map((movie) => [movie.tmdbId, movie]));
+    const tvByTmdbId = new Map(tvSeries.map((tv) => [tv.tmdbId, tv]));
+
+    const data = rows.map((row) => {
+      const tmdbId = Number(row.contentId);
+      const content =
+        row.contentType === ContentType.MOVIE
+          ? movieByTmdbId.get(tmdbId)
+          : tvByTmdbId.get(tmdbId);
+      const posterPath = content?.posterPath || null;
+
+      return {
+        contentId: row.contentId,
+        tmdbId: Number.isFinite(tmdbId) ? tmdbId : null,
+        contentType: row.contentType,
+        contentTitle: content?.title || row.contentTitle || "Untitled",
+        totalWatchTimeSeconds: Number(row.totalWatchTimeSeconds || 0),
+        durationEvents: Number(row.durationEvents || 0),
+        totalPlays: Number(row.totalPlays || 0),
+        lastWatchedAt: row.lastWatchedAt || null,
+        posterPath,
+        posterUrl: posterPath
+          ? `https://image.tmdb.org/t/p/w185${posterPath}`
+          : null,
+        href: Number.isFinite(tmdbId)
+          ? row.contentType === ContentType.TV_SERIES
+            ? `/tv/${tmdbId}`
+            : `/movie/${tmdbId}`
+          : null,
+      };
+    });
+
+    const total = totalRaw.length;
+
+    return {
+      data,
+      summary: {
+        totalContent: Number(summaryRaw?.totalContent || total),
+        totalWatchTimeSeconds: Number(summaryRaw?.totalWatchTimeSeconds || 0),
+      },
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   /**
    * Get unified activity timeline merging UserActivity + ViewAnalytics
    */
@@ -611,7 +736,14 @@ export class AdminUserService {
       // Build ViewAnalytics query
       const vaQuery = this.viewAnalyticsRepository
         .createQueryBuilder("va")
-        .where("va.userId = :userId", { userId });
+        .where("va.userId = :userId", { userId })
+        .andWhere(
+          "NOT (va.actionType = :durationAction AND va.metadata ->> 'type' = :durationType)",
+          {
+            durationAction: ActionType.VIEW,
+            durationType: "page_duration",
+          }
+        );
 
       // Build UserLog query. Older and several current flows write here.
       const ulQuery = this.userLogRepository

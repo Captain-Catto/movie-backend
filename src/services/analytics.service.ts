@@ -65,6 +65,7 @@ export class AnalyticsService {
         userAgent,
       } = params;
       const normalizedActionType = this.normalizeActionType(actionType);
+      const normalizedContentId = this.normalizeContentId(contentId);
 
       // Parse user agent for device info
       const deviceInfo = this.parseUserAgent(userAgent);
@@ -77,7 +78,7 @@ export class AnalyticsService {
 
       // Create analytics record
       const analytics = this.viewAnalyticsRepository.create({
-        contentId,
+        contentId: normalizedContentId,
         contentType: mappedContentType,
         actionType: normalizedActionType,
         contentTitle,
@@ -93,11 +94,13 @@ export class AnalyticsService {
       await this.viewAnalyticsRepository.save(analytics);
 
       // Update content counters asynchronously (don't block response)
-      this.updateContentCounters(contentId, contentType, normalizedActionType).catch(
-        (error) => {
-          this.logger.error("Error updating content counters:", error);
-        }
-      );
+      this.updateContentCounters(
+        normalizedContentId,
+        contentType,
+        normalizedActionType
+      ).catch((error) => {
+        this.logger.error("Error updating content counters:", error);
+      });
 
       // Push lightweight realtime snapshot updates for admin dashboard
       this.realtimeService
@@ -171,6 +174,10 @@ export class AnalyticsService {
     } catch (error) {
       return { device: "unknown" };
     }
+  }
+
+  private normalizeContentId(contentId: string): string {
+    return contentId.replace(/^(movie|tv)-/i, "");
   }
 
   private normalizeActionType(actionType: TrackEventParams["actionType"]): ActionType {
