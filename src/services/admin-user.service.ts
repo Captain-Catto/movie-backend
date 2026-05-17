@@ -399,6 +399,9 @@ export class AdminUserService {
       const analyticsViews = await this.viewAnalyticsRepository.count({
         where: { userId, actionType: "view" as any },
       });
+      const analyticsPlays = await this.viewAnalyticsRepository.count({
+        where: { userId, actionType: "play" as any },
+      });
 
       const totalWatchTime = await this.viewAnalyticsRepository
         .createQueryBuilder("va")
@@ -435,6 +438,7 @@ export class AdminUserService {
         views: viewCount + viewLogCount + analyticsViews,
         favorites: currentFavoriteCount,
         comments: commentCount + commentLogCount,
+        plays: analyticsPlays,
         watchTimeSeconds: parseInt(totalWatchTime?.total || "0"),
         lastLogin: lastLoginAt,
       };
