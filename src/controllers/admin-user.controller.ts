@@ -12,6 +12,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseIntPipe,
+  BadRequestException,
 } from "@nestjs/common";
 import { AdminUserService, BanUserDto } from "../services/admin-user.service";
 import { UserActivityLoggerService } from "../services/user-activity-logger.service";
@@ -170,8 +171,13 @@ export class AdminUserController {
   @ApiBody({ schema: { example: { role: UserRole.ADMIN } } })
   async updateUserRole(
     @Param("id", ParseIntPipe) id: number,
-    @Body() body: { role: UserRole }
+    @Body() body: { role: UserRole },
+    @Request() req
   ): Promise<ApiResponse> {
+    if (id === Number(req.user?.id) && body.role !== req.user?.role) {
+      throw new BadRequestException("You cannot change your own role");
+    }
+
     try {
       const result = await this.adminUserService.updateUserRole(
         id,
@@ -200,8 +206,19 @@ export class AdminUserController {
   @ApiBody({ type: UpdateUserDto })
   async updateUser(
     @Param("id", ParseIntPipe) id: number,
-    @Body() body: UpdateUserDto
+    @Body() body: UpdateUserDto,
+    @Request() req
   ): Promise<ApiResponse> {
+    if (id === Number(req.user?.id)) {
+      if (body.role && body.role !== req.user?.role) {
+        throw new BadRequestException("You cannot change your own role");
+      }
+
+      if (body.isActive === false) {
+        throw new BadRequestException("You cannot disable your own account");
+      }
+    }
+
     try {
       const result = await this.adminUserService.updateUserProfile(id, body);
 

@@ -1,7 +1,15 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
-import { User, UserRole, UserActivity, ActivityType, Movie, TVSeries } from "../entities";
+import {
+  User,
+  UserRole,
+  UserActivity,
+  ActivityType,
+  Movie,
+  TVSeries,
+} from "../entities";
+import { UserLog } from "../entities/user-log.entity";
 import { ActionType, ContentType, ViewAnalytics } from "../entities/view-analytics.entity";
 import * as bcrypt from "bcrypt";
 
@@ -37,6 +45,8 @@ export class AdminUserService {
     private userRepository: Repository<User>,
     @InjectRepository(UserActivity)
     private userActivityRepository: Repository<UserActivity>,
+    @InjectRepository(UserLog)
+    private userLogRepository: Repository<UserLog>,
     @InjectRepository(ViewAnalytics)
     private viewAnalyticsRepository: Repository<ViewAnalytics>,
     @InjectRepository(Movie)
@@ -320,13 +330,22 @@ export class AdminUserService {
       const totalActivities = await this.userActivityRepository.count({
         where: { userId },
       });
+      const totalLogs = await this.userLogRepository.count({
+        where: { userId },
+      });
 
       const loginCount = await this.userActivityRepository.count({
         where: { userId, activityType: ActivityType.LOGIN },
       });
+      const loginLogCount = await this.userLogRepository.count({
+        where: { userId, action: "LOGIN" },
+      });
 
       const searchCount = await this.userActivityRepository.count({
         where: { userId, activityType: ActivityType.SEARCH },
+      });
+      const searchLogCount = await this.userLogRepository.count({
+        where: { userId, action: "SEARCH" },
       });
 
       const viewCount = await this.userActivityRepository.count({
@@ -336,10 +355,17 @@ export class AdminUserService {
       const favoriteCount = await this.userActivityRepository.count({
         where: { userId, activityType: ActivityType.FAVORITE_ADD },
       });
+      const favoriteLogCount = await this.userLogRepository.count({
+        where: { userId, action: "FAVORITE_ADD" },
+      });
 
       // Get last login
       const lastLogin = await this.userActivityRepository.findOne({
         where: { userId, activityType: ActivityType.LOGIN },
+        order: { createdAt: "DESC" },
+      });
+      const lastLoginLog = await this.userLogRepository.findOne({
+        where: { userId, action: "LOGIN" },
         order: { createdAt: "DESC" },
       });
 
@@ -361,16 +387,27 @@ export class AdminUserService {
         .where("ua.userId = :userId", { userId })
         .andWhere("ua.activityType LIKE :type", { type: "COMMENT%" })
         .getCount();
+      const commentLogCount = await this.userLogRepository
+        .createQueryBuilder("ul")
+        .where("ul.userId = :userId", { userId })
+        .andWhere("ul.action LIKE :type", { type: "COMMENT%" })
+        .getCount();
+
+      const lastLoginAt =
+        [lastLogin?.createdAt, lastLoginLog?.createdAt]
+          .filter(Boolean)
+          .sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0] ||
+        null;
 
       return {
-        total: totalActivities,
-        logins: loginCount,
-        searches: searchCount,
+        total: totalActivities + totalLogs,
+        logins: loginCount + loginLogCount,
+        searches: searchCount + searchLogCount,
         views: viewCount + analyticsViews,
-        favorites: favoriteCount,
-        comments: commentCount,
+        favorites: favoriteCount + favoriteLogCount,
+        comments: commentCount + commentLogCount,
         watchTimeSeconds: parseInt(totalWatchTime?.total || "0"),
-        lastLogin: lastLogin?.createdAt || null,
+        lastLogin: lastLoginAt,
       };
     } catch (error) {
       this.logger.error("Error getting user activity stats:", error);
@@ -543,37 +580,51 @@ export class AdminUserService {
         .createQueryBuilder("va")
         .where("va.userId = :userId", { userId });
 
+      // Build UserLog query. Older and several current flows write here.
+      const ulQuery = this.userLogRepository
+        .createQueryBuilder("ul")
+        .where("ul.userId = :userId", { userId });
+
       // Apply type filter
       if (filters.type && filters.type !== "all") {
         switch (filters.type) {
           case "login":
             uaQuery.andWhere("ua.activityType = :actType", { actType: ActivityType.LOGIN });
+            ulQuery.andWhere("ul.action = :logType", { logType: "LOGIN" });
             vaQuery.andWhere("1 = 0"); // exclude analytics
             break;
           case "search":
             uaQuery.andWhere("ua.activityType = :actType", { actType: ActivityType.SEARCH });
+            ulQuery.andWhere("ul.action = :logType", { logType: "SEARCH" });
             vaQuery.andWhere("va.actionType = :vaType", { vaType: "search" });
             break;
           case "view":
             uaQuery.andWhere("ua.activityType = :actType", { actType: ActivityType.VIEW_CONTENT });
+            ulQuery.andWhere("1 = 0");
             vaQuery.andWhere("va.actionType = :vaType", { vaType: "view" });
             break;
           case "favorite":
             uaQuery.andWhere("ua.activityType IN (:...types)", {
               types: [ActivityType.FAVORITE_ADD, ActivityType.FAVORITE_REMOVE],
             });
+            ulQuery.andWhere("ul.action IN (:...logTypes)", {
+              logTypes: ["FAVORITE_ADD", "FAVORITE_REMOVE"],
+            });
             vaQuery.andWhere("1 = 0");
             break;
           case "comment":
             uaQuery.andWhere("ua.activityType LIKE :type", { type: "COMMENT%" });
+            ulQuery.andWhere("ul.action LIKE :logType", { logType: "COMMENT%" });
             vaQuery.andWhere("1 = 0");
             break;
           case "click":
             uaQuery.andWhere("1 = 0");
+            ulQuery.andWhere("1 = 0");
             vaQuery.andWhere("va.actionType = :vaType", { vaType: "click" });
             break;
           case "play":
             uaQuery.andWhere("1 = 0");
+            ulQuery.andWhere("1 = 0");
             vaQuery.andWhere("va.actionType = :vaType", { vaType: "play" });
             break;
         }
@@ -583,15 +634,18 @@ export class AdminUserService {
       if (filters.startDate) {
         uaQuery.andWhere("ua.createdAt >= :start", { start: filters.startDate });
         vaQuery.andWhere("va.createdAt >= :start", { start: filters.startDate });
+        ulQuery.andWhere("ul.createdAt >= :start", { start: filters.startDate });
       }
       if (filters.endDate) {
         uaQuery.andWhere("ua.createdAt <= :end", { end: filters.endDate });
         vaQuery.andWhere("va.createdAt <= :end", { end: filters.endDate });
+        ulQuery.andWhere("ul.createdAt <= :end", { end: filters.endDate });
       }
 
       // Get results from both tables
-      const [userActivities, vaResults] = await Promise.all([
+      const [userActivities, userLogs, vaResults] = await Promise.all([
         uaQuery.orderBy("ua.createdAt", "DESC").getMany(),
+        ulQuery.orderBy("ul.createdAt", "DESC").getMany(),
         vaQuery.orderBy("va.createdAt", "DESC").getMany(),
       ]);
 
@@ -607,6 +661,17 @@ export class AdminUserService {
           country: ua.country,
           createdAt: ua.createdAt,
           source: "user_activity" as const,
+        })),
+        ...userLogs.map((ul) => ({
+          id: `ul-${ul.id}`,
+          type: ul.action,
+          description: ul.description,
+          metadata: ul.metadata || {},
+          ipAddress: ul.ipAddress,
+          deviceType: this.getDeviceTypeFromUserAgent(ul.userAgent),
+          country: ul.metadata?.country,
+          createdAt: ul.createdAt,
+          source: "user_logs" as const,
         })),
         ...vaResults.map((va) => ({
           id: `va-${va.id}`,
@@ -652,5 +717,15 @@ export class AdminUserService {
         totalPages: 0,
       };
     }
+  }
+
+  private getDeviceTypeFromUserAgent(userAgent?: string | null): string | undefined {
+    if (!userAgent) return undefined;
+    const ua = userAgent.toLowerCase();
+    if (ua.includes("tablet") || ua.includes("ipad")) return "tablet";
+    if (ua.includes("mobi") || ua.includes("android") || ua.includes("iphone")) {
+      return "mobile";
+    }
+    return "desktop";
   }
 }
