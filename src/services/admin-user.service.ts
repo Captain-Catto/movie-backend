@@ -9,6 +9,7 @@ import {
   Movie,
   TVSeries,
   RecentSearch,
+  Favorite,
 } from "../entities";
 import { UserLog } from "../entities/user-log.entity";
 import { ActionType, ContentType, ViewAnalytics } from "../entities/view-analytics.entity";
@@ -50,6 +51,8 @@ export class AdminUserService {
     private userLogRepository: Repository<UserLog>,
     @InjectRepository(RecentSearch)
     private recentSearchRepository: Repository<RecentSearch>,
+    @InjectRepository(Favorite)
+    private favoriteRepository: Repository<Favorite>,
     @InjectRepository(ViewAnalytics)
     private viewAnalyticsRepository: Repository<ViewAnalytics>,
     @InjectRepository(Movie)
@@ -373,6 +376,9 @@ export class AdminUserService {
         "ADDED",
         "FAVORITES",
       ]);
+      const currentFavoriteCount = await this.favoriteRepository.count({
+        where: { userId },
+      });
 
       // Get last login
       const lastLogin = await this.userActivityRepository.findOne({
@@ -427,7 +433,7 @@ export class AdminUserService {
         logins: loginCount + loginLogCount,
         searches: searchCount + searchLogCount + recentSearchCount,
         views: viewCount + viewLogCount + analyticsViews,
-        favorites: favoriteCount + favoriteLogCount,
+        favorites: currentFavoriteCount,
         comments: commentCount + commentLogCount,
         watchTimeSeconds: parseInt(totalWatchTime?.total || "0"),
         lastLogin: lastLoginAt,
