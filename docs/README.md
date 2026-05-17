@@ -12,6 +12,8 @@ Welcome to the backend documentation hub. Here you will find detailed guides on 
     - Dashboard, Analytics, SEO Management, Moderation.
 - ⚙️ **[Infrastructure](FEATURES_INFRA.md)**
     - System Config, AWS S3 Uploads, Realtime Gateway.
+- 🔁 **[Feature Flows](FEATURE_FLOWS.md)**
+    - End-to-end flows for auth, catalog, search, people, comments, chatbot, admin, sync, Swagger, and permissions.
 
 ## 🚀 Getting Started
 

@@ -53,12 +53,24 @@ export interface SwaggerAuthRuntimeSettings {
   username: string;
   passwordHash: string;
   updatedAt?: string;
+  updatedBy?: {
+    id?: number;
+    email?: string;
+    name?: string;
+    role?: string;
+  };
 }
 
 export interface SwaggerAuthPublicSettings {
   username: string;
   configured: boolean;
   updatedAt?: string;
+  updatedBy?: {
+    id?: number;
+    email?: string;
+    name?: string;
+    role?: string;
+  };
 }
 
 @Injectable()
@@ -265,6 +277,7 @@ export class AdminSettingsService {
       username: value.username || "",
       configured: Boolean(value.username && value.passwordHash),
       updatedAt: value.updatedAt,
+      updatedBy: value.updatedBy,
     };
   }
 
@@ -290,7 +303,8 @@ export class AdminSettingsService {
   }
 
   async updateSwaggerAuthSettings(
-    payload: SwaggerAuthSettingsDto
+    payload: SwaggerAuthSettingsDto,
+    updatedBy?: { id?: number; email?: string; name?: string; role?: string }
   ): Promise<SwaggerAuthPublicSettings> {
     const username = payload.username.trim();
     const existing = await this.settingRepository.findOne({
@@ -310,6 +324,14 @@ export class AdminSettingsService {
       username,
       passwordHash,
       updatedAt: new Date().toISOString(),
+      updatedBy: updatedBy
+        ? {
+            id: updatedBy.id,
+            email: updatedBy.email,
+            name: updatedBy.name,
+            role: updatedBy.role,
+          }
+        : currentValue.updatedBy,
     };
 
     const record =
@@ -327,6 +349,7 @@ export class AdminSettingsService {
       username: value.username,
       configured: true,
       updatedAt: value.updatedAt,
+      updatedBy: value.updatedBy,
     };
   }
 }

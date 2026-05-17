@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Put,
+  Request,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
@@ -136,15 +137,23 @@ export class AdminSettingsController {
   }
 
   @Put("swagger-auth")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiSuccess({ summary: "Update Swagger documentation auth settings", dataType: "Swagger auth settings" })
   @ApiBody({ type: SwaggerAuthSettingsDto })
   @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async updateSwaggerAuthSettings(
-    @Body() body: SwaggerAuthSettingsDto
+    @Body() body: SwaggerAuthSettingsDto,
+    @Request() req: any
   ): Promise<ApiResponse> {
     const data = await this.adminSettingsService.updateSwaggerAuthSettings(
-      body
+      body,
+      {
+        id: req.user?.id,
+        email: req.user?.email,
+        name: req.user?.name,
+        role: req.user?.role,
+      }
     );
     return {
       success: true,
