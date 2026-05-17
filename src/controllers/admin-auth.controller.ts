@@ -13,7 +13,8 @@ import { AuthService } from "../services/auth.service";
 import { LoginDto } from "../dto/auth.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { User, UserRole } from "../entities/user.entity";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - Auth')
 @Controller("admin/auth")
@@ -26,6 +27,8 @@ export class AdminAuthController {
 
   @Post("login")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Login to admin dashboard", dataType: "Admin user profile and JWT tokens" })
+  @ApiStandardErrors()
   async adminLogin(
     @Body() loginDto: LoginDto,
     @Request() req
@@ -60,13 +63,27 @@ export class AdminAuthController {
 
   // Endpoint công khai để promote user đầu tiên thành admin
   @Post("promote")
+  @ApiExcludeEndpoint()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Promote a user to admin using promotion secret", dataType: "Promoted user summary" })
+  @ApiBody({
+    schema: {
+      example: {
+        email: "admin@example.com",
+        secret: "set-via-ADMIN_PROMOTION_SECRET",
+      },
+    },
+  })
+  @ApiStandardErrors()
   async promoteToAdmin(
     @Body() body: { email: string; secret: string }
   ): Promise<ApiResponse> {
     try {
-      // Secret key để bảo mật
-      const ADMIN_SECRET = process.env.ADMIN_PROMOTION_SECRET || "promote-admin-2024";
+      const ADMIN_SECRET = process.env.ADMIN_PROMOTION_SECRET;
+
+      if (!ADMIN_SECRET) {
+        throw new UnauthorizedException("Admin promotion is disabled");
+      }
 
       if (body.secret !== ADMIN_SECRET) {
         return {

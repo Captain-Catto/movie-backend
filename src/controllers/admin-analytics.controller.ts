@@ -15,7 +15,8 @@ import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { ContentType } from "../entities";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiQuery, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - Analytics')
 @ApiBearerAuth('JWT')
@@ -28,6 +29,11 @@ export class AdminAnalyticsController {
 
   @Get("overview")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Get admin analytics overview",
+    dataType: "Analytics overview",
+  })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getOverview(): Promise<ApiResponse> {
     try {
       const data = await this.adminAnalyticsService.getAnalyticsOverview();
@@ -48,6 +54,11 @@ export class AdminAnalyticsController {
 
   @Get("views")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get view statistics", dataType: "View statistics" })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getViewStats(
     @Query("startDate") startDate?: string,
     @Query("endDate") endDate?: string,
@@ -85,6 +96,10 @@ export class AdminAnalyticsController {
 
   @Get("most-viewed")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get most viewed content", dataType: "Most viewed content list" })
+  @ApiQuery({ name: "limit", required: false, type: Number, example: 20 })
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getMostViewed(
     @Query("limit") limit?: number,
     @Query("contentType") contentType?: string
@@ -121,6 +136,11 @@ export class AdminAnalyticsController {
 
   @Get("clicks")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get click statistics", dataType: "Click statistics" })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getClickStats(
     @Query("startDate") startDate?: string,
     @Query("endDate") endDate?: string,
@@ -158,6 +178,11 @@ export class AdminAnalyticsController {
 
   @Get("plays")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get play statistics", dataType: "Play statistics" })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getPlayStats(
     @Query("startDate") startDate?: string,
     @Query("endDate") endDate?: string,
@@ -195,6 +220,9 @@ export class AdminAnalyticsController {
 
   @Get("favorites")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get favorite statistics", dataType: "Favorite statistics" })
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getFavoriteStats(
     @Query("contentType") contentType?: string
   ): Promise<ApiResponse> {
@@ -228,6 +256,9 @@ export class AdminAnalyticsController {
 
   @Get("popular")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get popular content by analytics", dataType: "Popular content list" })
+  @ApiQuery({ name: "limit", required: false, type: Number, example: 20 })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getPopularContent(
     @Query("limit") limit?: number
   ): Promise<ApiResponse> {
@@ -252,6 +283,8 @@ export class AdminAnalyticsController {
 
   @Get("devices")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get device statistics", dataType: "Device statistics" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getDeviceStats(): Promise<ApiResponse> {
     try {
       const data = await this.adminAnalyticsService.getDeviceStats();
@@ -272,6 +305,8 @@ export class AdminAnalyticsController {
 
   @Get("countries")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get country statistics", dataType: "Country statistics" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getCountryStats(): Promise<ApiResponse> {
     try {
       const data = await this.adminAnalyticsService.getCountryStats();

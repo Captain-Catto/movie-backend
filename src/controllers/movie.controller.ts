@@ -7,6 +7,7 @@ import {
   HttpStatus,
   HttpCode,
   ParseIntPipe,
+  UseGuards,
 } from "@nestjs/common";
 import { MovieService } from "../services/movie.service";
 import { DataSyncService } from "../services/data-sync.service";
@@ -15,7 +16,18 @@ import { TMDBService } from "../services/tmdb.service";
 import { MovieQueryDto } from "../dto/query.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { SyncCategory } from "../entities/sync-status.entity";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../guards/roles.guard";
+import { Roles } from "../decorators/roles.decorator";
+import { UserRole } from "../entities/user.entity";
+import {
+  ApiLanguageQuery,
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+  ApiTmdbIdParam,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Movies')
 @Controller("movies")
@@ -28,7 +40,12 @@ export class MovieController {
   ) {}
 
   @Post("sync")
+  @ApiExcludeEndpoint()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Manually sync popular movies", dataType: "Sync result" })
+  @ApiStandardErrors()
   async syncMovies(): Promise<ApiResponse> {
     try {
       await this.dataSyncService.syncPopularMovies();
@@ -49,6 +66,10 @@ export class MovieController {
 
   @Get("now-playing")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List now-playing movies", dataType: "Movies", isArray: true })
+  @ApiStandardErrors()
+  @ApiPaginationQueries()
+  @ApiLanguageQuery()
   async getNowPlaying(
     @Query("page") page: number = 1,
     @Query("limit") limit: number = 6,
@@ -79,6 +100,10 @@ export class MovieController {
 
   @Get("popular")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List popular movies", dataType: "Movies", isArray: true })
+  @ApiStandardErrors()
+  @ApiPaginationQueries()
+  @ApiLanguageQuery()
   async getPopular(
     @Query("page") page: number = 1,
     @Query("limit") limit: number = 6,
@@ -109,6 +134,10 @@ export class MovieController {
 
   @Get("top-rated")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List top-rated movies", dataType: "Movies", isArray: true })
+  @ApiStandardErrors()
+  @ApiPaginationQueries()
+  @ApiLanguageQuery()
   async getTopRated(
     @Query("page") page: number = 1,
     @Query("limit") limit: number = 6,
@@ -139,6 +168,10 @@ export class MovieController {
 
   @Get("upcoming")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List upcoming movies", dataType: "Movies", isArray: true })
+  @ApiStandardErrors()
+  @ApiPaginationQueries()
+  @ApiLanguageQuery()
   async getUpcoming(
     @Query("page") page: number = 1,
     @Query("limit") limit: number = 6,
@@ -168,7 +201,12 @@ export class MovieController {
   }
 
   @Get("stats/sync")
+  @ApiExcludeEndpoint()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get movie sync cache statistics", dataType: "Movie sync stats" })
+  @ApiStandardErrors()
   async getSyncStats(): Promise<ApiResponse> {
     try {
       const stats = await this.syncStatusRepository.getSyncStats(
@@ -201,6 +239,8 @@ export class MovieController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List movies with filters and on-demand sync metadata", dataType: "Movies", isArray: true })
+  @ApiStandardErrors()
   async getMovies(@Query() query: MovieQueryDto): Promise<ApiResponse> {
     try {
       const result = await this.movieService.findAll(
@@ -252,6 +292,10 @@ export class MovieController {
 
   @Get(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get a movie detail by TMDB ID", dataType: "Movie detail" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiTmdbIdParam()
+  @ApiLanguageQuery()
   async getMovieById(
     @Param("id", ParseIntPipe) id: number,
     @Query("language") language: string = "en-US"
@@ -277,6 +321,10 @@ export class MovieController {
 
   @Get(":id/credits")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get movie credits by TMDB ID", dataType: "Movie credits" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiTmdbIdParam()
+  @ApiLanguageQuery()
   async getMovieCredits(
     @Param("id", ParseIntPipe) id: number,
     @Query("language") language: string = "en-US"
@@ -313,6 +361,9 @@ export class MovieController {
 
   @Get(":id/videos")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get TMDB videos/trailers for a movie", dataType: "Movie videos", isArray: true })
+  @ApiStandardErrors({ notFound: true })
+  @ApiTmdbIdParam()
   async getMovieVideos(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -336,6 +387,10 @@ export class MovieController {
 
   @Get(":id/recommendations")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get recommended movies for a TMDB movie ID", dataType: "Recommendations", isArray: true })
+  @ApiStandardErrors({ notFound: true })
+  @ApiTmdbIdParam()
+  @ApiQuery({ name: "page", required: false, type: Number, example: 1 })
   async getMovieRecommendations(
     @Param("id", ParseIntPipe) id: number,
     @Query("page") page: number = 1

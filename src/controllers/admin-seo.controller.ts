@@ -25,7 +25,13 @@ import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { PageType } from "../entities";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiIdParam,
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - SEO')
 @ApiBearerAuth('JWT')
@@ -38,6 +44,22 @@ export class AdminSeoController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({ summary: "Create SEO metadata", dataType: "SEO metadata", status: HttpStatus.CREATED })
+  @ApiBody({
+    schema: {
+      example: {
+        pageType: "movie",
+        pageSlug: "/movie/1226863",
+        locale: "vi",
+        title: "MovieStream - Movie Detail",
+        description: "SEO description for this page",
+        keywords: ["movie", "streaming"],
+        ogImage: "https://movie.lequangtridat.com/api/og?title=MovieStream",
+        isActive: true,
+      },
+    },
+  })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async createSeoMetadata(@Body() dto: CreateSeoDto): Promise<ApiResponse> {
     try {
       const result = await this.adminSeoService.createSeoMetadata(dto);
@@ -58,6 +80,18 @@ export class AdminSeoController {
 
   @Put(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Update SEO metadata", dataType: "SEO metadata" })
+  @ApiIdParam("id", "SEO metadata ID")
+  @ApiBody({
+    schema: {
+      example: {
+        title: "Updated SEO title",
+        description: "Updated SEO description",
+        isActive: true,
+      },
+    },
+  })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async updateSeoMetadata(
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateSeoDto
@@ -81,6 +115,9 @@ export class AdminSeoController {
 
   @Delete(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Delete SEO metadata", dataType: "null" })
+  @ApiIdParam("id", "SEO metadata ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async deleteSeoMetadata(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -103,6 +140,9 @@ export class AdminSeoController {
 
   @Get(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get SEO metadata by ID", dataType: "SEO metadata" })
+  @ApiIdParam("id", "SEO metadata ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async getSeoMetadata(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -125,6 +165,9 @@ export class AdminSeoController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List SEO metadata", dataType: "Paginated SEO metadata list" })
+  @ApiPaginationQueries()
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getAllSeoMetadata(
     @Query("page") page?: number,
     @Query("limit") limit?: number
@@ -151,6 +194,9 @@ export class AdminSeoController {
 
   @Get("page-type/:pageType")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get SEO metadata by page type", dataType: "SEO metadata list" })
+  @ApiParam({ name: "pageType", enum: PageType, example: PageType.HOME })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getSeoByPageType(
     @Param("pageType") pageType: PageType
   ): Promise<ApiResponse> {
@@ -173,6 +219,9 @@ export class AdminSeoController {
 
   @Post(":id/toggle")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Toggle SEO metadata active status", dataType: "SEO metadata" })
+  @ApiIdParam("id", "SEO metadata ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async toggleSeoStatus(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -197,6 +246,8 @@ export class AdminSeoController {
 
   @Post("setup/defaults")
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({ summary: "Create default SEO metadata records", dataType: "Created SEO defaults", status: HttpStatus.CREATED })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async createDefaultSeoMetadata(): Promise<ApiResponse> {
     try {
       const result = await this.adminSeoService.createDefaultSeoMetadata();
@@ -217,6 +268,8 @@ export class AdminSeoController {
 
   @Get("stats/overview")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get SEO metadata statistics", dataType: "SEO statistics" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getSeoStats(): Promise<ApiResponse> {
     try {
       const stats = await this.adminSeoService.getSeoStats();

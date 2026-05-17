@@ -14,7 +14,8 @@ import { RolesGuard } from "../guards/roles.guard";
 import { Roles } from "../decorators/roles.decorator";
 import { UserRole } from "../entities/user.entity";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiQuery, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - Dashboard')
 @ApiBearerAuth('JWT')
@@ -27,6 +28,11 @@ export class AdminDashboardController {
 
   @Get("stats")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Get admin dashboard overview statistics",
+    dataType: "Dashboard statistics",
+  })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getStats(): Promise<ApiResponse> {
     console.log("📊 [ADMIN-DASHBOARD] getStats endpoint called");
     try {
@@ -49,6 +55,12 @@ export class AdminDashboardController {
 
   @Get("user-growth")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Get user growth chart data",
+    dataType: "User growth time series",
+  })
+  @ApiQuery({ name: "days", required: false, type: Number, example: 30 })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getUserGrowth(@Query("days") days: number = 30): Promise<ApiResponse> {
     try {
       const data = await this.adminDashboardService.getUserGrowthData(
@@ -71,6 +83,12 @@ export class AdminDashboardController {
 
   @Get("content-by-month")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Get content creation counts by month",
+    dataType: "Content by month time series",
+  })
+  @ApiQuery({ name: "months", required: false, type: Number, example: 6 })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getContentByMonth(
     @Query("months") months: number = 6
   ): Promise<ApiResponse> {

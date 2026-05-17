@@ -17,7 +17,11 @@ import { RecentSearchService } from "../services/recent-search.service";
 import { SearchDto } from "../dto/query.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { TMDB_MAX_PAGES } from "../constants/tmdb.constants";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Search')
 @Controller("search")
@@ -29,6 +33,8 @@ export class SearchController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Search movies, TV series, and people", dataType: "Search results", isArray: true })
+  @ApiStandardErrors()
   async search(@Query() query: SearchDto): Promise<ApiResponse> {
     try {
       // Check TMDB API page limit
@@ -71,6 +77,9 @@ export class SearchController {
   @Get("recent")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth("JWT")
+  @ApiSuccess({ summary: "List authenticated user's recent searches", dataType: "Recent searches", isArray: true })
+  @ApiStandardErrors({ unauthorized: true })
   async getRecentSearches(@Req() req: any): Promise<ApiResponse> {
     try {
       const userId = req.user?.id;
@@ -104,6 +113,17 @@ export class SearchController {
   @Post("recent")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
+  @ApiBearerAuth("JWT")
+  @ApiSuccess({ summary: "Save a recent search for the authenticated user", dataType: "Recent search", status: HttpStatus.CREATED })
+  @ApiStandardErrors({ unauthorized: true })
+  @ApiBody({
+    schema: {
+      example: {
+        query: "william",
+        type: "person",
+      },
+    },
+  })
   async saveRecentSearch(
     @Req() req: any,
     @Body() body: { query: string; type?: "movie" | "tv" | "person" | "all" }
@@ -147,6 +167,9 @@ export class SearchController {
   @Delete("recent")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth("JWT")
+  @ApiSuccess({ summary: "Clear authenticated user's recent searches", dataType: "No content" })
+  @ApiStandardErrors({ unauthorized: true })
   async clearRecentSearches(@Req() req: any): Promise<ApiResponse> {
     try {
       const userId = req.user?.id;
@@ -175,6 +198,10 @@ export class SearchController {
   @Delete("recent/:id")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth("JWT")
+  @ApiSuccess({ summary: "Delete one recent search", dataType: "No content" })
+  @ApiStandardErrors({ unauthorized: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 1, description: "Recent search ID" })
   async deleteRecentSearch(
     @Req() req: any,
     @Param("id") id: string

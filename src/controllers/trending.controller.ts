@@ -3,6 +3,12 @@ import { TrendingService } from "../services/trending.service";
 import { ApiResponse } from "../interfaces/api.interface";
 import { PaginationDto } from "../dto/query.dto";
 import { ApiTags } from '@nestjs/swagger';
+import {
+  ApiLanguageQuery,
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Trending')
 @Controller("trending")
@@ -11,6 +17,13 @@ export class TrendingController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "List trending movies and TV series",
+    dataType: "Trending content list",
+  })
+  @ApiPaginationQueries()
+  @ApiLanguageQuery()
+  @ApiStandardErrors()
   async getTrending(@Query() query: PaginationDto): Promise<ApiResponse> {
     try {
       const result = await this.trendingService.findAll(

@@ -12,9 +12,15 @@ import { TVSeriesService } from "../services/tv-series.service";
 import { TMDBService } from "../services/tmdb.service";
 import { TVQueryDto } from "../dto/query.dto";
 import { ApiResponse } from "../interfaces/api.interface";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiLanguageQuery,
+  ApiStandardErrors,
+  ApiSuccess,
+  ApiTmdbIdParam,
+} from "../swagger/api-response.decorators";
 
-@ApiTags('TV Shows')
+@ApiTags('TV Series')
 @Controller("tv")
 export class TVController {
   constructor(
@@ -24,6 +30,8 @@ export class TVController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List TV series with filters", dataType: "TV series", isArray: true })
+  @ApiStandardErrors()
   async getTVSeries(@Query() query: TVQueryDto): Promise<ApiResponse> {
     try {
       const result = await this.tvSeriesService.findAll(
@@ -70,6 +78,8 @@ export class TVController {
 
   @Get("on-the-air")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List currently airing TV series", dataType: "TV series", isArray: true })
+  @ApiStandardErrors()
   async getOnTheAir(@Query() query: TVQueryDto): Promise<ApiResponse> {
     try {
       const { page = 1, limit = 6, language = "en-US" } = query;
@@ -109,6 +119,8 @@ export class TVController {
 
   @Get("popular-tv")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List popular TV series", dataType: "TV series", isArray: true })
+  @ApiStandardErrors()
   async getPopularTV(@Query() query: TVQueryDto): Promise<ApiResponse> {
     try {
       const { page = 1, limit = 6, language = "en-US" } = query;
@@ -148,6 +160,8 @@ export class TVController {
 
   @Get("top-rated-tv")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List top-rated TV series", dataType: "TV series", isArray: true })
+  @ApiStandardErrors()
   async getTopRatedTV(@Query() query: TVQueryDto): Promise<ApiResponse> {
     try {
       const { page = 1, limit = 6, language = "en-US" } = query;
@@ -187,6 +201,10 @@ export class TVController {
 
   @Get(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get TV series detail by TMDB ID", dataType: "TV series detail" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiTmdbIdParam()
+  @ApiLanguageQuery()
   async getTVSeriesById(
     @Param("id", ParseIntPipe) id: number,
     @Query("language") language: string = "en-US"
@@ -212,6 +230,10 @@ export class TVController {
 
   @Get(":id/credits")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get TV series credits by TMDB ID", dataType: "TV credits" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiTmdbIdParam()
+  @ApiLanguageQuery()
   async getTVCredits(
     @Param("id", ParseIntPipe) id: number,
     @Query("language") language: string = "en-US"
@@ -235,6 +257,11 @@ export class TVController {
 
   @Get(":id/seasons/:season/episodes")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get episodes for a TV season", dataType: "Season episodes", isArray: true })
+  @ApiStandardErrors({ notFound: true })
+  @ApiTmdbIdParam()
+  @ApiParam({ name: "season", type: Number, example: 1 })
+  @ApiLanguageQuery()
   async getSeasonEpisodes(
     @Param("id", ParseIntPipe) id: number,
     @Param("season", ParseIntPipe) season: number,
@@ -263,6 +290,9 @@ export class TVController {
 
   @Get(":id/videos")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get TMDB videos/trailers for a TV series", dataType: "TV videos", isArray: true })
+  @ApiStandardErrors({ notFound: true })
+  @ApiTmdbIdParam()
   async getTVVideos(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -286,6 +316,10 @@ export class TVController {
 
   @Get(":id/recommendations")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get TV recommendations by TMDB ID", dataType: "Recommendations", isArray: true })
+  @ApiStandardErrors({ notFound: true })
+  @ApiTmdbIdParam()
+  @ApiQuery({ name: "page", required: false, type: Number, example: 1 })
   async getTVRecommendations(
     @Param("id", ParseIntPipe) id: number,
     @Query("page") page: number = 1

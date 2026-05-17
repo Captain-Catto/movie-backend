@@ -22,7 +22,8 @@ import { ApiResponse } from "../interfaces/api.interface";
 import { SyncSettingsService } from "../services/sync-settings.service";
 import { UpdateSyncSettingsDto } from "../dto/sync-settings.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - Sync')
 @ApiBearerAuth('JWT')
@@ -42,6 +43,8 @@ export class AdminSyncController {
 
   @Get("settings")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get admin sync settings", dataType: "Sync settings" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getSettings(): Promise<ApiResponse> {
     const settings = await this.syncSettingsService.getSettings();
     return {
@@ -53,6 +56,9 @@ export class AdminSyncController {
 
   @Patch("settings")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Update admin sync settings", dataType: "Sync settings" })
+  @ApiBody({ type: UpdateSyncSettingsDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async updateSettings(
     @Body() body: UpdateSyncSettingsDto
   ): Promise<ApiResponse> {
@@ -66,6 +72,13 @@ export class AdminSyncController {
 
   @Post()
   @HttpCode(HttpStatus.ACCEPTED)
+  @ApiSuccess({
+    summary: "Queue an admin manual sync job",
+    dataType: "Queued sync job summary",
+    status: HttpStatus.ACCEPTED,
+  })
+  @ApiBody({ type: AdminSyncRequestDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async triggerSync(@Body() body: AdminSyncRequestDto): Promise<ApiResponse> {
     const {
       target = "all",

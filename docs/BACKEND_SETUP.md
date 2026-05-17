@@ -55,4 +55,4 @@ This application uses `helmet` to set secure HTTP headers.
 - **HSTS**: Enabled in production
 
 ## API Documentation
-The API documentation is available at `/api/docs` (if Swagger is enabled).
+The Swagger UI is available at `/api-docs`, and the OpenAPI JSON document is available at `/api-docs-json`.

@@ -9,13 +9,14 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Roles } from "../decorators/roles.decorator";
 import { ResolveChatFlagDto } from "../dto/chat.dto";
 import { ChatModerationStatus, UserRole } from "../entities";
 import { RolesGuard } from "../guards/roles.guard";
 import { ChatService } from "../services/chat.service";
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
 @ApiTags("Admin - Chat")
 @ApiBearerAuth("JWT")
@@ -26,6 +27,9 @@ export class AdminChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Get("flags")
+  @ApiSuccess({ summary: "List chatbot moderation flags", dataType: "Moderation flags", isArray: true })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
+  @ApiQuery({ name: "status", required: false, enum: ChatModerationStatus })
   async getFlags(@Query("status") status?: ChatModerationStatus) {
     const flags = await this.chatService.getFlags(status);
     return {
@@ -35,6 +39,9 @@ export class AdminChatController {
   }
 
   @Get("sessions/:id")
+  @ApiSuccess({ summary: "Get a chat session with messages for moderation review", dataType: "Chat session detail" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 1, description: "Chat session ID" })
   async getSession(@Param("id", ParseIntPipe) sessionId: number) {
     const data = await this.chatService.getAdminSession(sessionId);
     return {
@@ -44,6 +51,9 @@ export class AdminChatController {
   }
 
   @Post("flags/:id/resolve")
+  @ApiSuccess({ summary: "Resolve or ignore a chatbot moderation flag", dataType: "Updated moderation flag" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 1, description: "Moderation flag ID" })
   async resolveFlag(
     @Param("id", ParseIntPipe) flagId: number,
     @Body() dto: ResolveChatFlagDto,

@@ -309,26 +309,20 @@ describe('AdminAuthController', () => {
       expect(result.error).toBe('Database error');
     });
 
-    it('should use default secret if env variable not set', async () => {
+    it('should disable promotion if env variable is not set', async () => {
       delete process.env.ADMIN_PROMOTION_SECRET;
 
       const promoteDto = {
         email: 'user@example.com',
-        secret: 'promote-admin-2024',
+        secret: 'test-secret-key',
       };
-
-      const user = {
-        id: 1,
-        email: 'user@example.com',
-        role: UserRole.USER,
-      };
-
-      userRepository.findOne.mockResolvedValue(user);
-      userRepository.save.mockResolvedValue({ ...user, role: UserRole.ADMIN });
 
       const result = await controller.promoteToAdmin(promoteDto);
 
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Failed to promote user');
+      expect(result.error).toBe('Admin promotion is disabled');
+      expect(userRepository.findOne).not.toHaveBeenCalled();
     });
   });
 });

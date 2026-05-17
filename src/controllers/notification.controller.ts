@@ -16,6 +16,12 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ApiResponse } from "../interfaces/api.interface";
 import { GetNotificationsQueryDto } from "../dto/notification.dto";
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiIdParam,
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Notifications')
 @ApiBearerAuth('JWT')
@@ -26,6 +32,12 @@ export class NotificationController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "List authenticated user's notifications",
+    dataType: "Notification list",
+  })
+  @ApiPaginationQueries()
+  @ApiStandardErrors({ unauthorized: true })
   async getUserNotifications(
     @Request() req,
     @Query() query: GetNotificationsQueryDto
@@ -52,6 +64,11 @@ export class NotificationController {
 
   @Get("unread-count")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Get authenticated user's unread notification count",
+    dataType: "Unread notification count",
+  })
+  @ApiStandardErrors({ unauthorized: true })
   async getUnreadCount(@Request() req): Promise<ApiResponse> {
     try {
       const count = await this.notificationService.getUnreadCount(req.user.id);
@@ -72,6 +89,11 @@ export class NotificationController {
 
   @Get("stats")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Get authenticated user's notification statistics",
+    dataType: "Notification statistics",
+  })
+  @ApiStandardErrors({ unauthorized: true })
   async getUserStats(@Request() req): Promise<ApiResponse> {
     try {
       const stats = await this.notificationService.getUserStats(req.user.id);
@@ -92,6 +114,12 @@ export class NotificationController {
 
   @Put(":id/read")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Mark a notification as read",
+    dataType: "Updated notification",
+  })
+  @ApiIdParam("id", "Notification ID")
+  @ApiStandardErrors({ unauthorized: true, notFound: true })
   async markAsRead(
     @Param("id", ParseIntPipe) id: number,
     @Request() req
@@ -119,6 +147,11 @@ export class NotificationController {
 
   @Put("read-all")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Mark all notifications as read",
+    dataType: "null",
+  })
+  @ApiStandardErrors({ unauthorized: true })
   async markAllAsRead(@Request() req): Promise<ApiResponse> {
     try {
       await this.notificationService.markAllAsRead(req.user.id);
@@ -139,6 +172,12 @@ export class NotificationController {
 
   @Delete(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Delete one notification from user's inbox",
+    dataType: "null",
+  })
+  @ApiIdParam("id", "Notification ID")
+  @ApiStandardErrors({ unauthorized: true, notFound: true })
   async dismissNotification(
     @Param("id", ParseIntPipe) id: number,
     @Request() req
@@ -162,6 +201,11 @@ export class NotificationController {
 
   @Delete()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Delete all notifications from user's inbox",
+    dataType: "null",
+  })
+  @ApiStandardErrors({ unauthorized: true })
   async dismissAllNotifications(@Request() req): Promise<ApiResponse> {
     try {
       await this.notificationService.dismissAllNotifications(req.user.id);

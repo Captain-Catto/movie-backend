@@ -1,7 +1,8 @@
 import { Controller, Get, HttpCode, HttpStatus, Query } from "@nestjs/common";
 import { ApiResponse } from "../interfaces/api.interface";
 import { AdminSeoService } from "../services/admin-seo.service";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
 @ApiTags('SEO')
 @Controller("seo")
@@ -10,6 +11,13 @@ export class SeoController {
 
   @Get("resolve")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Resolve SEO metadata for a public route",
+    dataType: "SEO metadata or null",
+  })
+  @ApiQuery({ name: "path", required: true, type: String, example: "/movie/1226863" })
+  @ApiQuery({ name: "locale", required: false, type: String, example: "vi-VN" })
+  @ApiStandardErrors()
   async resolveSeo(
     @Query("path") path?: string,
     @Query("locale") locale?: string

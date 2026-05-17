@@ -12,14 +12,25 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import * as multer from "multer";
 import { S3Service } from "../services/s3.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiMultipartFile,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Upload')
 @Controller("upload")
 export class UploadController {
   constructor(private readonly s3Service: S3Service) {}
 
+  @UseGuards(JwtAuthGuard)
   @Post("video")
+  @ApiBearerAuth("JWT")
+  @ApiSuccess({ summary: "Upload a video file", dataType: "Uploaded video URL and S3 key" })
+  @ApiStandardErrors({ unauthorized: true })
+  @ApiConsumes("multipart/form-data")
+  @ApiMultipartFile("video", "Video file. Maximum size: 500MB. Mimetype must start with video/.")
   @UseInterceptors(
     FileInterceptor("video", {
       limits: {
@@ -62,6 +73,11 @@ export class UploadController {
 
   @UseGuards(JwtAuthGuard)
   @Post("avatar")
+  @ApiBearerAuth("JWT")
+  @ApiSuccess({ summary: "Upload authenticated user's avatar", dataType: "Uploaded avatar URL and S3 key" })
+  @ApiStandardErrors({ unauthorized: true })
+  @ApiConsumes("multipart/form-data")
+  @ApiMultipartFile("avatar", "Avatar image file. Maximum size: 5MB. Mimetype must start with image/.")
   @UseInterceptors(
     FileInterceptor("avatar", {
       storage: multer.memoryStorage(),
@@ -108,6 +124,12 @@ export class UploadController {
 
   @UseGuards(JwtAuthGuard)
   @Post("image")
+  @ApiBearerAuth("JWT")
+  @ApiSuccess({ summary: "Upload a general image", dataType: "Uploaded image URL and S3 key" })
+  @ApiStandardErrors({ unauthorized: true })
+  @ApiConsumes("multipart/form-data")
+  @ApiQuery({ name: "folder", required: false, enum: ["images", "notifications", "banners"], example: "images" })
+  @ApiMultipartFile("image", "Image file. Maximum size: 10MB. Mimetype must start with image/.")
   @UseInterceptors(
     FileInterceptor("image", {
       storage: multer.memoryStorage(),

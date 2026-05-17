@@ -20,7 +20,8 @@ import {
   StreamDomainSettingsDto,
 } from "../dto/admin-settings.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - Settings')
 @ApiBearerAuth('JWT')
@@ -33,6 +34,8 @@ export class AdminSettingsController {
 
   @Get("registration")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get admin registration settings", dataType: "Registration settings" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getRegistrationSettings(): Promise<ApiResponse> {
     const data = await this.adminSettingsService.getRegistrationSettings();
     return {
@@ -44,6 +47,9 @@ export class AdminSettingsController {
 
   @Put("registration")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Update registration settings", dataType: "Registration settings" })
+  @ApiBody({ type: RegistrationSettingsDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async updateRegistrationSettings(
     @Body() body: RegistrationSettingsDto
   ): Promise<ApiResponse> {
@@ -57,6 +63,8 @@ export class AdminSettingsController {
 
   @Get("effects")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get admin effect settings", dataType: "Effect settings" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getEffectSettings(): Promise<ApiResponse> {
     const data = await this.adminSettingsService.getEffectSettings();
     return {
@@ -68,6 +76,9 @@ export class AdminSettingsController {
 
   @Put("effects")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Update effect settings", dataType: "Effect settings" })
+  @ApiBody({ type: EffectSettingsDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async updateEffectSettings(
     @Body() body: EffectSettingsDto
   ): Promise<ApiResponse> {
@@ -81,6 +92,8 @@ export class AdminSettingsController {
 
   @Get("stream-domains")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get stream domain settings", dataType: "Stream domain settings" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getStreamDomainSettings(): Promise<ApiResponse> {
     const data = await this.adminSettingsService.getStreamDomainSettings();
     return {
@@ -92,6 +105,9 @@ export class AdminSettingsController {
 
   @Put("stream-domains")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Update stream domain settings", dataType: "Stream domain settings" })
+  @ApiBody({ type: StreamDomainSettingsDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async updateStreamDomainSettings(
     @Body() body: StreamDomainSettingsDto
   ): Promise<ApiResponse> {

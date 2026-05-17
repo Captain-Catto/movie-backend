@@ -29,7 +29,13 @@ import {
   NotificationTargetType,
   NotificationType,
 } from "../entities/notification-template.entity";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiQuery, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiIdParam,
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - Notifications')
 @ApiBearerAuth('JWT')
@@ -42,6 +48,9 @@ export class AdminNotificationController {
 
   @Post("broadcast")
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({ summary: "Send broadcast notification to all users", dataType: "Notification campaign result", status: HttpStatus.CREATED })
+  @ApiBody({ type: CreateBroadcastNotificationDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async createBroadcastNotification(
     @Body() dto: CreateBroadcastNotificationDto,
     @Request() req
@@ -68,6 +77,9 @@ export class AdminNotificationController {
 
   @Post("role")
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({ summary: "Send notification to users by role", dataType: "Notification campaign result", status: HttpStatus.CREATED })
+  @ApiBody({ type: CreateRoleNotificationDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async createRoleNotification(
     @Body() dto: CreateRoleNotificationDto,
     @Request() req
@@ -95,6 +107,9 @@ export class AdminNotificationController {
 
   @Post("user")
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({ summary: "Send notification to one user", dataType: "Created notification", status: HttpStatus.CREATED })
+  @ApiBody({ type: CreateUserNotificationDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async createUserNotification(
     @Body() dto: CreateUserNotificationDto,
     @Request() req
@@ -119,6 +134,9 @@ export class AdminNotificationController {
 
   @Post("maintenance")
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({ summary: "Send maintenance notification to all users", dataType: "Notification campaign result", status: HttpStatus.CREATED })
+  @ApiBody({ type: CreateBroadcastNotificationDto })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async sendMaintenanceNotification(
     @Body() dto: CreateBroadcastNotificationDto,
     @Request() req
@@ -146,6 +164,13 @@ export class AdminNotificationController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List admin notification campaigns", dataType: "Paginated admin notifications" })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "targetType", required: false, enum: NotificationTargetType })
+  @ApiQuery({ name: "type", required: false, enum: NotificationType })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getAdminNotifications(
     @Query("page") page?: number,
     @Query("limit") limit?: number,
@@ -180,6 +205,8 @@ export class AdminNotificationController {
 
   @Get("stats")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get admin notification statistics", dataType: "Admin notification statistics" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getAdminStats(): Promise<ApiResponse> {
     try {
       const stats = await this.notificationService.getAdminStats();
@@ -200,6 +227,9 @@ export class AdminNotificationController {
 
   @Delete(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Delete an admin notification record", dataType: "null" })
+  @ApiIdParam("id", "Notification ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async deleteNotification(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -224,6 +254,9 @@ export class AdminNotificationController {
   // Quick action endpoints
   @Post("quick/welcome/:userId")
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({ summary: "Send quick welcome notification to user", dataType: "null", status: HttpStatus.CREATED })
+  @ApiIdParam("userId", "User ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async sendWelcomeNotification(
     @Param("userId", ParseIntPipe) userId: number
   ): Promise<ApiResponse> {
@@ -246,6 +279,9 @@ export class AdminNotificationController {
 
   @Post("quick/password-reset/:userId")
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({ summary: "Send quick password reset notification to user", dataType: "null", status: HttpStatus.CREATED })
+  @ApiIdParam("userId", "User ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async sendPasswordResetNotification(
     @Param("userId", ParseIntPipe) userId: number
   ): Promise<ApiResponse> {

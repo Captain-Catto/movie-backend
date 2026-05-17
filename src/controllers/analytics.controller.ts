@@ -9,11 +9,20 @@ import {
 import { AnalyticsService } from "../services/analytics.service";
 import { Request } from "express";
 import * as geoip from "geoip-lite";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
-interface TrackEventDto {
+class TrackEventDto {
+  @ApiProperty({ example: "1226863" })
   contentId: string;
+
+  @ApiProperty({ enum: ["movie", "tv_series"], example: "movie" })
   contentType: "movie" | "tv_series";
+
+  @ApiProperty({
+    enum: ["view", "click", "play", "complete", "search"],
+    example: "view",
+  })
   actionType:
     | "VIEW"
     | "CLICK"
@@ -25,8 +34,14 @@ interface TrackEventDto {
     | "play"
     | "complete"
     | "search";
+
+  @ApiPropertyOptional({ example: "Five Nights at Freddy's 2" })
   contentTitle?: string;
+
+  @ApiPropertyOptional({ example: 120 })
   duration?: number;
+
+  @ApiPropertyOptional({ example: { source: "hero" } })
   metadata?: Record<string, any>;
 }
 
@@ -37,6 +52,12 @@ export class AnalyticsController {
 
   @Post("track")
   @HttpCode(HttpStatus.OK)
+  @ApiBody({ type: TrackEventDto })
+  @ApiSuccess({
+    summary: "Track a client analytics event",
+    dataType: "Tracking acknowledgement",
+  })
+  @ApiStandardErrors()
   async trackEvent(@Body() dto: TrackEventDto, @Req() req: Request) {
     try {
       console.log("[Analytics Controller] Received tracking request:", dto);

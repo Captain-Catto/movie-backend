@@ -12,7 +12,12 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { GetUser } from "../decorators/get-user.decorator";
 import { FavoriteService } from "../services/favorite.service";
 import { UserActivityLoggerService } from "../services/user-activity-logger.service";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Favorites')
 @ApiBearerAuth('JWT')
@@ -25,6 +30,9 @@ export class FavoriteController {
   ) {}
 
   @Get()
+  @ApiSuccess({ summary: "List authenticated user's favorites", dataType: "Favorites", isArray: true })
+  @ApiStandardErrors({ unauthorized: true })
+  @ApiPaginationQueries()
   async getUserFavorites(
     @GetUser("id") userId: number,
     @Query("page") page: string = "1",
@@ -40,6 +48,9 @@ export class FavoriteController {
   }
 
   @Post()
+  @ApiSuccess({ summary: "Add a movie or TV series to favorites", dataType: "Favorite" })
+  @ApiStandardErrors({ unauthorized: true })
+  @ApiBody({ schema: { example: { contentId: "550", contentType: "movie" } } })
   async addToFavorites(
     @GetUser("id") userId: number,
     @Body() body: { contentId: string; contentType: "movie" | "tv" }
@@ -64,6 +75,9 @@ export class FavoriteController {
   }
 
   @Delete()
+  @ApiSuccess({ summary: "Remove a movie or TV series from favorites", dataType: "No content" })
+  @ApiStandardErrors({ unauthorized: true, notFound: true })
+  @ApiBody({ schema: { example: { contentId: "550", contentType: "movie" } } })
   async removeFromFavorites(
     @GetUser("id") userId: number,
     @Body() body: { contentId: string; contentType: "movie" | "tv" }
@@ -95,6 +109,8 @@ export class FavoriteController {
    * Returns array of {contentId, contentType} without full movie/TV data
    */
   @Get("ids")
+  @ApiSuccess({ summary: "List favorite content IDs for the authenticated user", dataType: "Favorite IDs" })
+  @ApiStandardErrors({ unauthorized: true })
   async getUserFavoriteIds(@GetUser("id") userId: number) {
     const ids = await this.favoriteService.getUserFavoriteIds(userId);
     return {
@@ -108,6 +124,10 @@ export class FavoriteController {
    * Fast boolean check without fetching all favorites
    */
   @Get("check/:contentId/:contentType")
+  @ApiSuccess({ summary: "Check whether a content item is favorited", dataType: "Favorite status" })
+  @ApiStandardErrors({ unauthorized: true })
+  @ApiParam({ name: "contentId", type: String, example: "550" })
+  @ApiParam({ name: "contentType", enum: ["movie", "tv"], example: "movie" })
   async checkIsFavorite(
     @GetUser("id") userId: number,
     @Param("contentId") contentId: string,

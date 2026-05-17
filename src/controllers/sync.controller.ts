@@ -1,11 +1,19 @@
-import { Controller, Post, HttpCode, HttpStatus, Query } from "@nestjs/common";
+import { Controller, Post, HttpCode, HttpStatus, Query, UseGuards } from "@nestjs/common";
 import { DataSyncService } from "../services/data-sync.service";
 import { ApiResponse } from "../interfaces/api.interface";
 import { SyncSettingsService } from "../services/sync-settings.service";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiExcludeController, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../guards/roles.guard";
+import { Roles } from "../decorators/roles.decorator";
+import { UserRole } from "../entities/user.entity";
 
 @ApiTags('Sync')
+@ApiExcludeController()
 @Controller("sync")
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class SyncController {
   constructor(
     private dataSyncService: DataSyncService,
@@ -14,6 +22,12 @@ export class SyncController {
 
   @Post("all")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Sync movies, TV series, and trending content",
+    dataType: "Sync summary",
+  })
+  @ApiQuery({ name: "language", required: false, type: String, example: "en-US" })
+  @ApiStandardErrors()
   async syncAll(@Query("language") language?: string): Promise<ApiResponse> {
     try {
       const lang = language || "en-US";
@@ -53,6 +67,12 @@ export class SyncController {
 
   @Post("movies")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Sync popular movies",
+    dataType: "Movie sync summary",
+  })
+  @ApiQuery({ name: "language", required: false, type: String, example: "en-US" })
+  @ApiStandardErrors()
   async syncMovies(@Query("language") language?: string): Promise<ApiResponse> {
     try {
       const lang = language || "en-US";
@@ -81,6 +101,12 @@ export class SyncController {
 
   @Post("tv")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Sync popular TV series",
+    dataType: "TV sync summary",
+  })
+  @ApiQuery({ name: "language", required: false, type: String, example: "en-US" })
+  @ApiStandardErrors()
   async syncTVSeries(
     @Query("language") language?: string
   ): Promise<ApiResponse> {
@@ -111,6 +137,12 @@ export class SyncController {
 
   @Post("trending")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Sync trending content",
+    dataType: "Trending sync summary",
+  })
+  @ApiQuery({ name: "language", required: false, type: String, example: "en-US" })
+  @ApiStandardErrors()
   async syncTrending(
     @Query("language") language?: string
   ): Promise<ApiResponse> {

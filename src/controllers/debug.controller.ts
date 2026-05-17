@@ -1,7 +1,15 @@
-import { Controller, Get, Post, Body } from "@nestjs/common";
+import { Controller, Get, Post, Body, UseGuards } from "@nestjs/common";
+import { ApiExcludeController } from "@nestjs/swagger";
 import { UserRepository } from "../repositories/user.repository";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../guards/roles.guard";
+import { Roles } from "../decorators/roles.decorator";
+import { UserRole } from "../entities/user.entity";
 
+@ApiExcludeController()
 @Controller("debug")
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class DebugController {
   constructor(private userRepository: UserRepository) {}
 

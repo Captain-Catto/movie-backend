@@ -7,11 +7,21 @@ import {
   HttpCode,
   ParseIntPipe,
   DefaultValuePipe,
+  UseGuards,
 } from "@nestjs/common";
 import { TMDBService } from "../services/tmdb.service";
 import { PeopleCacheService } from "../services/people-cache.service";
 import { ApiResponse } from "../interfaces/api.interface";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../guards/roles.guard";
+import { Roles } from "../decorators/roles.decorator";
+import { UserRole } from "../entities/user.entity";
+import {
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('People')
 @Controller("people")
@@ -23,6 +33,9 @@ export class PeopleController {
 
   @Get("popular")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List popular people", dataType: "People", isArray: true })
+  @ApiStandardErrors()
+  @ApiPaginationQueries()
   async getPopularPeople(
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query("limit", new DefaultValuePipe(24), ParseIntPipe) limit: number
@@ -52,6 +65,10 @@ export class PeopleController {
 
   @Get("search")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Search people by name", dataType: "People", isArray: true })
+  @ApiStandardErrors()
+  @ApiQuery({ name: "q", required: true, type: String, example: "William" })
+  @ApiPaginationQueries()
   async searchPeople(
     @Query("q") query: string = "",
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -83,6 +100,9 @@ export class PeopleController {
 
   @Get(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get person detail by TMDB person ID", dataType: "Person detail" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 31 })
   async getPersonDetails(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -106,6 +126,9 @@ export class PeopleController {
 
   @Get(":id/credits")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get combined movie and TV credits for a person", dataType: "Person credits" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 31 })
   async getPersonCredits(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -129,6 +152,12 @@ export class PeopleController {
 
   @Get(":id/credits/paginated")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get paginated combined credits for a person", dataType: "Paginated person credits" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 31 })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "mediaType", required: false, enum: ["movie", "tv", "all"], example: "all" })
+  @ApiQuery({ name: "sortBy", required: false, enum: ["release_date", "popularity", "vote_average"], example: "release_date" })
   async getPersonCreditsPaginated(
     @Param("id", ParseIntPipe) id: number,
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -166,6 +195,12 @@ export class PeopleController {
 
   @Get(":id/credits/cast/paginated")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get paginated cast credits for a person", dataType: "Paginated cast credits" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 31 })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "mediaType", required: false, enum: ["movie", "tv", "all"], example: "all" })
+  @ApiQuery({ name: "sortBy", required: false, enum: ["release_date", "popularity", "vote_average"], example: "release_date" })
   async getPersonCastPaginated(
     @Param("id", ParseIntPipe) id: number,
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -203,6 +238,12 @@ export class PeopleController {
 
   @Get(":id/credits/crew/paginated")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get paginated crew credits for a person", dataType: "Paginated crew credits" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 31 })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "mediaType", required: false, enum: ["movie", "tv", "all"], example: "all" })
+  @ApiQuery({ name: "sortBy", required: false, enum: ["release_date", "popularity", "vote_average"], example: "release_date" })
   async getPersonCrewPaginated(
     @Param("id", ParseIntPipe) id: number,
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -240,6 +281,10 @@ export class PeopleController {
 
   @Get("poster/:tmdbId")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Resolve poster path for movie or TV content by TMDB ID", dataType: "Poster path" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiParam({ name: "tmdbId", type: Number, example: 550 })
+  @ApiQuery({ name: "type", required: false, enum: ["movie", "tv"], example: "movie" })
   async getTmdbPoster(
     @Param("tmdbId", ParseIntPipe) tmdbId: number,
     @Query("type") type: "movie" | "tv" = "movie"
@@ -264,7 +309,12 @@ export class PeopleController {
    */
 
   @Get("admin/cache/stats")
+  @ApiExcludeEndpoint()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get people cache statistics", dataType: "People cache stats" })
+  @ApiStandardErrors()
   async getCacheStats(): Promise<ApiResponse> {
     try {
       const stats = await this.peopleCacheService.getCacheStats();
@@ -285,7 +335,13 @@ export class PeopleController {
   }
 
   @Get("admin/cache/cleanup/:type")
+  @ApiExcludeEndpoint()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Run people cache cleanup", dataType: "Cleanup result" })
+  @ApiStandardErrors()
+  @ApiParam({ name: "type", enum: ["light", "major"], example: "light" })
   async performCleanup(
     @Param("type") type: "light" | "major"
   ): Promise<ApiResponse> {
@@ -317,7 +373,13 @@ export class PeopleController {
   }
 
   @Get("admin/cache/refresh/:id")
+  @ApiExcludeEndpoint()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Refresh a person cache entry", dataType: "Refreshed person cache entry" })
+  @ApiStandardErrors({ notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 31 })
   async forceRefreshCache(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {

@@ -16,7 +16,12 @@ import {
   StreamContentType,
   StreamEmbedService,
 } from "../services/stream-embed.service";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiStandardErrors,
+  ApiSuccess,
+  ApiTmdbIdParam,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Content')
 @Controller("content")
@@ -29,6 +34,18 @@ export class ContentController {
 
   @Get("stream-url/:tmdbId")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Build embeddable stream URL for movie or TV episode",
+    dataType: "Stream URL payload",
+  })
+  @ApiTmdbIdParam("tmdbId")
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv"], example: "movie" })
+  @ApiQuery({ name: "season", required: false, type: Number, example: 1 })
+  @ApiQuery({ name: "episode", required: false, type: Number, example: 1 })
+  @ApiQuery({ name: "dsLang", required: false, type: String, example: "vi" })
+  @ApiQuery({ name: "autoplay", required: false, enum: ["0", "1"], example: "1" })
+  @ApiQuery({ name: "autoNext", required: false, enum: ["0", "1"], example: "1" })
+  @ApiStandardErrors()
   async getStreamUrl(
     @Param("tmdbId", ParseIntPipe) tmdbId: number,
     @Query("contentType") contentType: StreamContentType = "movie",
@@ -98,6 +115,12 @@ export class ContentController {
 
   @Get("lookup/tmdb/:tmdbId")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Resolve content type and internal route from TMDB ID",
+    dataType: "Content lookup result",
+  })
+  @ApiTmdbIdParam("tmdbId")
+  @ApiStandardErrors({ notFound: true })
   async lookupByTmdbId(
     @Param("tmdbId", ParseIntPipe) tmdbId: number
   ): Promise<ApiResponse> {

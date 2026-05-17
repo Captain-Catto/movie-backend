@@ -26,7 +26,13 @@ import {
   BannedWordAction,
 } from "../entities/comment.entity";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiExcludeEndpoint, ApiQuery, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiIdParam,
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - Comments')
 @ApiBearerAuth('JWT')
@@ -43,6 +49,13 @@ export class AdminCommentController {
   // ✅ GET ALL COMMENTS WITH ADMIN VIEW
   @Get()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List comments for admin moderation", dataType: "Paginated comments" })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "movieId", required: false, type: Number, example: 1226863 })
+  @ApiQuery({ name: "tvId", required: false, type: Number, example: 273240 })
+  @ApiQuery({ name: "includeHidden", required: false, enum: ["true", "false"] })
+  @ApiQuery({ name: "sortBy", required: false, enum: ["newest", "oldest", "popular"] })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getAllComments(
     @Query("page") page?: string,
     @Query("limit") limit?: string,
@@ -98,6 +111,8 @@ export class AdminCommentController {
   // ✅ GET REPORTED COMMENTS
   @Get("reported")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List reported comments", dataType: "Reported comments" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getReportedComments(): Promise<ApiResponse> {
     try {
       const reports = await this.commentService.getReportedComments();
@@ -119,6 +134,10 @@ export class AdminCommentController {
   // ✅ HIDE COMMENT
   @Put(":id/hide")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Hide a comment", dataType: "null" })
+  @ApiIdParam("id", "Comment ID")
+  @ApiBody({ required: false, schema: { example: { reason: "Spam or abuse" } } })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async hideComment(
     @Param("id", ParseIntPipe) id: number,
     @Request() req,
@@ -148,6 +167,9 @@ export class AdminCommentController {
   // ✅ UNHIDE COMMENT
   @Put(":id/unhide")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Unhide a comment", dataType: "null" })
+  @ApiIdParam("id", "Comment ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async unhideComment(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -171,6 +193,9 @@ export class AdminCommentController {
   // ✅ PERMANENTLY DELETE COMMENT
   @Delete(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Permanently delete a comment", dataType: "null" })
+  @ApiIdParam("id", "Comment ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async deleteComment(
     @Param("id", ParseIntPipe) id: number,
     @Request() req
@@ -200,6 +225,9 @@ export class AdminCommentController {
   // ✅ RESOLVE REPORT
   @Put("reports/:reportId/resolve")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Resolve a comment report", dataType: "null" })
+  @ApiIdParam("reportId", "Comment report ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async resolveReport(
     @Param("reportId", ParseIntPipe) reportId: number,
     @Request() req
@@ -227,6 +255,9 @@ export class AdminCommentController {
   // ✅ ANALYZE COMMENT CONTENT
   @Get(":id/analyze")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Analyze a comment against content filters", dataType: "Comment analysis" })
+  @ApiIdParam("id", "Comment ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async analyzeComment(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -250,6 +281,8 @@ export class AdminCommentController {
   // ✅ BANNED WORDS MANAGEMENT
   @Get("banned-words")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List banned words", dataType: "Banned words" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getBannedWords(): Promise<ApiResponse> {
     try {
       const bannedWords = await this.contentFilterService.getBannedWords();
@@ -270,6 +303,17 @@ export class AdminCommentController {
 
   @Post("banned-words")
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({ summary: "Add banned word", dataType: "Banned word", status: HttpStatus.CREATED })
+  @ApiBody({
+    schema: {
+      example: {
+        word: "spamword",
+        severity: "medium",
+        action: "flag",
+      },
+    },
+  })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async addBannedWord(
     @Request() req,
     @Body("word") word: string,
@@ -308,6 +352,9 @@ export class AdminCommentController {
 
   @Delete("banned-words/:id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Remove banned word", dataType: "null" })
+  @ApiIdParam("id", "Banned word ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
   async removeBannedWord(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -338,7 +385,11 @@ export class AdminCommentController {
 
   // ✅ CONTENT FILTER TESTING
   @Post("test-filter")
+  @ApiExcludeEndpoint()
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Test content filter against text", dataType: "Filter result" })
+  @ApiBody({ schema: { example: { content: "Test comment content" } } })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async testContentFilter(
     @Body("content") content: string
   ): Promise<ApiResponse> {
@@ -372,6 +423,9 @@ export class AdminCommentController {
   // ✅ BULK ACTIONS
   @Post("bulk/hide")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Bulk hide comments", dataType: "Bulk action summary" })
+  @ApiBody({ schema: { example: { commentIds: [1, 2, 3], reason: "Spam" } } })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async bulkHideComments(
     @Request() req,
     @Body("commentIds") commentIds: number[],
@@ -417,6 +471,9 @@ export class AdminCommentController {
 
   @Post("bulk/delete")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Bulk permanently delete comments", dataType: "Bulk action summary" })
+  @ApiBody({ schema: { example: { commentIds: [1, 2, 3] } } })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async bulkDeleteComments(
     @Request() req,
     @Body("commentIds") commentIds: number[]
@@ -467,6 +524,8 @@ export class AdminCommentController {
   // ✅ COMMENT STATISTICS FOR ADMIN DASHBOARD
   @Get("stats/overview")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get comment moderation overview", dataType: "Comment moderation overview" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getCommentOverview(): Promise<ApiResponse> {
     try {
       // This would typically aggregate data from the database

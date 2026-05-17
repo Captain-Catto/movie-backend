@@ -23,7 +23,12 @@ import { ActionType, ContentType } from "../entities/view-analytics.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { UpdateUserDto } from "../dto/admin-user.dto";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiQuery, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - Users')
 @ApiBearerAuth('JWT')
@@ -39,6 +44,12 @@ export class AdminUserController {
 
   @Get("list")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List users for admin management", dataType: "Users list" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "status", required: false, enum: ["active", "banned", "all"] })
+  @ApiQuery({ name: "role", required: false, enum: UserRole })
+  @ApiQuery({ name: "search", required: false, type: String, example: "user@example.com" })
   async getUsersList(
     @Query("page") page?: number,
     @Query("limit") limit?: number,
@@ -71,6 +82,9 @@ export class AdminUserController {
 
   @Get(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get user details", dataType: "User detail" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 1 })
   async getUserDetails(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -93,6 +107,9 @@ export class AdminUserController {
 
   @Post("ban")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Ban a user", dataType: "Updated user" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiBody({ schema: { example: { userId: 12, reason: "Abuse report confirmed" } } })
   async banUser(
     @Body() body: { userId: number; reason: string },
     @Request() req
@@ -122,6 +139,9 @@ export class AdminUserController {
 
   @Post("unban/:id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Unban a user", dataType: "Updated user" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
   async unbanUser(
     @Param("id", ParseIntPipe) id: number
   ): Promise<ApiResponse> {
@@ -144,6 +164,10 @@ export class AdminUserController {
 
   @Put(":id/role")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Update a user's role", dataType: "Updated user" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiBody({ schema: { example: { role: UserRole.ADMIN } } })
   async updateUserRole(
     @Param("id", ParseIntPipe) id: number,
     @Body() body: { role: UserRole }
@@ -170,6 +194,10 @@ export class AdminUserController {
 
   @Put(":id")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Update a user's profile fields", dataType: "Updated user" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiBody({ type: UpdateUserDto })
   async updateUser(
     @Param("id", ParseIntPipe) id: number,
     @Body() body: UpdateUserDto
@@ -193,6 +221,9 @@ export class AdminUserController {
 
   @Get(":id/logs")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get user audit logs", dataType: "User logs", isArray: true })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
   async getUserLogs(
     @Param("id", ParseIntPipe) userId: number,
     @Request() req
@@ -219,6 +250,8 @@ export class AdminUserController {
 
   @Get("stats/overview")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get user statistics overview", dataType: "User stats" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getUserStats(): Promise<ApiResponse> {
     try {
       const stats = await this.adminUserService.getUserStats();
@@ -239,6 +272,13 @@ export class AdminUserController {
 
   @Get(":id/activity")
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  @ApiSuccess({ summary: "Get user activity timeline", dataType: "User activity timeline" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "type", required: false, type: String, example: "LOGIN" })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
   async getUserActivity(
     @Param("id", ParseIntPipe) userId: number,
     @Query("type") type?: string,
@@ -269,6 +309,9 @@ export class AdminUserController {
 
   @Get(":id/activity-stats")
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  @ApiSuccess({ summary: "Get public user activity summary", dataType: "User activity stats" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
   async getUserActivityStats(@Param("id", ParseIntPipe) userId: number) {
     try {
       const stats = await this.adminUserService.getPublicUserActivityStats(userId);
@@ -287,6 +330,14 @@ export class AdminUserController {
 
   @Get(":id/watch-history")
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  @ApiSuccess({ summary: "Get user's watch history from analytics events", dataType: "Watch history" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv_series", "all"] })
+  @ApiQuery({ name: "actionType", required: false, enum: ["view", "play", "complete", "all"] })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
   async getUserWatchHistory(
     @Param("id", ParseIntPipe) userId: number,
     @Query("page") page?: string,

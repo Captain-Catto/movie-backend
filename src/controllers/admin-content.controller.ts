@@ -24,7 +24,12 @@ import { UserRole } from "../entities/user.entity";
 import { ApiResponse } from "../interfaces/api.interface";
 import { ContentType, MediaType } from "../entities";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiQuery, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiPaginationQueries,
+  ApiStandardErrors,
+  ApiSuccess,
+} from "../swagger/api-response.decorators";
 
 @ApiTags('Admin - Content')
 @ApiBearerAuth('JWT')
@@ -37,6 +42,17 @@ export class AdminContentController {
 
   @Post("block")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Block a movie or TV series", dataType: "Blocked content record" })
+  @ApiBody({
+    schema: {
+      example: {
+        contentId: "1226863",
+        contentType: "movie",
+        reason: "Manual admin block",
+      },
+    },
+  })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async blockContent(
     @Body() dto: BlockContentDto,
     @Request() req
@@ -63,6 +79,13 @@ export class AdminContentController {
 
   @Post("unblock")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Unblock a movie or TV series", dataType: "null" })
+  @ApiBody({
+    schema: {
+      example: { contentId: "1226863", contentType: "movie" },
+    },
+  })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async unblockContent(
     @Body() body: { contentId: string; contentType: ContentType }
   ): Promise<ApiResponse> {
@@ -88,6 +111,12 @@ export class AdminContentController {
 
   @Get("list")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List admin content with block status", dataType: "Paginated content list" })
+  @ApiPaginationQueries()
+  @ApiQuery({ name: "status", required: false, enum: ["blocked", "active", "all"] })
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv_series"] })
+  @ApiQuery({ name: "search", required: false, type: String, example: "mario" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getContentList(
     @Query("page") page?: number,
     @Query("limit") limit?: number,
@@ -120,6 +149,9 @@ export class AdminContentController {
 
   @Get("trending")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List trending content for admin moderation", dataType: "Paginated trending list" })
+  @ApiPaginationQueries()
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getTrendingContent(
     @Query("page") page?: number,
     @Query("limit") limit?: number
@@ -146,6 +178,17 @@ export class AdminContentController {
 
   @Post("trending/block")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Hide a trending item", dataType: "null" })
+  @ApiBody({
+    schema: {
+      example: {
+        tmdbId: 1226863,
+        mediaType: "movie",
+        reason: "Hide from trending",
+      },
+    },
+  })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async blockTrendingContent(
     @Body() body: BlockTrendingDto
   ): Promise<ApiResponse> {
@@ -168,6 +211,9 @@ export class AdminContentController {
 
   @Post("trending/unblock")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Unhide a trending item", dataType: "null" })
+  @ApiBody({ schema: { example: { tmdbId: 1226863, mediaType: "movie" } } })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async unblockTrendingContent(
     @Body() body: { tmdbId: number; mediaType: MediaType }
   ): Promise<ApiResponse> {
@@ -193,6 +239,9 @@ export class AdminContentController {
 
   @Get("blocked")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "List blocked content", dataType: "Paginated blocked content list" })
+  @ApiPaginationQueries()
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getBlockedContent(
     @Query("page") page?: number,
     @Query("limit") limit?: number
@@ -219,6 +268,8 @@ export class AdminContentController {
 
   @Get("stats")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Get admin content moderation statistics", dataType: "Content moderation statistics" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getContentStats(): Promise<ApiResponse> {
     try {
       const stats = await this.adminContentService.getContentStats();

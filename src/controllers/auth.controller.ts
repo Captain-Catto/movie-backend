@@ -17,24 +17,29 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { IsEmail, IsString, IsOptional } from "class-validator";
 import { UpdateProfileDto } from "../dto/profile.dto";
 import * as geoip from "geoip-lite";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
 export class GoogleAuthDto {
+  @ApiProperty({ example: "user@example.com" })
   @IsEmail()
   email: string;
 
+  @ApiProperty({ example: "Jane Doe" })
   @IsString()
   name: string;
 
+  @ApiPropertyOptional({ example: "https://lh3.googleusercontent.com/a/profile.jpg" })
   @IsOptional()
   @IsString()
   image?: string;
 
+  @ApiProperty({ example: "109876543210123456789" })
   @IsString()
   googleId: string;
 }
 
-@ApiTags('Authentication')
+@ApiTags('Auth')
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -44,6 +49,12 @@ export class AuthController {
 
   @Post("register")
   @HttpCode(HttpStatus.CREATED)
+  @ApiSuccess({
+    summary: "Register a new user",
+    dataType: "Created user profile and JWT tokens",
+    status: HttpStatus.CREATED,
+  })
+  @ApiStandardErrors()
   async register(
     @Body() registerDto: RegisterDto,
     @Request() req
@@ -71,6 +82,11 @@ export class AuthController {
 
   @Post("login")
   @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Login with email and password",
+    dataType: "User profile and JWT tokens",
+  })
+  @ApiStandardErrors()
   async login(
     @Body() loginDto: LoginDto,
     @Request() req
@@ -108,6 +124,12 @@ export class AuthController {
 
   @Post("google")
   @HttpCode(HttpStatus.OK)
+  @ApiBody({ type: GoogleAuthDto })
+  @ApiSuccess({
+    summary: "Login or register with Google profile data",
+    dataType: "User profile and JWT tokens",
+  })
+  @ApiStandardErrors()
   async googleAuth(
     @Body() googleUser: GoogleAuthDto,
     @Request() req
@@ -175,6 +197,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get("me")
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth("JWT")
+  @ApiSuccess({
+    summary: "Get authenticated user profile",
+    dataType: "Authenticated user profile",
+  })
+  @ApiStandardErrors({ unauthorized: true })
   async getProfile(@Request() req): Promise<ApiResponse> {
     return {
       success: true,
@@ -194,6 +222,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Put("profile")
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth("JWT")
+  @ApiSuccess({
+    summary: "Update authenticated user profile",
+    dataType: "Updated user profile",
+  })
+  @ApiStandardErrors({ unauthorized: true })
   async updateProfile(
     @Request() req,
     @Body() body: UpdateProfileDto
@@ -216,6 +250,23 @@ export class AuthController {
 
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
+  @ApiBody({
+    schema: {
+      type: "object",
+      required: ["refreshToken"],
+      properties: {
+        refreshToken: {
+          type: "string",
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        },
+      },
+    },
+  })
+  @ApiSuccess({
+    summary: "Refresh access token",
+    dataType: "New access token and refresh token metadata",
+  })
+  @ApiStandardErrors()
   async refreshToken(
     @Body("refreshToken") refreshToken: string,
     @Request() req
@@ -251,6 +302,24 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post("logout")
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth("JWT")
+  @ApiBody({
+    required: false,
+    schema: {
+      type: "object",
+      properties: {
+        refreshToken: {
+          type: "string",
+          example: "optional-refresh-token-to-revoke",
+        },
+      },
+    },
+  })
+  @ApiSuccess({
+    summary: "Logout and optionally revoke refresh token",
+    dataType: "null",
+  })
+  @ApiStandardErrors({ unauthorized: true })
   async logout(@Body("refreshToken") refreshToken?: string): Promise<ApiResponse> {
     // Revoke refresh token if provided
     if (refreshToken) {

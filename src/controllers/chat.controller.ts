@@ -9,11 +9,12 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiBody, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { GetUser } from "../decorators/get-user.decorator";
 import { SendChatMessageDto } from "../dto/chat.dto";
 import { ChatService } from "../services/chat.service";
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 
 @ApiTags("Chat")
 @ApiBearerAuth("JWT")
@@ -23,6 +24,9 @@ export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post("sessions")
+  @ApiSuccess({ summary: "Create or get current chat session", dataType: "Chat session" })
+  @ApiStandardErrors({ unauthorized: true })
+  @ApiQuery({ name: "new", required: false, enum: ["true", "false"], description: "Use true to force-create a new session" })
   async createSession(
     @GetUser("id") userId: number,
     @Query("new") createNew?: string
@@ -38,6 +42,8 @@ export class ChatController {
   }
 
   @Get("sessions")
+  @ApiSuccess({ summary: "List authenticated user's chat sessions", dataType: "Chat sessions", isArray: true })
+  @ApiStandardErrors({ unauthorized: true })
   async getSessions(@GetUser("id") userId: number): Promise<any> {
     const sessions = await this.chatService.getUserSessions(userId);
     return {
@@ -47,6 +53,9 @@ export class ChatController {
   }
 
   @Get("sessions/:id/messages")
+  @ApiSuccess({ summary: "List messages in a chat session", dataType: "Chat messages", isArray: true })
+  @ApiStandardErrors({ unauthorized: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 1, description: "Chat session ID" })
   async getMessages(
     @GetUser("id") userId: number,
     @Param("id", ParseIntPipe) sessionId: number
@@ -59,6 +68,9 @@ export class ChatController {
   }
 
   @Delete("sessions/:id")
+  @ApiSuccess({ summary: "Archive a chat session", dataType: "No content" })
+  @ApiStandardErrors({ unauthorized: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 1, description: "Chat session ID" })
   async deleteSession(
     @GetUser("id") userId: number,
     @Param("id", ParseIntPipe) sessionId: number
@@ -71,6 +83,10 @@ export class ChatController {
   }
 
   @Post("sessions/:id/messages")
+  @ApiSuccess({ summary: "Send a message to the AI movie assistant", dataType: "Assistant reply with recommendation cards" })
+  @ApiStandardErrors({ unauthorized: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 1, description: "Chat session ID" })
+  @ApiBody({ type: SendChatMessageDto })
   async sendMessage(
     @GetUser("id") userId: number,
     @Param("id", ParseIntPipe) sessionId: number,

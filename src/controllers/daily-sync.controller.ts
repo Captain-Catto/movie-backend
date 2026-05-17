@@ -1,9 +1,17 @@
-import { Controller, Post, Get, Query, Logger } from "@nestjs/common";
+import { Controller, Post, Get, Query, Logger, UseGuards } from "@nestjs/common";
 import { DailySyncService } from "../services/daily-sync.service";
-import { ApiTags } from '@nestjs/swagger';
+import { ApiExcludeController, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../guards/roles.guard";
+import { Roles } from "../decorators/roles.decorator";
+import { UserRole } from "../entities/user.entity";
 
 @ApiTags('Sync')
+@ApiExcludeController()
 @Controller("daily-sync")
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class DailySyncController {
   private readonly logger = new Logger(DailySyncController.name);
 
@@ -14,6 +22,13 @@ export class DailySyncController {
    * POST /api/daily-sync/movies?date=2025-09-04&startFromBatch=10
    */
   @Post("movies")
+  @ApiSuccess({
+    summary: "Sync movies from TMDB daily export",
+    dataType: "Daily movie sync result",
+  })
+  @ApiQuery({ name: "date", required: false, type: String, example: "2026-05-16" })
+  @ApiQuery({ name: "startFromBatch", required: false, type: Number, example: 0 })
+  @ApiStandardErrors()
   async syncMovies(
     @Query("date") dateStr?: string,
     @Query("startFromBatch") startFromBatch?: string
@@ -47,6 +62,13 @@ export class DailySyncController {
    * POST /api/daily-sync/tv?date=2025-09-04&startFromBatch=10
    */
   @Post("tv")
+  @ApiSuccess({
+    summary: "Sync TV series from TMDB daily export",
+    dataType: "Daily TV sync result",
+  })
+  @ApiQuery({ name: "date", required: false, type: String, example: "2026-05-16" })
+  @ApiQuery({ name: "startFromBatch", required: false, type: Number, example: 0 })
+  @ApiStandardErrors()
   async syncTV(
     @Query("date") dateStr?: string,
     @Query("startFromBatch") startFromBatch?: string
@@ -76,6 +98,12 @@ export class DailySyncController {
    * POST /api/daily-sync/all?date=2025-09-04
    */
   @Post("all")
+  @ApiSuccess({
+    summary: "Sync all content from TMDB daily exports",
+    dataType: "Daily sync result",
+  })
+  @ApiQuery({ name: "date", required: false, type: String, example: "2026-05-16" })
+  @ApiStandardErrors()
   async syncAll(@Query("date") dateStr?: string) {
     try {
       const date = dateStr ? new Date(dateStr) : new Date();
@@ -100,6 +128,11 @@ export class DailySyncController {
    * POST /api/daily-sync/today
    */
   @Post("today")
+  @ApiSuccess({
+    summary: "Sync from the most recent available TMDB exports",
+    dataType: "Daily sync result",
+  })
+  @ApiStandardErrors()
   async syncToday() {
     try {
       this.logger.log("🔍 Today sync request");
@@ -123,6 +156,11 @@ export class DailySyncController {
    * GET /api/daily-sync/stats
    */
   @Get("stats")
+  @ApiSuccess({
+    summary: "Get daily sync statistics",
+    dataType: "Daily sync statistics",
+  })
+  @ApiStandardErrors()
   async getSyncStats() {
     try {
       const stats = await this.dailySyncService.getSyncStats();
