@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Req,
   UseGuards,
+  Logger,
 } from "@nestjs/common";
 import { AnalyticsService } from "../services/analytics.service";
 import { Request } from "express";
@@ -13,18 +14,22 @@ import * as geoip from "geoip-lite";
 import { ApiBody, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
 import { OptionalJwtAuthGuard } from "../auth/optional-jwt-auth.guard";
+import { IsIn, IsNumber, IsObject, IsOptional, IsString } from "class-validator";
 
 class TrackEventDto {
   @ApiProperty({ example: "1226863" })
+  @IsString()
   contentId: string;
 
   @ApiProperty({ enum: ["movie", "tv_series"], example: "movie" })
+  @IsIn(["movie", "tv_series"])
   contentType: "movie" | "tv_series";
 
   @ApiProperty({
     enum: ["view", "click", "play", "complete", "search"],
     example: "view",
   })
+  @IsIn(["VIEW", "CLICK", "PLAY", "COMPLETE", "SEARCH", "view", "click", "play", "complete", "search"])
   actionType:
     | "VIEW"
     | "CLICK"
@@ -38,12 +43,18 @@ class TrackEventDto {
     | "search";
 
   @ApiPropertyOptional({ example: "Five Nights at Freddy's 2" })
+  @IsOptional()
+  @IsString()
   contentTitle?: string;
 
   @ApiPropertyOptional({ example: 120 })
+  @IsOptional()
+  @IsNumber()
   duration?: number;
 
   @ApiPropertyOptional({ example: { source: "hero" } })
+  @IsOptional()
+  @IsObject()
   metadata?: Record<string, any>;
 }
 
@@ -51,6 +62,8 @@ class TrackEventDto {
 @Controller("analytics")
 @UseGuards(OptionalJwtAuthGuard)
 export class AnalyticsController {
+  private readonly logger = new Logger(AnalyticsController.name);
+
   constructor(private analyticsService: AnalyticsService) {}
 
   @Post("track")
@@ -63,15 +76,17 @@ export class AnalyticsController {
   @ApiStandardErrors()
   async trackEvent(@Body() dto: TrackEventDto, @Req() req: Request) {
     try {
-      console.log("[Analytics Controller] Received tracking request:", dto);
-
       // Extract user info from request
       const userId = (req.user as any)?.id || null;
       const ipAddress = this.resolveIp(req);
       const userAgent = req.headers["user-agent"] || null;
       const country = this.resolveCountry(req, ipAddress);
 
-      console.log("[Analytics Controller] Request info:", {
+      this.logger.debug("Tracking analytics event", {
+        contentId: dto.contentId,
+        contentType: dto.contentType,
+        actionType: dto.actionType,
+        duration: dto.duration,
         userId,
         ipAddress,
         userAgent: userAgent ? "present" : "missing",
@@ -86,18 +101,12 @@ export class AnalyticsController {
         country,
       });
 
-      console.log("[Analytics Controller] Event tracked successfully");
-
       return {
         success: true,
         message: "Event tracked successfully",
       };
     } catch (error) {
-      console.error("[Analytics Controller] Error tracking event:", error);
-      console.error("[Analytics Controller] Error details:", {
-        message: error.message,
-        stack: error.stack,
-      });
+      this.logger.error("Failed to track analytics event", error?.stack || error?.message);
       return {
         success: false,
         message: "Failed to track event",

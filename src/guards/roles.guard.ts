@@ -1,10 +1,12 @@
-import { Injectable, CanActivate, ExecutionContext } from "@nestjs/common";
+import { Injectable, CanActivate, ExecutionContext, Logger } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { UserRole } from "../entities/user.entity";
 import { ROLES_KEY } from "../decorators/roles.decorator";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
+  private readonly logger = new Logger(RolesGuard.name);
+
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -13,33 +15,32 @@ export class RolesGuard implements CanActivate {
       [context.getHandler(), context.getClass()]
     );
 
-    console.log("🔒 [ROLES-GUARD] Required roles:", requiredRoles);
+    this.logger.debug(`Required roles: ${requiredRoles?.join(", ") || "none"}`);
 
     if (!requiredRoles) {
-      console.log("✅ [ROLES-GUARD] No roles required, access granted");
       return true;
     }
 
     const { user } = context.switchToHttp().getRequest();
 
-    console.log("👤 [ROLES-GUARD] User:", {
+    this.logger.debug(`User role check: ${JSON.stringify({
       id: user?.id,
       email: user?.email,
       role: user?.role,
       hasUser: !!user,
-    });
+    })}`);
 
     if (!user) {
-      console.log("❌ [ROLES-GUARD] No user in request, access denied");
+      this.logger.warn("No user in request, access denied");
       return false;
     }
 
     const hasRole = requiredRoles.some((role) => user.role === role);
-    console.log("🔍 [ROLES-GUARD] Role check:", {
+    this.logger.debug(`Role check: ${JSON.stringify({
       userRole: user.role,
       requiredRoles,
       hasRole,
-    });
+    })}`);
 
     return hasRole;
   }
