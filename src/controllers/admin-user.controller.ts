@@ -511,6 +511,44 @@ export class AdminUserController {
     }
   }
 
+  @Get(":id/comments/:contentType/:contentId")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  @ApiSuccess({ summary: "Get user's comments for one movie or TV series", dataType: "User content comments" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiParam({ name: "contentType", enum: ["movie", "tv"], example: "movie" })
+  @ApiParam({ name: "contentId", type: Number, example: 1226863 })
+  @ApiPaginationQueries()
+  async getUserCommentsForContent(
+    @Param("id", ParseIntPipe) userId: number,
+    @Param("contentType") contentType: "movie" | "tv",
+    @Param("contentId", ParseIntPipe) contentId: number,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    try {
+      const result = await this.adminUserService.getUserCommentsForContent(
+        userId,
+        contentType,
+        contentId,
+        {
+          page: page ? Number(page) : 1,
+          limit: limit ? Number(limit) : 5,
+        }
+      );
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to fetch user comments for content",
+      };
+    }
+  }
+
   @Get(":id/login-history")
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
   @ApiSuccess({ summary: "Get user's login history", dataType: "User login history" })

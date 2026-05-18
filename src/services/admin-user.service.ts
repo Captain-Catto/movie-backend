@@ -884,7 +884,7 @@ export class AdminUserService {
               ? `/tv/${group.contentId}`
               : `/movie/${group.contentId}`
             : null,
-          comments: group.comments.map((comment) => ({
+          comments: group.comments.slice(0, 1).map((comment) => ({
             id: comment.id,
             content: comment.content,
             parentId: comment.parentId || null,
@@ -905,6 +905,47 @@ export class AdminUserService {
       meta: {
         totalComments: allComments.length,
       },
+    };
+  }
+
+  async getUserCommentsForContent(
+    userId: number,
+    contentType: "movie" | "tv",
+    contentId: number,
+    query: { page?: number; limit?: number } = {}
+  ) {
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(query.limit) || 5, 1), 50);
+    const offset = (page - 1) * limit;
+    const where =
+      contentType === "tv"
+        ? { userId, tvId: contentId }
+        : { userId, movieId: contentId };
+
+    const [items, total] = await this.commentRepository.findAndCount({
+      where,
+      order: { createdAt: "DESC" },
+      skip: offset,
+      take: limit,
+    });
+
+    return {
+      data: items.map((comment) => ({
+        id: comment.id,
+        content: comment.content,
+        parentId: comment.parentId || null,
+        isHidden: comment.isHidden,
+        isDeleted: comment.isDeleted,
+        likeCount: comment.likeCount,
+        dislikeCount: comment.dislikeCount,
+        replyCount: comment.replyCount,
+        createdAt: comment.createdAt,
+        updatedAt: comment.updatedAt,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 

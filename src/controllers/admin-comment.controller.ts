@@ -222,6 +222,37 @@ export class AdminCommentController {
     }
   }
 
+  @Put(":id/delete-soft")
+  @HttpCode(HttpStatus.OK)
+  @ApiSuccess({ summary: "Soft delete a comment", dataType: "null" })
+  @ApiIdParam("id", "Comment ID")
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  async softDeleteComment(
+    @Param("id", ParseIntPipe) id: number,
+    @Request() req
+  ): Promise<ApiResponse> {
+    try {
+      const result = await this.commentService.deleteComment(
+        id,
+        req.user.id,
+        req.user.role,
+        false
+      );
+
+      return {
+        success: true,
+        message: result.message,
+        data: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to soft delete comment",
+        error: error.message,
+      };
+    }
+  }
+
   // ✅ RESOLVE REPORT
   @Put("reports/:reportId/resolve")
   @HttpCode(HttpStatus.OK)
