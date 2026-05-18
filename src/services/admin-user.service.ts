@@ -414,19 +414,9 @@ export class AdminUserService {
         .andWhere("va.duration > 0")
         .getRawOne();
 
-      const commentCount = await this.userActivityRepository
-        .createQueryBuilder("ua")
-        .where("ua.userId = :userId", { userId })
-        .andWhere("ua.activityType LIKE :type", { type: "COMMENT%" })
-        .getCount();
-      const commentLogCount = await this.userLogRepository
-        .createQueryBuilder("ul")
-        .where("ul.userId = :userId", { userId })
-        .andWhere(
-          "(UPPER(ul.action) LIKE :type OR UPPER(ul.description) LIKE :descType)",
-          { type: "%COMMENT%", descType: "%COMMENT%" }
-        )
-        .getCount();
+      const currentCommentCount = await this.commentRepository.count({
+        where: { userId },
+      });
 
       const lastLoginAt =
         [lastLogin?.createdAt, lastLoginLog?.createdAt]
@@ -440,7 +430,7 @@ export class AdminUserService {
         searches: searchCount + searchLogCount + recentSearchCount,
         views: viewCount + viewLogCount + analyticsViews,
         favorites: currentFavoriteCount,
-        comments: commentCount + commentLogCount,
+        comments: currentCommentCount,
         plays: analyticsPlays,
         watchTimeSeconds: parseInt(totalWatchTime?.total || "0"),
         lastLogin: lastLoginAt,
@@ -754,58 +744,63 @@ export class AdminUserService {
     const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
     const offset = (page - 1) * limit;
 
-    const [items, total] = await this.favoriteRepository.findAndCount({
-      where: { userId },
-      order: { createdAt: "DESC" },
-      skip: offset,
-      take: limit,
-    });
+    const favoritesQuery = this.favoriteRepository
+      .createQueryBuilder("f")
+      .leftJoin(
+        "movies",
+        "m",
+        "CAST(f.content_id AS INTEGER) = m.\"tmdbId\" AND f.content_type = 'movie'"
+      )
+      .leftJoin(
+        "tv_series",
+        "t",
+        "CAST(f.content_id AS INTEGER) = t.\"tmdbId\" AND f.content_type = 'tv'"
+      )
+      .select([
+        "f.id as id",
+        "f.content_id as contentId",
+        "f.content_type as contentType",
+        "f.created_at as createdAt",
+        'COALESCE("m"."title", "t"."title") as title',
+        'COALESCE("m"."posterPath", "t"."posterPath") as posterPath',
+      ])
+      .where("f.user_id = :userId", { userId })
+      .orderBy("f.created_at", "DESC")
+      .offset(offset)
+      .limit(limit);
 
-    const movieTmdbIds = items
-      .filter((item) => item.contentType === "movie")
-      .map((item) => Number(item.contentId))
-      .filter(Number.isFinite);
-    const tvTmdbIds = items
-      .filter((item) => item.contentType === "tv")
-      .map((item) => Number(item.contentId))
-      .filter(Number.isFinite);
+    const countQuery = this.favoriteRepository
+      .createQueryBuilder("f")
+      .where("f.user_id = :userId", { userId });
 
-    const [movies, tvSeries] = await Promise.all([
-      movieTmdbIds.length
-        ? this.movieRepository.find({ where: { tmdbId: In(movieTmdbIds) } })
-        : Promise.resolve([]),
-      tvTmdbIds.length
-        ? this.tvSeriesRepository.find({ where: { tmdbId: In(tvTmdbIds) } })
-        : Promise.resolve([]),
+    const [items, total] = await Promise.all([
+      favoritesQuery.getRawMany(),
+      countQuery.getCount(),
     ]);
-
-    const movieByTmdbId = new Map(movies.map((movie) => [movie.tmdbId, movie]));
-    const tvByTmdbId = new Map(tvSeries.map((tv) => [tv.tmdbId, tv]));
 
     return {
       data: items.map((item) => {
-        const tmdbId = Number(item.contentId);
-        const content =
-          item.contentType === "movie"
-            ? movieByTmdbId.get(tmdbId)
-            : tvByTmdbId.get(tmdbId);
-        const posterPath = content?.posterPath || null;
+        const contentId = item.contentid ?? item.contentId;
+        const contentType = item.contenttype ?? item.contentType;
+        const title = item.title || null;
+        const posterPath = item.posterpath ?? item.posterPath ?? null;
+        const tmdbId = Number(contentId);
 
         return {
           id: item.id,
-          contentId: item.contentId,
+          contentId,
           tmdbId: Number.isFinite(tmdbId) ? tmdbId : null,
-          contentType: item.contentType,
-          contentTitle: content?.title || `${item.contentType} #${item.contentId}`,
+          contentType,
+          contentTitle: title || `${contentType} #${contentId}`,
           posterUrl: posterPath
             ? `https://image.tmdb.org/t/p/w185${posterPath}`
             : null,
           href: Number.isFinite(tmdbId)
-            ? item.contentType === "tv"
+            ? contentType === "tv"
               ? `/tv/${tmdbId}`
               : `/movie/${tmdbId}`
             : null,
-          createdAt: item.createdAt,
+          createdAt: item.createdat ?? item.createdAt,
         };
       }),
       total,
