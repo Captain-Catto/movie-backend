@@ -884,7 +884,7 @@ export class AdminUserService {
               ? `/tv/${group.contentId}`
               : `/movie/${group.contentId}`
             : null,
-          comments: group.comments.slice(0, 5).map((comment) => ({
+          comments: group.comments.map((comment) => ({
             id: comment.id,
             content: comment.content,
             parentId: comment.parentId || null,
