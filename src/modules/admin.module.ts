@@ -19,6 +19,7 @@ import {
   Setting,
   UserLog,
   RecentSearch,
+  Comment,
 } from "../entities";
 
 // Services
@@ -91,6 +92,7 @@ import { AuthModule } from "./auth.module";
       Setting,
       UserLog,
       RecentSearch,
+      Comment,
     ]),
   ],
   controllers: [

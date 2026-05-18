@@ -10,6 +10,7 @@ import {
   TVSeries,
   RecentSearch,
   Favorite,
+  Comment,
 } from "../entities";
 import { UserLog } from "../entities/user-log.entity";
 import { ActionType, ContentType, ViewAnalytics } from "../entities/view-analytics.entity";
@@ -53,6 +54,8 @@ export class AdminUserService {
     private recentSearchRepository: Repository<RecentSearch>,
     @InjectRepository(Favorite)
     private favoriteRepository: Repository<Favorite>,
+    @InjectRepository(Comment)
+    private commentRepository: Repository<Comment>,
     @InjectRepository(ViewAnalytics)
     private viewAnalyticsRepository: Repository<ViewAnalytics>,
     @InjectRepository(Movie)
@@ -705,6 +708,176 @@ export class AdminUserService {
         totalContent: Number(summaryRaw?.totalContent || total),
         totalWatchTimeSeconds: Number(summaryRaw?.totalWatchTimeSeconds || 0),
       },
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getUserSearchHistory(
+    userId: number,
+    query: { page?: number; limit?: number } = {}
+  ) {
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+    const offset = (page - 1) * limit;
+
+    const [items, total] = await this.recentSearchRepository.findAndCount({
+      where: { userId },
+      order: { createdAt: "DESC" },
+      skip: offset,
+      take: limit,
+    });
+
+    return {
+      data: items.map((item) => ({
+        id: item.id,
+        query: item.query,
+        type: item.type,
+        dismissedAt: item.dismissedAt || null,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getUserFavoriteDetails(
+    userId: number,
+    query: { page?: number; limit?: number } = {}
+  ) {
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+    const offset = (page - 1) * limit;
+
+    const [items, total] = await this.favoriteRepository.findAndCount({
+      where: { userId },
+      order: { createdAt: "DESC" },
+      skip: offset,
+      take: limit,
+    });
+
+    const movieTmdbIds = items
+      .filter((item) => item.contentType === "movie")
+      .map((item) => Number(item.contentId))
+      .filter(Number.isFinite);
+    const tvTmdbIds = items
+      .filter((item) => item.contentType === "tv")
+      .map((item) => Number(item.contentId))
+      .filter(Number.isFinite);
+
+    const [movies, tvSeries] = await Promise.all([
+      movieTmdbIds.length
+        ? this.movieRepository.find({ where: { tmdbId: In(movieTmdbIds) } })
+        : Promise.resolve([]),
+      tvTmdbIds.length
+        ? this.tvSeriesRepository.find({ where: { tmdbId: In(tvTmdbIds) } })
+        : Promise.resolve([]),
+    ]);
+
+    const movieByTmdbId = new Map(movies.map((movie) => [movie.tmdbId, movie]));
+    const tvByTmdbId = new Map(tvSeries.map((tv) => [tv.tmdbId, tv]));
+
+    return {
+      data: items.map((item) => {
+        const tmdbId = Number(item.contentId);
+        const content =
+          item.contentType === "movie"
+            ? movieByTmdbId.get(tmdbId)
+            : tvByTmdbId.get(tmdbId);
+        const posterPath = content?.posterPath || null;
+
+        return {
+          id: item.id,
+          contentId: item.contentId,
+          tmdbId: Number.isFinite(tmdbId) ? tmdbId : null,
+          contentType: item.contentType,
+          contentTitle: content?.title || `${item.contentType} #${item.contentId}`,
+          posterUrl: posterPath
+            ? `https://image.tmdb.org/t/p/w185${posterPath}`
+            : null,
+          href: Number.isFinite(tmdbId)
+            ? item.contentType === "tv"
+              ? `/tv/${tmdbId}`
+              : `/movie/${tmdbId}`
+            : null,
+          createdAt: item.createdAt,
+        };
+      }),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getUserCommentDetails(
+    userId: number,
+    query: { page?: number; limit?: number } = {}
+  ) {
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+    const offset = (page - 1) * limit;
+
+    const [items, total] = await this.commentRepository.findAndCount({
+      where: { userId },
+      order: { createdAt: "DESC" },
+      skip: offset,
+      take: limit,
+    });
+
+    const movieTmdbIds = items
+      .map((item) => item.movieId)
+      .filter((id): id is number => Number.isFinite(id));
+    const tvTmdbIds = items
+      .map((item) => item.tvId)
+      .filter((id): id is number => Number.isFinite(id));
+
+    const [movies, tvSeries] = await Promise.all([
+      movieTmdbIds.length
+        ? this.movieRepository.find({ where: { tmdbId: In(movieTmdbIds) } })
+        : Promise.resolve([]),
+      tvTmdbIds.length
+        ? this.tvSeriesRepository.find({ where: { tmdbId: In(tvTmdbIds) } })
+        : Promise.resolve([]),
+    ]);
+
+    const movieByTmdbId = new Map(movies.map((movie) => [movie.tmdbId, movie]));
+    const tvByTmdbId = new Map(tvSeries.map((tv) => [tv.tmdbId, tv]));
+
+    return {
+      data: items.map((item) => {
+        const isTv = Number.isFinite(item.tvId);
+        const tmdbId = isTv ? item.tvId : item.movieId;
+        const content = isTv
+          ? tvByTmdbId.get(tmdbId)
+          : movieByTmdbId.get(tmdbId);
+        const posterPath = content?.posterPath || null;
+
+        return {
+          id: item.id,
+          content: item.content,
+          contentId: tmdbId || null,
+          contentType: isTv ? "tv" : "movie",
+          contentTitle: content?.title || (tmdbId ? `${isTv ? "TV" : "Movie"} #${tmdbId}` : "Unknown"),
+          parentId: item.parentId || null,
+          isHidden: item.isHidden,
+          isDeleted: item.isDeleted,
+          likeCount: item.likeCount,
+          dislikeCount: item.dislikeCount,
+          replyCount: item.replyCount,
+          posterUrl: posterPath
+            ? `https://image.tmdb.org/t/p/w185${posterPath}`
+            : null,
+          href: tmdbId ? (isTv ? `/tv/${tmdbId}` : `/movie/${tmdbId}`) : null,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        };
+      }),
       total,
       page,
       limit,

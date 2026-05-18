@@ -423,4 +423,91 @@ export class AdminUserController {
       };
     }
   }
+
+  @Get(":id/search-history")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  @ApiSuccess({ summary: "Get user's search history", dataType: "User search history" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiPaginationQueries()
+  async getUserSearchHistory(
+    @Param("id", ParseIntPipe) userId: number,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    try {
+      const result = await this.adminUserService.getUserSearchHistory(userId, {
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 20,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to fetch user search history",
+      };
+    }
+  }
+
+  @Get(":id/favorites")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  @ApiSuccess({ summary: "Get user's favorite content details", dataType: "User favorites" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiPaginationQueries()
+  async getUserFavoriteDetails(
+    @Param("id", ParseIntPipe) userId: number,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    try {
+      const result = await this.adminUserService.getUserFavoriteDetails(userId, {
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 20,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to fetch user favorites",
+      };
+    }
+  }
+
+  @Get(":id/comments")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  @ApiSuccess({ summary: "Get user's comment details", dataType: "User comments" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiPaginationQueries()
+  async getUserCommentDetails(
+    @Param("id", ParseIntPipe) userId: number,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    try {
+      const result = await this.adminUserService.getUserCommentDetails(userId, {
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 20,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to fetch user comments",
+      };
+    }
+  }
 }
