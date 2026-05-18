@@ -804,6 +804,7 @@ export class AdminUserService {
     const allComments = await this.commentRepository.find({
       where: { userId },
       order: { createdAt: "DESC" },
+      relations: ["hiddenByUser"],
     });
 
     const groupedComments = new Map<
@@ -889,6 +890,15 @@ export class AdminUserService {
             content: comment.content,
             parentId: comment.parentId || null,
             isHidden: comment.isHidden,
+            hiddenReason: comment.hiddenReason || null,
+            hiddenBy: comment.hiddenBy || null,
+            hiddenByUser: comment.hiddenByUser
+              ? {
+                  id: comment.hiddenByUser.id,
+                  name: comment.hiddenByUser.name,
+                  email: comment.hiddenByUser.email,
+                }
+              : null,
             isDeleted: comment.isDeleted,
             likeCount: comment.likeCount,
             dislikeCount: comment.dislikeCount,
@@ -927,6 +937,7 @@ export class AdminUserService {
       order: { createdAt: "DESC" },
       skip: offset,
       take: limit,
+      relations: ["hiddenByUser"],
     });
 
     return {
@@ -935,6 +946,15 @@ export class AdminUserService {
         content: comment.content,
         parentId: comment.parentId || null,
         isHidden: comment.isHidden,
+        hiddenReason: comment.hiddenReason || null,
+        hiddenBy: comment.hiddenBy || null,
+        hiddenByUser: comment.hiddenByUser
+          ? {
+              id: comment.hiddenByUser.id,
+              name: comment.hiddenByUser.name,
+              email: comment.hiddenByUser.email,
+            }
+          : null,
         isDeleted: comment.isDeleted,
         likeCount: comment.likeCount,
         dislikeCount: comment.dislikeCount,

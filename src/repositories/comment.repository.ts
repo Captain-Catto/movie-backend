@@ -41,7 +41,7 @@ export class CommentRepository {
     // Load the user relation to avoid undefined errors
     return await this.repository.findOne({
       where: { id: savedComment.id },
-      relations: ["user", "mentions", "mentions.mentionedUser"],
+      relations: ["user", "hiddenByUser", "mentions", "mentions.mentionedUser"],
     });
   }
 
@@ -52,6 +52,7 @@ export class CommentRepository {
     const queryBuilder = this.repository
       .createQueryBuilder("comment")
       .leftJoinAndSelect("comment.user", "user")
+      .leftJoinAndSelect("comment.hiddenByUser", "hiddenByUser")
       .leftJoinAndSelect("comment.mentions", "mentions")
       .leftJoinAndSelect("mentions.mentionedUser", "mentionedUser")
       .where("comment.id = :id", { id });
@@ -94,6 +95,7 @@ export class CommentRepository {
     let queryBuilder = this.repository
       .createQueryBuilder("comment")
       .leftJoinAndSelect("comment.user", "user")
+      .leftJoinAndSelect("comment.hiddenByUser", "hiddenByUser")
       .where("comment.parentId IS NULL") // Only top-level comments
       .leftJoinAndSelect("comment.mentions", "mentions")
       .leftJoinAndSelect("mentions.mentionedUser", "mentionedUser");
@@ -165,6 +167,7 @@ export class CommentRepository {
     let queryBuilder = this.repository
       .createQueryBuilder("comment")
       .leftJoinAndSelect("comment.user", "user")
+      .leftJoinAndSelect("comment.hiddenByUser", "hiddenByUser")
       .leftJoinAndSelect("comment.mentions", "mentions")
       .leftJoinAndSelect("mentions.mentionedUser", "mentionedUser")
       .where("comment.parentId = :parentId", { parentId });
@@ -212,7 +215,7 @@ export class CommentRepository {
     await this.repository.update(id, data);
     return await this.repository.findOne({
       where: { id },
-      relations: ["user", "mentions", "mentions.mentionedUser"],
+      relations: ["user", "hiddenByUser", "mentions", "mentions.mentionedUser"],
     });
   }
 

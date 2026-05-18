@@ -578,6 +578,7 @@ export class CommentService {
       tvId: comment.tvId,
       parentId: comment.parentId,
       isHidden: comment.isHidden,
+      hiddenReason: comment.isHidden ? comment.hiddenReason || null : null,
       likeCount: comment.likeCount,
       dislikeCount: comment.dislikeCount,
       replyCount: comment.replyCount,

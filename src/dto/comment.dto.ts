@@ -36,6 +36,7 @@ export interface CommentResponseDto {
   tvId?: number;
   parentId?: number;
   isHidden: boolean;
+  hiddenReason?: string | null;
   likeCount: number;
   dislikeCount: number;
   replyCount: number;
