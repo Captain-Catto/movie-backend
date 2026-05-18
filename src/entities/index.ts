@@ -46,3 +46,4 @@ export {
   ChatModerationSeverity,
   ChatModerationStatus,
 } from "./chat-moderation-flag.entity";
+export { WatchParty } from "./watch-party.entity";
