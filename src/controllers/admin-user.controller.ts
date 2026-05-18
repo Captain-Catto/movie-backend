@@ -510,4 +510,33 @@ export class AdminUserController {
       };
     }
   }
+
+  @Get(":id/login-history")
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
+  @ApiSuccess({ summary: "Get user's login history", dataType: "User login history" })
+  @ApiStandardErrors({ unauthorized: true, forbidden: true, notFound: true })
+  @ApiParam({ name: "id", type: Number, example: 12 })
+  @ApiPaginationQueries()
+  async getUserLoginHistory(
+    @Param("id", ParseIntPipe) userId: number,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string
+  ) {
+    try {
+      const result = await this.adminUserService.getUserLoginHistory(userId, {
+        page: page ? Number(page) : 1,
+        limit: limit ? Number(limit) : 20,
+      });
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Failed to fetch user login history",
+      };
+    }
+  }
 }

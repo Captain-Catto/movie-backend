@@ -362,23 +362,6 @@ export class AdminUserService {
         where: { userId },
       });
 
-      const viewCount = await this.userActivityRepository.count({
-        where: { userId, activityType: ActivityType.VIEW_CONTENT },
-      });
-      const viewLogCount = await this.countUserLogsByPattern(userId, [
-        "VIEW",
-        "WATCH",
-        "WATCHED",
-      ]);
-
-      const favoriteCount = await this.userActivityRepository.count({
-        where: { userId, activityType: ActivityType.FAVORITE_ADD },
-      });
-      const favoriteLogCount = await this.countUserLogsByPattern(userId, [
-        "FAVORITE_ADD",
-        "ADDED",
-        "FAVORITES",
-      ]);
       const currentFavoriteCount = await this.favoriteRepository.count({
         where: { userId },
       });
@@ -428,7 +411,7 @@ export class AdminUserService {
         total: totalActivities + totalLogs,
         logins: loginCount + loginLogCount,
         searches: searchCount + searchLogCount + recentSearchCount,
-        views: viewCount + viewLogCount + analyticsViews,
+        views: analyticsViews,
         favorites: currentFavoriteCount,
         comments: currentCommentCount,
         plays: analyticsPlays,
@@ -818,18 +801,49 @@ export class AdminUserService {
     const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
     const offset = (page - 1) * limit;
 
-    const [items, total] = await this.commentRepository.findAndCount({
+    const allComments = await this.commentRepository.find({
       where: { userId },
       order: { createdAt: "DESC" },
-      skip: offset,
-      take: limit,
     });
 
-    const movieTmdbIds = items
-      .map((item) => item.movieId)
+    const groupedComments = new Map<
+      string,
+      {
+        contentId: number | null;
+        contentType: "movie" | "tv";
+        latestCommentAt: Date;
+        comments: Comment[];
+      }
+    >();
+
+    for (const comment of allComments) {
+      const isTv = Number.isFinite(comment.tvId);
+      const tmdbId = isTv ? comment.tvId : comment.movieId;
+      const groupKey = `${isTv ? "tv" : "movie"}-${tmdbId ?? "unknown"}`;
+      const existing = groupedComments.get(groupKey);
+
+      if (existing) {
+        existing.comments.push(comment);
+      } else {
+        groupedComments.set(groupKey, {
+          contentId: tmdbId || null,
+          contentType: isTv ? "tv" : "movie",
+          latestCommentAt: comment.createdAt,
+          comments: [comment],
+        });
+      }
+    }
+
+    const groups = Array.from(groupedComments.values());
+    const pagedGroups = groups.slice(offset, offset + limit);
+
+    const movieTmdbIds = pagedGroups
+      .filter((group) => group.contentType === "movie")
+      .map((group) => group.contentId)
       .filter((id): id is number => Number.isFinite(id));
-    const tvTmdbIds = items
-      .map((item) => item.tvId)
+    const tvTmdbIds = pagedGroups
+      .filter((group) => group.contentType === "tv")
+      .map((group) => group.contentId)
       .filter((id): id is number => Number.isFinite(id));
 
     const [movies, tvSeries] = await Promise.all([
@@ -845,38 +859,115 @@ export class AdminUserService {
     const tvByTmdbId = new Map(tvSeries.map((tv) => [tv.tmdbId, tv]));
 
     return {
-      data: items.map((item) => {
-        const isTv = Number.isFinite(item.tvId);
-        const tmdbId = isTv ? item.tvId : item.movieId;
-        const content = isTv
-          ? tvByTmdbId.get(tmdbId)
-          : movieByTmdbId.get(tmdbId);
+      data: pagedGroups.map((group) => {
+        const content = group.contentType === "tv"
+          ? tvByTmdbId.get(group.contentId)
+          : movieByTmdbId.get(group.contentId);
         const posterPath = content?.posterPath || null;
 
         return {
-          id: item.id,
-          content: item.content,
-          contentId: tmdbId || null,
-          contentType: isTv ? "tv" : "movie",
-          contentTitle: content?.title || (tmdbId ? `${isTv ? "TV" : "Movie"} #${tmdbId}` : "Unknown"),
-          parentId: item.parentId || null,
-          isHidden: item.isHidden,
-          isDeleted: item.isDeleted,
-          likeCount: item.likeCount,
-          dislikeCount: item.dislikeCount,
-          replyCount: item.replyCount,
+          id: `${group.contentType}-${group.contentId ?? "unknown"}`,
+          contentId: group.contentId,
+          contentType: group.contentType,
+          contentTitle:
+            content?.title ||
+            (group.contentId
+              ? `${group.contentType === "tv" ? "TV" : "Movie"} #${group.contentId}`
+              : "Unknown"),
+          commentCount: group.comments.length,
+          latestCommentAt: group.latestCommentAt,
           posterUrl: posterPath
             ? `https://image.tmdb.org/t/p/w185${posterPath}`
             : null,
-          href: tmdbId ? (isTv ? `/tv/${tmdbId}` : `/movie/${tmdbId}`) : null,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
+          href: group.contentId
+            ? group.contentType === "tv"
+              ? `/tv/${group.contentId}`
+              : `/movie/${group.contentId}`
+            : null,
+          comments: group.comments.slice(0, 5).map((comment) => ({
+            id: comment.id,
+            content: comment.content,
+            parentId: comment.parentId || null,
+            isHidden: comment.isHidden,
+            isDeleted: comment.isDeleted,
+            likeCount: comment.likeCount,
+            dislikeCount: comment.dislikeCount,
+            replyCount: comment.replyCount,
+            createdAt: comment.createdAt,
+            updatedAt: comment.updatedAt,
+          })),
         };
       }),
-      total,
+      total: groups.length,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(groups.length / limit),
+      meta: {
+        totalComments: allComments.length,
+      },
+    };
+  }
+
+  async getUserLoginHistory(
+    userId: number,
+    query: { page?: number; limit?: number } = {}
+  ) {
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+    const offset = (page - 1) * limit;
+
+    const [activities, logs] = await Promise.all([
+      this.userActivityRepository.find({
+        where: { userId, activityType: ActivityType.LOGIN },
+        order: { createdAt: "DESC" },
+      }),
+      this.userLogRepository
+        .createQueryBuilder("ul")
+        .where("ul.userId = :userId", { userId })
+        .andWhere(
+          "(UPPER(ul.action) LIKE :login OR UPPER(ul.description) LIKE :loggedIn)",
+          { login: "%LOGIN%", loggedIn: "%LOGGED IN%" }
+        )
+        .orderBy("ul.createdAt", "DESC")
+        .getMany(),
+    ]);
+
+    const data = [
+      ...activities.map((activity) => ({
+        id: `activity-${activity.id}`,
+        source: "user_activity" as const,
+        description: activity.description || "User logged in",
+        ipAddress: activity.ipAddress || null,
+        deviceType: activity.deviceType || this.getDeviceTypeFromUserAgent(activity.userAgent) || null,
+        country: activity.country || null,
+        userAgent: activity.userAgent || null,
+        createdAt: activity.createdAt,
+      })),
+      ...logs.map((log) => ({
+        id: `log-${log.id}`,
+        source: "user_logs" as const,
+        description: log.description || log.action,
+        ipAddress: log.ipAddress || null,
+        deviceType:
+          log.metadata?.deviceType ||
+          log.metadata?.device ||
+          this.getDeviceTypeFromUserAgent(log.userAgent) ||
+          null,
+        country: log.metadata?.country || null,
+        userAgent: log.userAgent || null,
+        createdAt: log.createdAt,
+      })),
+    ].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    return {
+      data: data.slice(offset, offset + limit),
+      total: data.length,
+      page,
+      limit,
+      totalPages: Math.ceil(data.length / limit),
     };
   }
 
