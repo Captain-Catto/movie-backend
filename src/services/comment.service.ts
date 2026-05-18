@@ -471,6 +471,44 @@ export class CommentService {
       throw new BadRequestException("Failed to hide comment");
     }
 
+    try {
+      const actionUrl = comment.movieId
+        ? `/movie/${comment.movieId}`
+        : comment.tvId
+        ? `/tv/${comment.tvId}`
+        : undefined;
+
+      const preview =
+        comment.content.length > 100
+          ? `${comment.content.slice(0, 97)}...`
+          : comment.content;
+
+      const reasonSuffix = reason ? `: ${reason}` : ".";
+
+      await this.notificationService.createUserNotification(
+        {
+          userId: comment.userId,
+          title: "Bình luận của bạn đã bị ẩn",
+          message: `Bình luận của bạn đã bị quản trị viên ẩn${reasonSuffix} Nội dung: "${preview}"`,
+          type: NotificationType.WARNING,
+          actionUrl,
+          metadata: {
+            commentId,
+            movieId: comment.movieId,
+            tvId: comment.tvId,
+            parentId: comment.parentId,
+            reason: reason || null,
+          },
+        },
+        adminId
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send hide notification to user ${comment.userId}`,
+        error instanceof Error ? error.stack : String(error)
+      );
+    }
+
     return {
       success: true,
       message: "Comment hidden successfully",
