@@ -107,11 +107,10 @@ export class CommentRepository {
       queryBuilder = queryBuilder.andWhere("comment.tvId = :tvId", { tvId });
     }
 
-    // Hide deleted/hidden comments unless specifically requested
+    // Public users should still see hidden comments as placeholders.
+    // Only deleted comments are removed from normal comment lists.
     if (!includeHidden) {
-      queryBuilder = queryBuilder
-        .andWhere("comment.isDeleted = false")
-        .andWhere("comment.isHidden = false");
+      queryBuilder = queryBuilder.andWhere("comment.isDeleted = false");
     }
 
     // Add user like information if userId provided
@@ -170,11 +169,10 @@ export class CommentRepository {
       .leftJoinAndSelect("mentions.mentionedUser", "mentionedUser")
       .where("comment.parentId = :parentId", { parentId });
 
-    // Hide deleted/hidden comments unless specifically requested
+    // Public users should still see hidden comments as placeholders.
+    // Only deleted comments are removed from normal reply lists.
     if (!includeHidden) {
-      queryBuilder = queryBuilder
-        .andWhere("comment.isDeleted = false")
-        .andWhere("comment.isHidden = false");
+      queryBuilder = queryBuilder.andWhere("comment.isDeleted = false");
     }
 
     // Add user like information if userId provided
