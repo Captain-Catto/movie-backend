@@ -24,8 +24,6 @@ import { DebugController } from "./controllers/debug.controller";
 import { UserRepository } from "./repositories/user.repository";
 import { SettingsModule } from "./modules/settings.module";
 import { SeoModule } from "./modules/seo.module";
-import { WatchPartyModule } from "./modules/watch-party.module";
-import { WatchParty } from "./entities/watch-party.entity";
 import {
   Movie,
   TVSeries,
@@ -107,7 +105,6 @@ import { RefreshToken } from "./entities/refresh-token.entity";
           ChatSession,
           ChatMessage,
           ChatModerationFlag,
-          WatchParty,
         ],
         synchronize:
           configService.get("TYPEORM_SYNCHRONIZE") === "true" ||
@@ -161,7 +158,6 @@ import { RefreshToken } from "./entities/refresh-token.entity";
     ChatModule,
     SettingsModule,
     SeoModule,
-    WatchPartyModule,
     TypeOrmModule.forFeature([User]), // For DebugController
   ],
   controllers: [SyncController, DebugController],
