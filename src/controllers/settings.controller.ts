@@ -17,12 +17,21 @@ export class SettingsController {
   })
   @ApiStandardErrors()
   async getRegistration(): Promise<ApiResponse> {
-    const data = await this.adminSettingsService.getRegistrationSettings();
-    return {
-      success: true,
-      message: "Registration settings",
-      data,
-    };
+    try {
+      const data = await this.adminSettingsService.getRegistrationSettings();
+      return {
+        success: true,
+        message: "Registration settings",
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to load registration settings",
+        error: error.message,
+        data: { nickname: { min: 3, max: 16 }, password: { min: 6, max: 16 } },
+      };
+    }
   }
 
   @Get("effects")
@@ -33,11 +42,38 @@ export class SettingsController {
   })
   @ApiStandardErrors()
   async getEffects(): Promise<ApiResponse> {
-    const data = await this.adminSettingsService.getEffectSettings();
-    return {
-      success: true,
-      message: "Effect settings",
-      data,
-    };
+    try {
+      const data = await this.adminSettingsService.getEffectSettings();
+      return {
+        success: true,
+        message: "Effect settings",
+        data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to load effect settings",
+        error: error.message,
+        data: {
+          enabled: false,
+          activeEffects: [],
+          intensity: "medium",
+          redEnvelopeSettings: {
+            fallSpeed: 0.3,
+            rotationSpeed: 1,
+            windStrength: 0.3,
+            sparkleFrequency: 0.02,
+            quantity: 25,
+          },
+          snowSettings: {
+            speed: 1,
+            density: 1,
+            size: 1,
+            windStrength: 0.2,
+          },
+          excludedPaths: [],
+        },
+      };
+    }
   }
 }

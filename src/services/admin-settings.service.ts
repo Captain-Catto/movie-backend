@@ -82,18 +82,28 @@ export class AdminSettingsService {
     private readonly settingRepository: Repository<Setting>
   ) {}
 
-  async getRegistrationSettings(): Promise<RegistrationSettingsDto> {
-    const existing = await this.settingRepository.findOne({
-      where: { key: REGISTRATION_SETTINGS_KEY },
-    });
+  private async findSettingValue<T>(key: string): Promise<T | null> {
+    const record = await this.settingRepository
+      .createQueryBuilder("setting")
+      .select(["setting.id", "setting.key", "setting.value"])
+      .where("setting.key = :key", { key })
+      .getOne();
 
-    if (!existing) {
+    return record ? (record.value as T) : null;
+  }
+
+  async getRegistrationSettings(): Promise<RegistrationSettingsDto> {
+    const existingValue = await this.findSettingValue<RegistrationSettingsDto>(
+      REGISTRATION_SETTINGS_KEY
+    );
+
+    if (!existingValue) {
       return DEFAULT_REGISTRATION_SETTINGS;
     }
 
     return {
       ...DEFAULT_REGISTRATION_SETTINGS,
-      ...(existing.value as RegistrationSettingsDto),
+      ...existingValue,
     };
   }
 
@@ -125,15 +135,13 @@ export class AdminSettingsService {
   }
 
   async getEffectSettings(): Promise<EffectSettingsDto> {
-    const existing = await this.settingRepository.findOne({
-      where: { key: EFFECT_SETTINGS_KEY },
-    });
+    const existingValue = await this.findSettingValue<EffectSettingsDto>(
+      EFFECT_SETTINGS_KEY
+    );
 
-    if (!existing) {
+    if (!existingValue) {
       return DEFAULT_EFFECT_SETTINGS;
     }
-
-    const existingValue = existing.value as EffectSettingsDto;
 
     // Deep merge per-effect settings to ensure all default values are present
     return {
@@ -210,15 +218,14 @@ export class AdminSettingsService {
   }
 
   async getStreamDomainSettings(): Promise<StreamDomainSettingsDto> {
-    const existing = await this.settingRepository.findOne({
-      where: { key: STREAM_DOMAIN_SETTINGS_KEY },
-    });
+    const existingValue = await this.findSettingValue<StreamDomainSettingsDto>(
+      STREAM_DOMAIN_SETTINGS_KEY
+    );
 
-    if (!existing) {
+    if (!existingValue) {
       return DEFAULT_STREAM_DOMAIN_SETTINGS;
     }
 
-    const existingValue = existing.value as StreamDomainSettingsDto;
     const sanitized = this.sanitizeStreamDomains(existingValue.domains || []);
 
     return {
@@ -260,18 +267,17 @@ export class AdminSettingsService {
   }
 
   async getSwaggerAuthSettings(): Promise<SwaggerAuthPublicSettings> {
-    const existing = await this.settingRepository.findOne({
-      where: { key: SWAGGER_AUTH_SETTINGS_KEY },
-    });
+    const value =
+      await this.findSettingValue<Partial<SwaggerAuthRuntimeSettings>>(
+        SWAGGER_AUTH_SETTINGS_KEY
+      );
 
-    if (!existing) {
+    if (!value) {
       return {
         username: "",
         configured: false,
       };
     }
-
-    const value = existing.value as Partial<SwaggerAuthRuntimeSettings>;
 
     return {
       username: value.username || "",
@@ -282,15 +288,15 @@ export class AdminSettingsService {
   }
 
   async getSwaggerAuthRuntimeSettings(): Promise<SwaggerAuthRuntimeSettings | null> {
-    const existing = await this.settingRepository.findOne({
-      where: { key: SWAGGER_AUTH_SETTINGS_KEY },
-    });
+    const value =
+      await this.findSettingValue<Partial<SwaggerAuthRuntimeSettings>>(
+        SWAGGER_AUTH_SETTINGS_KEY
+      );
 
-    if (!existing) {
+    if (!value) {
       return null;
     }
 
-    const value = existing.value as Partial<SwaggerAuthRuntimeSettings>;
     if (!value.username || !value.passwordHash) {
       return null;
     }

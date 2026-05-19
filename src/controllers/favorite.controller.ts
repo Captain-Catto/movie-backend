@@ -112,11 +112,21 @@ export class FavoriteController {
   @ApiSuccess({ summary: "List favorite content IDs for the authenticated user", dataType: "Favorite IDs" })
   @ApiStandardErrors({ unauthorized: true })
   async getUserFavoriteIds(@GetUser("id") userId: number) {
-    const ids = await this.favoriteService.getUserFavoriteIds(userId);
-    return {
-      ids,
-      total: ids.length,
-    };
+    try {
+      const ids = await this.favoriteService.getUserFavoriteIds(userId);
+      return {
+        ids,
+        total: ids.length,
+      };
+    } catch (error) {
+      return {
+        ids: [],
+        total: 0,
+        success: false,
+        message: "Failed to load favorite ids",
+        error: error.message,
+      };
+    }
   }
 
   /**

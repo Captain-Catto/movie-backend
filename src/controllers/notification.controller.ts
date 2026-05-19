@@ -57,6 +57,15 @@ export class NotificationController {
       return {
         success: false,
         message: "Failed to retrieve notifications",
+        data: {
+          notifications: [],
+          pagination: {
+            page: Number(query.page) || 1,
+            limit: Number(query.limit) || 10,
+            total: 0,
+            totalPages: 0,
+          },
+        },
         error: error.message,
       };
     }
@@ -82,6 +91,7 @@ export class NotificationController {
       return {
         success: false,
         message: "Failed to retrieve unread count",
+        data: { count: 0 },
         error: error.message,
       };
     }
