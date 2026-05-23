@@ -15,7 +15,7 @@ export interface StreamUrlQuery {
 }
 
 export interface StreamUrlResult {
-  provider: "vidsrcme";
+  provider: "vsembed";
   tmdbId: number;
   contentType: StreamContentType;
   url: string;
@@ -90,7 +90,7 @@ export class StreamEmbedService {
     const urls = domains.map((domain) => this.buildEmbedUrl(domain, query));
 
     return {
-      provider: "vidsrcme",
+      provider: "vsembed",
       tmdbId: query.tmdbId,
       contentType: query.contentType,
       url: urls[0],

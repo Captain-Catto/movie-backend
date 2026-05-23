@@ -8,7 +8,10 @@ import {
   StreamDomainSettingsDto,
   SwaggerAuthSettingsDto,
 } from "../dto/admin-settings.dto";
-import { STREAM_EMBED_DEFAULT_DOMAINS } from "../constants/stream.constants";
+import {
+  STREAM_EMBED_DEFAULT_DOMAINS,
+  STREAM_EMBED_LEGACY_DOMAINS,
+} from "../constants/stream.constants";
 import * as bcrypt from "bcrypt";
 
 const REGISTRATION_SETTINGS_KEY = "registration";
@@ -48,6 +51,7 @@ const DEFAULT_EFFECT_SETTINGS: EffectSettingsDto = {
 const DEFAULT_STREAM_DOMAIN_SETTINGS: StreamDomainSettingsDto = {
   domains: [...STREAM_EMBED_DEFAULT_DOMAINS],
 };
+const LEGACY_STREAM_DOMAIN_SET = new Set(STREAM_EMBED_LEGACY_DOMAINS);
 
 export interface SwaggerAuthRuntimeSettings {
   username: string;
@@ -212,7 +216,10 @@ export class AdminSettingsService {
   private sanitizeStreamDomains(domains: string[]): string[] {
     const normalized = domains
       .map((domain) => this.normalizeStreamDomain(domain))
-      .filter((domain): domain is string => !!domain);
+      .filter(
+        (domain): domain is string =>
+          !!domain && !LEGACY_STREAM_DOMAIN_SET.has(domain)
+      );
 
     return [...new Set(normalized)];
   }
