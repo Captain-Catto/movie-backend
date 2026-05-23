@@ -68,31 +68,35 @@ export class StreamEmbedService {
     return this.defaultDomains;
   }
 
+  private isPathBasedDomain(domain: string): boolean {
+    return /vidsrc\.to|vidsrc\.me|vidsrc\.xyz|vidsrc\.pm|vidsrc\.in/i.test(domain);
+  }
+
   private buildEmbedUrl(domain: string, query: StreamUrlQuery): string {
+    if (this.isPathBasedDomain(domain)) {
+      // vidsrc.to path-based format: /embed/movie/{id} or /embed/tv/{id}/{season}/{episode}
+      if (query.contentType === "movie") {
+        return `${domain}/embed/movie/${query.tmdbId}`;
+      }
+      const season = query.season ?? 1;
+      const episode = query.episode ?? 1;
+      return `${domain}/embed/tv/${query.tmdbId}/${season}/${episode}`;
+    }
+
+    // vsembed/vidsrc-embed query-param format
     const embedPath = query.contentType === "movie" ? "/embed/movie" : "/embed/tv";
     const url = new URL(embedPath, domain);
 
     url.searchParams.set("tmdb", String(query.tmdbId));
 
     if (query.contentType === "tv") {
-      if (query.season) {
-        url.searchParams.set("season", String(query.season));
-      }
-      if (query.episode) {
-        url.searchParams.set("episode", String(query.episode));
-      }
-      if (query.autoNext !== undefined) {
-        url.searchParams.set("autonext", query.autoNext ? "1" : "0");
-      }
+      if (query.season) url.searchParams.set("season", String(query.season));
+      if (query.episode) url.searchParams.set("episode", String(query.episode));
+      if (query.autoNext !== undefined) url.searchParams.set("autonext", query.autoNext ? "1" : "0");
     }
 
-    if (query.dsLang) {
-      url.searchParams.set("ds_lang", query.dsLang);
-    }
-
-    if (query.autoplay !== undefined) {
-      url.searchParams.set("autoplay", query.autoplay ? "1" : "0");
-    }
+    if (query.dsLang) url.searchParams.set("ds_lang", query.dsLang);
+    if (query.autoplay !== undefined) url.searchParams.set("autoplay", query.autoplay ? "1" : "0");
 
     return url.toString();
   }
