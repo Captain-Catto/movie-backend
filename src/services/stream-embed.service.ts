@@ -68,11 +68,25 @@ export class StreamEmbedService {
     return this.defaultDomains;
   }
 
+  private is2EmbedDomain(domain: string): boolean {
+    return /2embed\.(cc|skin)/i.test(domain);
+  }
+
   private isPathBasedDomain(domain: string): boolean {
     return /vidsrc\.to|vidsrc\.me|vidsrc\.xyz|vidsrc\.pm|vidsrc\.in/i.test(domain);
   }
 
   private buildEmbedUrl(domain: string, query: StreamUrlQuery): string {
+    if (this.is2EmbedDomain(domain)) {
+      // 2embed format: /embed/{tmdbId} for movies, /embedtv/{tmdbId}&s={s}&e={e} for TV
+      if (query.contentType === "movie") {
+        return `${domain}/embed/${query.tmdbId}`;
+      }
+      const season = query.season ?? 1;
+      const episode = query.episode ?? 1;
+      return `${domain}/embedtv/${query.tmdbId}&s=${season}&e=${episode}`;
+    }
+
     if (this.isPathBasedDomain(domain)) {
       // vidsrc.to path-based format: /embed/movie/{id} or /embed/tv/{id}/{season}/{episode}
       if (query.contentType === "movie") {
