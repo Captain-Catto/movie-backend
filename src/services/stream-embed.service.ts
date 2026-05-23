@@ -1,6 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { AdminSettingsService } from "./admin-settings.service";
-import { STREAM_EMBED_DEFAULT_DOMAINS } from "../constants/stream.constants";
+import {
+  STREAM_EMBED_DEFAULT_DOMAINS,
+  STREAM_EMBED_LEGACY_DOMAINS,
+} from "../constants/stream.constants";
+
+const LEGACY_DOMAIN_SET = new Set(STREAM_EMBED_LEGACY_DOMAINS);
 
 export type StreamContentType = "movie" | "tv";
 
@@ -40,10 +45,13 @@ export class StreamEmbedService {
 
     try {
       const settings = await this.adminSettingsService.getStreamDomainSettings();
-      if (settings.domains && settings.domains.length > 0) {
-        this.cachedDomains = settings.domains;
+      const filtered = (settings.domains || []).filter(
+        (d) => !!d && !LEGACY_DOMAIN_SET.has(d)
+      );
+      if (filtered.length > 0) {
+        this.cachedDomains = filtered;
         this.cacheExpiresAt = now + this.settingsCacheTtlMs;
-        return settings.domains;
+        return filtered;
       }
     } catch (error) {
       this.logger.warn(
