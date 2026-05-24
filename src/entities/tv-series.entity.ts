@@ -71,6 +71,9 @@ export class TVSeries {
   @Column({ type: "text", nullable: true })
   blockReason: string;
 
+  @Column({ default: false })
+  adult: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

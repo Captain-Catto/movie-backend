@@ -26,6 +26,7 @@ export class TVSeriesRepository {
     const queryBuilder = this.repository.createQueryBuilder("tv");
 
     queryBuilder.andWhere("tv.isBlocked = :isBlocked", { isBlocked: false });
+    queryBuilder.andWhere("(tv.adult = false OR tv.adult IS NULL)");
 
     // Filter only aired TV series (exclude future releases)
     queryBuilder.andWhere("tv.firstAirDate <= :currentDate", {

@@ -309,7 +309,7 @@ export class TMDBService {
   ): Promise<TMDBMovieResponse> {
     try {
       const response = await this.axiosInstance.get("/movie/popular", {
-        params: { page, language },
+        params: { page, language, include_adult: false },
       });
       return {
         page: response.data.page,
@@ -341,7 +341,7 @@ export class TMDBService {
   ): Promise<TMDBMovieResponse> {
     try {
       const response = await this.axiosInstance.get("/movie/now_playing", {
-        params: { page, language },
+        params: { page, language, include_adult: false },
       });
       return {
         page: response.data.page,
@@ -364,7 +364,7 @@ export class TMDBService {
   ): Promise<TMDBMovieResponse> {
     try {
       const response = await this.axiosInstance.get("/movie/top_rated", {
-        params: { page, language },
+        params: { page, language, include_adult: false },
       });
       return {
         page: response.data.page,
@@ -387,7 +387,7 @@ export class TMDBService {
   ): Promise<TMDBMovieResponse> {
     try {
       const response = await this.axiosInstance.get("/movie/upcoming", {
-        params: { page, language },
+        params: { page, language, include_adult: false },
       });
       return {
         page: response.data.page,
@@ -407,7 +407,7 @@ export class TMDBService {
   ): Promise<TMDBTVResponse> {
     try {
       const response = await this.axiosInstance.get("/tv/popular", {
-        params: { page, language },
+        params: { page, language, include_adult: false },
       });
       return {
         page: response.data.page,
@@ -427,7 +427,7 @@ export class TMDBService {
   ): Promise<TMDBTVResponse> {
     try {
       const response = await this.axiosInstance.get("/tv/on_the_air", {
-        params: { page, language },
+        params: { page, language, include_adult: false },
       });
       return {
         page: response.data.page,
@@ -447,7 +447,7 @@ export class TMDBService {
   ): Promise<TMDBTVResponse> {
     try {
       const response = await this.axiosInstance.get("/tv/top_rated", {
-        params: { page, language },
+        params: { page, language, include_adult: false },
       });
       return {
         page: response.data.page,
@@ -480,7 +480,7 @@ export class TMDBService {
       const response = await this.axiosInstance.get(
         `/trending/${mediaType}/${timeWindow}`,
         {
-          params: { language, page },
+          params: { language, page, include_adult: false },
         }
       );
       return response.data.results;
@@ -570,6 +570,7 @@ export class TMDBService {
         page,
         language: options.language || "en-US",
         sort_by: options.sortBy || "popularity.desc",
+        include_adult: false,
       };
 
       // Add genre filter
@@ -615,6 +616,7 @@ export class TMDBService {
         page,
         language: options.language || "en-US",
         sort_by: options.sortBy || "popularity.desc",
+        include_adult: false,
       };
 
       // Add genre filter

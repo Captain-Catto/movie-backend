@@ -126,6 +126,7 @@ export class TVSeriesService {
       originCountry: tmdbData.origin_country ?? [],
       numberOfSeasons: tmdbData.number_of_seasons ?? null,
       numberOfEpisodes: tmdbData.number_of_episodes ?? null,
+      adult: tmdbData.adult ?? false,
     };
   }
 

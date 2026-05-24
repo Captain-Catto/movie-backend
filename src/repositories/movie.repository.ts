@@ -33,6 +33,8 @@ export class MovieRepository {
       });
     }
 
+    queryBuilder.andWhere("(movie.adult = false OR movie.adult IS NULL)");
+
     if (genre) {
       // Handle multiple genres separated by comma
       const genreIds = genre
