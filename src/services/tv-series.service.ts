@@ -71,6 +71,7 @@ export class TVSeriesService {
       id: tvSeries.id,
       tmdbId: tvSeries.tmdbId,
       title: tvSeries.title,
+      originalTitle: tvSeries.originalTitle,
       overview: tvSeries.overview,
       posterUrl: this.tmdbService.getPosterUrl(resolvedPosterPath, "w500"),
       backdropUrl: this.tmdbService.getBackdropUrl(
