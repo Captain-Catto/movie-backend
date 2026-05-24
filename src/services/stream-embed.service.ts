@@ -40,17 +40,17 @@ export class StreamEmbedService {
   private async getEmbedDomains(): Promise<string[]> {
     const now = Date.now();
     if (this.cachedDomains && now < this.cacheExpiresAt) {
-      this.logger.log(`[getEmbedDomains] cache hit: ${this.cachedDomains.join(', ')}`);
+      this.logger.debug(`[getEmbedDomains] cache hit: ${this.cachedDomains.join(', ')}`);
       return this.cachedDomains;
     }
 
     try {
       const settings = await this.adminSettingsService.getStreamDomainSettings();
-      this.logger.log(`[getEmbedDomains] DB raw domains: ${JSON.stringify(settings.domains)}`);
+      this.logger.debug(`[getEmbedDomains] DB raw domains: ${JSON.stringify(settings.domains)}`);
       const filtered = (settings.domains || []).filter(
         (d) => !!d && !LEGACY_DOMAIN_SET.has(d)
       );
-      this.logger.log(`[getEmbedDomains] after filter: ${JSON.stringify(filtered)}`);
+      this.logger.debug(`[getEmbedDomains] after filter: ${JSON.stringify(filtered)}`);
       if (filtered.length > 0) {
         this.cachedDomains = filtered;
         this.cacheExpiresAt = now + this.settingsCacheTtlMs;
@@ -62,7 +62,7 @@ export class StreamEmbedService {
       );
     }
 
-    this.logger.log(`[getEmbedDomains] fallback to defaults: ${this.defaultDomains.join(', ')}`);
+    this.logger.debug(`[getEmbedDomains] fallback to defaults: ${this.defaultDomains.join(', ')}`);
     this.cachedDomains = this.defaultDomains;
     this.cacheExpiresAt = now + this.settingsCacheTtlMs;
     return this.defaultDomains;
