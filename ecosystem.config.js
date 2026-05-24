@@ -12,6 +12,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 8080,
         FRONTEND_URL: 'https://movie.lequangtridat.com',
+        LOG_LEVELS: 'error,warn,log',
       },
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',
