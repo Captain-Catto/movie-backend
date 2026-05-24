@@ -39,6 +39,7 @@ export interface TMDBTVSeries {
   genre_ids: number[];
   original_language: string;
   origin_country: string[];
+  adult?: boolean;
   number_of_seasons?: number;
   number_of_episodes?: number;
   episode_run_time?: number[];

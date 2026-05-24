@@ -194,7 +194,10 @@ export class TVSeriesRepository {
     const existingTv = await this.findByTmdbId(tmdbId);
 
     if (existingTv) {
-      // Skip updating existing data to speed up initial sync
+      // Always update the adult flag to ensure hentai/adult content gets properly flagged
+      if (existingTv.adult !== tvData.adult && tvData.adult !== undefined) {
+        await this.repository.update(existingTv.id, { adult: tvData.adult });
+      }
       return existingTv;
     } else {
       return this.create({ ...tvData, tmdbId });

@@ -517,6 +517,8 @@ export class DailySyncService {
    */
   private async syncTVFromDetails(tmdbTV: TMDBTVSeries): Promise<void> {
     try {
+      if (tmdbTV.adult === true) return;
+
       const tvData: Partial<TVSeries> = {
         title: tmdbTV.name,
         originalTitle: tmdbTV.original_name,
@@ -531,6 +533,7 @@ export class DailySyncService {
         originalLanguage: tmdbTV.original_language,
         firstAirDate: parseOptionalDate(tmdbTV.first_air_date),
         originCountry: tmdbTV.origin_country,
+        adult: tmdbTV.adult ?? false,
         numberOfSeasons: tmdbTV.number_of_seasons ?? null,
         numberOfEpisodes: tmdbTV.number_of_episodes ?? null,
       };
