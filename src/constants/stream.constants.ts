@@ -1,13 +1,12 @@
 export const STREAM_EMBED_DEFAULT_DOMAINS = [
-  "https://www.2embed.cc",
-  "https://www.2embed.skin",
-  "https://vidsrc.to",
-  "https://vidsrc-embed.ru",
-  "https://vidsrc-embed.su",
   "https://vsembed.ru",
   "https://vsembed.su",
+  "https://vidsrc-embed.ru",
+  "https://vidsrc-embed.su",
   "https://vidsrcme.su",
   "https://vsrc.su",
+  "https://www.2embed.cc",
+  "https://www.2embed.skin",
 ];
 
 export const STREAM_EMBED_LEGACY_DOMAINS = [
