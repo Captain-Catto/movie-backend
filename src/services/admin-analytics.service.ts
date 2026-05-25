@@ -560,20 +560,24 @@ export class AdminAnalyticsService {
           movies: movieFavorites,
           tvSeries: tvFavorites,
         },
-        mostFavorited: mostFavorited.map((f) => {
-          const tmdbId = parseInt(f.contentId);
-          const titleData = f.contentType === "movie" 
-            ? movieTitleMap.get(tmdbId)
-            : tvTitleMap.get(tmdbId);
-          
-          return {
-            contentId: f.contentId,
-            contentType: f.contentType,
-            count: parseInt(f.favoriteCount),
-            title: titleData ? titleData.title : "Unknown",
-            posterPath: titleData ? titleData.posterPath : null,
-          };
-        }),
+        mostFavorited: mostFavorited
+          .map((f) => {
+            const tmdbId = parseInt(f.contentId);
+            const titleData = f.contentType === "movie" 
+              ? movieTitleMap.get(tmdbId)
+              : tvTitleMap.get(tmdbId);
+            
+            if (!titleData) return null;
+            
+            return {
+              contentId: f.contentId,
+              contentType: f.contentType,
+              count: parseInt(f.favoriteCount),
+              title: titleData.title,
+              posterPath: titleData.posterPath,
+            };
+          })
+          .filter((item): item is NonNullable<typeof item> => item !== null),
         trend: favoritesOverTime.map((f) => ({
           date: f.date,
           count: parseInt(f.count),
