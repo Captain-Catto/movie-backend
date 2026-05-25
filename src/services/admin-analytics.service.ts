@@ -66,33 +66,57 @@ export class AdminAnalyticsService {
       const totalViews = await queryBuilder.getCount();
       this.logger.debug(`[Analytics] getViewStats result: ${totalViews} views`);
 
-      // Views by content type
-      const movieViews = await this.viewAnalyticsRepository.count({
-        where: {
-          actionType: ActionType.VIEW,
-          contentType: ViewContentType.MOVIE,
-        },
-      });
+      // Views by content type (with active date range filter)
+      const movieQueryBuilder = this.viewAnalyticsRepository
+        .createQueryBuilder("analytics")
+        .where("analytics.actionType = :action", { action: ActionType.VIEW })
+        .andWhere("analytics.contentType = :contentType", { contentType: ViewContentType.MOVIE });
 
-      const tvViews = await this.viewAnalyticsRepository.count({
-        where: {
-          actionType: ActionType.VIEW,
-          contentType: ViewContentType.TV_SERIES,
-        },
-      });
+      const tvQueryBuilder = this.viewAnalyticsRepository
+        .createQueryBuilder("analytics")
+        .where("analytics.actionType = :action", { action: ActionType.VIEW })
+        .andWhere("analytics.contentType = :contentType", { contentType: ViewContentType.TV_SERIES });
 
-      // Get views over time (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      if (startDate) {
+        movieQueryBuilder.andWhere("analytics.createdAt >= :startDate", { startDate });
+        tvQueryBuilder.andWhere("analytics.createdAt >= :startDate", { startDate });
+      }
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        movieQueryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
+        tvQueryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
+      }
 
-      const viewsOverTime = await this.viewAnalyticsRepository
+      const movieViews = await movieQueryBuilder.getCount();
+      const tvViews = await tvQueryBuilder.getCount();
+
+      // Get views over time (within selected date range or fallback to last 30 days)
+      const trendQueryBuilder = this.viewAnalyticsRepository
         .createQueryBuilder("analytics")
         .select("DATE(analytics.createdAt)", "date")
         .addSelect("COUNT(*)", "count")
-        .where("analytics.actionType = :action", { action: ActionType.VIEW })
-        .andWhere("analytics.createdAt >= :startDate", {
-          startDate: thirtyDaysAgo,
-        })
+        .where("analytics.actionType = :action", { action: ActionType.VIEW });
+
+      if (startDate) {
+        trendQueryBuilder.andWhere("analytics.createdAt >= :startDate", { startDate });
+      } else {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        trendQueryBuilder.andWhere("analytics.createdAt >= :startDate", { startDate: thirtyDaysAgo });
+      }
+
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        trendQueryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
+      }
+
+      if (contentType) {
+        trendQueryBuilder.andWhere("analytics.contentType = :contentType", { contentType });
+      }
+
+      const viewsOverTime = await trendQueryBuilder
         .groupBy("DATE(analytics.createdAt)")
         .orderBy("DATE(analytics.createdAt)", "ASC")
         .getRawMany();
@@ -114,8 +138,13 @@ export class AdminAnalyticsService {
     }
   }
 
-  // Get most viewed content
-  async getMostViewedContent(limit: number = 20, contentType?: ViewContentType) {
+  // Get most viewed content with robust date range filtering
+  async getMostViewedContent(
+    limit: number = 20,
+    contentType?: ViewContentType,
+    startDate?: string | Date,
+    endDate?: string | Date
+  ) {
     try {
       const queryBuilder = this.viewAnalyticsRepository
         .createQueryBuilder("analytics")
@@ -129,6 +158,16 @@ export class AdminAnalyticsService {
         queryBuilder.andWhere("analytics.contentType = :contentType", {
           contentType,
         });
+      }
+
+      if (startDate) {
+        queryBuilder.andWhere("analytics.createdAt >= :startDate", { startDate });
+      }
+
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        queryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
       }
 
       const results = await queryBuilder
@@ -291,7 +330,7 @@ export class AdminAnalyticsService {
     }
   }
 
-  // Get play statistics
+  // Get play statistics with active timeframe breakdown
   async getPlayStats(query: AnalyticsQuery = {}) {
     const { startDate, endDate, contentType } = query;
 
@@ -324,12 +363,26 @@ export class AdminAnalyticsService {
 
       const totalPlays = await queryBuilder.getCount();
 
-      // Breakdown by metadata.source to understand which play button was used
-      const sourceBreakdownRaw = await this.viewAnalyticsRepository
+      // Breakdown by metadata.source (with active date range filter applied)
+      const breakdownQueryBuilder = this.viewAnalyticsRepository
         .createQueryBuilder("analytics")
         .select("COALESCE(analytics.metadata->>'source', 'unknown')", "source")
         .addSelect("COUNT(*)", "count")
-        .where("analytics.actionType = :action", { action: ActionType.PLAY })
+        .where("analytics.actionType = :action", { action: ActionType.PLAY });
+
+      if (startDate) {
+        breakdownQueryBuilder.andWhere("analytics.createdAt >= :startDate", { startDate });
+      }
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        breakdownQueryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
+      }
+      if (contentType) {
+        breakdownQueryBuilder.andWhere("analytics.contentType = :contentType", { contentType });
+      }
+
+      const sourceBreakdownRaw = await breakdownQueryBuilder
         .groupBy("source")
         .getRawMany();
 
@@ -354,8 +407,12 @@ export class AdminAnalyticsService {
     }
   }
 
-  // Get favorite statistics
-  async getFavoriteStats(contentType?: ViewContentType) {
+  // Get favorite statistics with active timeframe filters
+  async getFavoriteStats(
+    contentType?: ViewContentType,
+    startDate?: string | Date,
+    endDate?: string | Date
+  ) {
     try {
       const whereContent =
         contentType === ViewContentType.TV_SERIES
@@ -364,20 +421,44 @@ export class AdminAnalyticsService {
           ? "movie"
           : undefined;
 
-      const totalFavorites = await this.favoriteRepository.count(
-        whereContent ? { where: { contentType: whereContent } } : {}
-      );
+      // Filter favorites by date range
+      const totalFavQuery = this.favoriteRepository.createQueryBuilder("favorite");
+      if (whereContent) {
+        totalFavQuery.where("favorite.contentType = :ctype", { ctype: whereContent });
+      }
+      if (startDate) {
+        totalFavQuery.andWhere("favorite.createdAt >= :startDate", { startDate });
+      }
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        totalFavQuery.andWhere("favorite.createdAt < :endDate", { endDate: nextDay });
+      }
+      const totalFavorites = await totalFavQuery.getCount();
 
-      // Favorites by content type
-      const movieFavorites = await this.favoriteRepository.count({
-        where: { contentType: "movie" },
-      });
+      // Favorites by content type (with active date range filter)
+      const movieFavQuery = this.favoriteRepository
+        .createQueryBuilder("favorite")
+        .where("favorite.contentType = :ctype", { ctype: "movie" });
+      const tvFavQuery = this.favoriteRepository
+        .createQueryBuilder("favorite")
+        .where("favorite.contentType = :ctype", { ctype: "tv" });
 
-      const tvFavorites = await this.favoriteRepository.count({
-        where: { contentType: "tv" },
-      });
+      if (startDate) {
+        movieFavQuery.andWhere("favorite.createdAt >= :startDate", { startDate });
+        tvFavQuery.andWhere("favorite.createdAt >= :startDate", { startDate });
+      }
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        movieFavQuery.andWhere("favorite.createdAt < :endDate", { endDate: nextDay });
+        tvFavQuery.andWhere("favorite.createdAt < :endDate", { endDate: nextDay });
+      }
 
-      // Most favorited content
+      const movieFavorites = await movieFavQuery.getCount();
+      const tvFavorites = await tvFavQuery.getCount();
+
+      // Most favorited content (with active date range filter)
       const mostFavoritedQuery = this.favoriteRepository
         .createQueryBuilder("favorite")
         .select("favorite.contentId", "contentId")
@@ -388,6 +469,15 @@ export class AdminAnalyticsService {
         mostFavoritedQuery.where("favorite.contentType = :ctype", {
           ctype: whereContent,
         });
+      }
+
+      if (startDate) {
+        mostFavoritedQuery.andWhere("favorite.createdAt >= :startDate", { startDate });
+      }
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        mostFavoritedQuery.andWhere("favorite.createdAt < :endDate", { endDate: nextDay });
       }
 
       const mostFavorited = await mostFavoritedQuery
@@ -433,17 +523,25 @@ export class AdminAnalyticsService {
         tvTitleMap.set(tv.tmdbId, { title: tv.title, posterPath: tv.posterPath });
       });
 
-      // Favorites over time (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
+      // Favorites over time (within selected date range or fallback to last 30 days)
       const favoritesOverTimeBuilder = this.favoriteRepository
         .createQueryBuilder("favorite")
         .select("DATE(favorite.createdAt)", "date")
-        .addSelect("COUNT(*)", "count")
-        .where("favorite.createdAt >= :startDate", {
-          startDate: thirtyDaysAgo,
-        });
+        .addSelect("COUNT(*)", "count");
+
+      if (startDate) {
+        favoritesOverTimeBuilder.where("favorite.createdAt >= :startDate", { startDate });
+      } else {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        favoritesOverTimeBuilder.where("favorite.createdAt >= :startDate", { startDate: thirtyDaysAgo });
+      }
+
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        favoritesOverTimeBuilder.andWhere("favorite.createdAt < :endDate", { endDate: nextDay });
+      }
 
       if (whereContent) {
         favoritesOverTimeBuilder.andWhere("favorite.contentType = :ctype", {
@@ -578,14 +676,34 @@ export class AdminAnalyticsService {
     }
   }
 
-  // Get device/browser statistics
-  async getDeviceStats() {
+  // Get device/browser statistics with active date range filter
+  async getDeviceStats(
+    startDate?: string | Date,
+    endDate?: string | Date,
+    contentType?: ViewContentType
+  ) {
     try {
-      const deviceStats = await this.viewAnalyticsRepository
+      const queryBuilder = this.viewAnalyticsRepository
         .createQueryBuilder("analytics")
         .select("analytics.deviceType", "deviceType")
         .addSelect("COUNT(*)", "count")
-        .where("analytics.deviceType IS NOT NULL")
+        .where("analytics.deviceType IS NOT NULL");
+
+      if (startDate) {
+        queryBuilder.andWhere("analytics.createdAt >= :startDate", { startDate });
+      }
+
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        queryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
+      }
+
+      if (contentType) {
+        queryBuilder.andWhere("analytics.contentType = :contentType", { contentType });
+      }
+
+      const deviceStats = await queryBuilder
         .groupBy("analytics.deviceType")
         .getRawMany();
 
@@ -599,14 +717,34 @@ export class AdminAnalyticsService {
     }
   }
 
-  // Get country statistics
-  async getCountryStats() {
+  // Get country statistics with active date range filter
+  async getCountryStats(
+    startDate?: string | Date,
+    endDate?: string | Date,
+    contentType?: ViewContentType
+  ) {
     try {
-      const countryStats = await this.viewAnalyticsRepository
+      const queryBuilder = this.viewAnalyticsRepository
         .createQueryBuilder("analytics")
         .select("analytics.country", "country")
         .addSelect("COUNT(*)", "count")
-        .where("analytics.country IS NOT NULL")
+        .where("analytics.country IS NOT NULL");
+
+      if (startDate) {
+        queryBuilder.andWhere("analytics.createdAt >= :startDate", { startDate });
+      }
+
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        queryBuilder.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
+      }
+
+      if (contentType) {
+        queryBuilder.andWhere("analytics.contentType = :contentType", { contentType });
+      }
+
+      const countryStats = await queryBuilder
         .groupBy("analytics.country")
         .orderBy("COUNT(*)", "DESC")
         .limit(20)

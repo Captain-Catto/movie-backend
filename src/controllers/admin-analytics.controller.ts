@@ -99,10 +99,14 @@ export class AdminAnalyticsController {
   @ApiSuccess({ summary: "Get most viewed content", dataType: "Most viewed content list" })
   @ApiQuery({ name: "limit", required: false, type: Number, example: 20 })
   @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
   @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getMostViewed(
     @Query("limit") limit?: number,
-    @Query("contentType") contentType?: string
+    @Query("contentType") contentType?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string
   ): Promise<ApiResponse> {
     try {
       // Map contentType to match ViewAnalytics enum
@@ -117,7 +121,9 @@ export class AdminAnalyticsController {
 
       const data = await this.adminAnalyticsService.getMostViewedContent(
         limit ? Number(limit) : 20,
-        mappedContentType
+        mappedContentType,
+        startDate,
+        endDate
       );
 
       return {
@@ -222,9 +228,13 @@ export class AdminAnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiSuccess({ summary: "Get favorite statistics", dataType: "Favorite statistics" })
   @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
   @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getFavoriteStats(
-    @Query("contentType") contentType?: string
+    @Query("contentType") contentType?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string
   ): Promise<ApiResponse> {
     try {
       let mappedContentType: ContentType | undefined;
@@ -237,7 +247,9 @@ export class AdminAnalyticsController {
       }
 
       const data = await this.adminAnalyticsService.getFavoriteStats(
-        mappedContentType
+        mappedContentType,
+        startDate,
+        endDate
       );
 
       return {
@@ -284,10 +296,30 @@ export class AdminAnalyticsController {
   @Get("devices")
   @HttpCode(HttpStatus.OK)
   @ApiSuccess({ summary: "Get device statistics", dataType: "Device statistics" })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
   @ApiStandardErrors({ unauthorized: true, forbidden: true })
-  async getDeviceStats(): Promise<ApiResponse> {
+  async getDeviceStats(
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+    @Query("contentType") contentType?: string
+  ): Promise<ApiResponse> {
     try {
-      const data = await this.adminAnalyticsService.getDeviceStats();
+      let mappedContentType: ContentType | undefined;
+      if (contentType) {
+        if (contentType === "tv" || contentType === "tv_series") {
+          mappedContentType = ContentType.TV_SERIES;
+        } else if (contentType === "movie") {
+          mappedContentType = ContentType.MOVIE;
+        }
+      }
+
+      const data = await this.adminAnalyticsService.getDeviceStats(
+        startDate,
+        endDate,
+        mappedContentType
+      );
 
       return {
         success: true,
@@ -306,10 +338,30 @@ export class AdminAnalyticsController {
   @Get("countries")
   @HttpCode(HttpStatus.OK)
   @ApiSuccess({ summary: "Get country statistics", dataType: "Country statistics" })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
   @ApiStandardErrors({ unauthorized: true, forbidden: true })
-  async getCountryStats(): Promise<ApiResponse> {
+  async getCountryStats(
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+    @Query("contentType") contentType?: string
+  ): Promise<ApiResponse> {
     try {
-      const data = await this.adminAnalyticsService.getCountryStats();
+      let mappedContentType: ContentType | undefined;
+      if (contentType) {
+        if (contentType === "tv" || contentType === "tv_series") {
+          mappedContentType = ContentType.TV_SERIES;
+        } else if (contentType === "movie") {
+          mappedContentType = ContentType.MOVIE;
+        }
+      }
+
+      const data = await this.adminAnalyticsService.getCountryStats(
+        startDate,
+        endDate,
+        mappedContentType
+      );
 
       return {
         success: true,

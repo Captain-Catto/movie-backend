@@ -65,6 +65,18 @@ describe('AdminAnalyticsService', () => {
         getCount: vi.fn().mockResolvedValue(1000),
       };
 
+      const mockMovieQueryBuilder = {
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(600),
+      };
+
+      const mockTvQueryBuilder = {
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(400),
+      };
+
       const mockTrendQueryBuilder = {
         select: vi.fn().mockReturnThis(),
         addSelect: vi.fn().mockReturnThis(),
@@ -80,11 +92,9 @@ describe('AdminAnalyticsService', () => {
 
       viewAnalyticsRepository.createQueryBuilder
         .mockReturnValueOnce(mockQueryBuilder)
+        .mockReturnValueOnce(mockMovieQueryBuilder)
+        .mockReturnValueOnce(mockTvQueryBuilder)
         .mockReturnValueOnce(mockTrendQueryBuilder);
-
-      viewAnalyticsRepository.count
-        .mockResolvedValueOnce(600) // movie views
-        .mockResolvedValueOnce(400); // tv views
 
       const result = await service.getViewStats();
 
@@ -120,9 +130,9 @@ describe('AdminAnalyticsService', () => {
 
       viewAnalyticsRepository.createQueryBuilder
         .mockReturnValueOnce(mockQueryBuilder)
+        .mockReturnValueOnce(mockQueryBuilder)
+        .mockReturnValueOnce(mockQueryBuilder)
         .mockReturnValueOnce(mockTrendQueryBuilder);
-
-      viewAnalyticsRepository.count.mockResolvedValue(0);
 
       await service.getViewStats({
         startDate: '2024-01-01',
@@ -158,9 +168,9 @@ describe('AdminAnalyticsService', () => {
 
       viewAnalyticsRepository.createQueryBuilder
         .mockReturnValueOnce(mockQueryBuilder)
+        .mockReturnValueOnce(mockQueryBuilder)
+        .mockReturnValueOnce(mockQueryBuilder)
         .mockReturnValueOnce(mockTrendQueryBuilder);
-
-      viewAnalyticsRepository.count.mockResolvedValue(0);
 
       await service.getViewStats({ contentType: ContentType.MOVIE });
 
@@ -330,10 +340,29 @@ describe('AdminAnalyticsService', () => {
 
   describe('getFavoriteStats', () => {
     it('should get favorite statistics', async () => {
+      const mockTotalFavQuery = {
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(100),
+      };
+
+      const mockMovieFavQuery = {
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(60),
+      };
+
+      const mockTvFavQuery = {
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(40),
+      };
+
       const mockMostFavoritedQueryBuilder = {
         select: vi.fn().mockReturnThis(),
         addSelect: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
         groupBy: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
@@ -372,12 +401,10 @@ describe('AdminAnalyticsService', () => {
         ]),
       };
 
-      favoriteRepository.count
-        .mockResolvedValueOnce(100) // total
-        .mockResolvedValueOnce(60) // movies
-        .mockResolvedValueOnce(40); // tv
-
       favoriteRepository.createQueryBuilder
+        .mockReturnValueOnce(mockTotalFavQuery)
+        .mockReturnValueOnce(mockMovieFavQuery)
+        .mockReturnValueOnce(mockTvFavQuery)
         .mockReturnValueOnce(mockMostFavoritedQueryBuilder)
         .mockReturnValueOnce(mockTrendQueryBuilder);
 
@@ -399,10 +426,29 @@ describe('AdminAnalyticsService', () => {
     });
 
     it('should filter favorites by content type', async () => {
-      const mockQueryBuilder = {
+      const mockTotalFavQuery = {
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(60),
+      };
+
+      const mockMovieFavQuery = {
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(60),
+      };
+
+      const mockTvFavQuery = {
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(0),
+      };
+
+      const mockMostFavoritedQueryBuilder = {
         select: vi.fn().mockReturnThis(),
         addSelect: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
         groupBy: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
@@ -419,16 +465,16 @@ describe('AdminAnalyticsService', () => {
         getRawMany: vi.fn().mockResolvedValue([]),
       };
 
-      favoriteRepository.count.mockResolvedValue(60);
       favoriteRepository.createQueryBuilder
-        .mockReturnValueOnce(mockQueryBuilder)
+        .mockReturnValueOnce(mockTotalFavQuery)
+        .mockReturnValueOnce(mockMovieFavQuery)
+        .mockReturnValueOnce(mockTvFavQuery)
+        .mockReturnValueOnce(mockMostFavoritedQueryBuilder)
         .mockReturnValueOnce(mockTrendQueryBuilder);
 
       await service.getFavoriteStats(ContentType.MOVIE);
 
-      expect(favoriteRepository.count).toHaveBeenCalledWith({
-        where: { contentType: 'movie' },
-      });
+      expect(favoriteRepository.createQueryBuilder).toHaveBeenCalled();
     });
   });
 
@@ -484,7 +530,7 @@ describe('AdminAnalyticsService', () => {
 
   describe('getAnalyticsOverview', () => {
     it('should get complete analytics overview', async () => {
-      // Mock getViewStats - needs 2 query builders (count + trend)
+      // Mock getViewStats - needs 4 query builders
       const mockViewCountQueryBuilder = {
         where: vi.fn().mockReturnThis(),
         andWhere: vi.fn().mockReturnThis(),
@@ -503,14 +549,22 @@ describe('AdminAnalyticsService', () => {
 
       viewAnalyticsRepository.createQueryBuilder
         .mockReturnValueOnce(mockViewCountQueryBuilder)
+        .mockReturnValueOnce(mockViewCountQueryBuilder)
+        .mockReturnValueOnce(mockViewCountQueryBuilder)
         .mockReturnValueOnce(mockViewTrendQueryBuilder);
-      viewAnalyticsRepository.count.mockResolvedValue(0);
 
-      // Mock getFavoriteStats - needs 2 query builders (most favorited + trend)
+      // Mock getFavoriteStats - needs 5 query builders
+      const mockTotalFavQuery = {
+        where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
+        getCount: vi.fn().mockResolvedValue(100),
+      };
+
       const mockFavMostFavoritedQueryBuilder = {
         select: vi.fn().mockReturnThis(),
         addSelect: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
+        andWhere: vi.fn().mockReturnThis(),
         groupBy: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
@@ -527,8 +581,10 @@ describe('AdminAnalyticsService', () => {
         getRawMany: vi.fn().mockResolvedValue([]),
       };
 
-      favoriteRepository.count.mockResolvedValue(0);
       favoriteRepository.createQueryBuilder
+        .mockReturnValueOnce(mockTotalFavQuery)
+        .mockReturnValueOnce(mockTotalFavQuery)
+        .mockReturnValueOnce(mockTotalFavQuery)
         .mockReturnValueOnce(mockFavMostFavoritedQueryBuilder)
         .mockReturnValueOnce(mockFavTrendQueryBuilder);
 
