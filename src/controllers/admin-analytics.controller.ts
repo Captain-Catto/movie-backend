@@ -270,13 +270,32 @@ export class AdminAnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiSuccess({ summary: "Get popular content by analytics", dataType: "Popular content list" })
   @ApiQuery({ name: "limit", required: false, type: Number, example: 20 })
+  @ApiQuery({ name: "startDate", required: false, type: String, example: "2026-05-01" })
+  @ApiQuery({ name: "endDate", required: false, type: String, example: "2026-05-16" })
+  @ApiQuery({ name: "contentType", required: false, enum: ["movie", "tv", "tv_series"] })
   @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async getPopularContent(
-    @Query("limit") limit?: number
+    @Query("limit") limit?: number,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+    @Query("contentType") contentType?: string
   ): Promise<ApiResponse> {
     try {
+      // Map contentType to match ViewAnalytics enum
+      let mappedContentType: ContentType | undefined;
+      if (contentType) {
+        if (contentType === "tv" || contentType === "tv_series") {
+          mappedContentType = ContentType.TV_SERIES;
+        } else if (contentType === "movie") {
+          mappedContentType = ContentType.MOVIE;
+        }
+      }
+
       const data = await this.adminAnalyticsService.getPopularContent(
-        limit ? Number(limit) : 20
+        limit ? Number(limit) : 20,
+        startDate,
+        endDate,
+        mappedContentType
       );
 
       return {

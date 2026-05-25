@@ -586,70 +586,267 @@ export class AdminAnalyticsService {
   }
 
   // Get popular content (combination of views, clicks, favorites)
-  async getPopularContent(limit: number = 20) {
+  async getPopularContent(
+    limit: number = 20,
+    startDate?: string | Date,
+    endDate?: string | Date,
+    contentType?: ViewContentType
+  ) {
     try {
-      // Get content with most views
-      const movies = await this.movieRepository.find({
-        where: { isBlocked: false },
-        order: { viewCount: "DESC" },
-        take: limit,
+      // 1. Get most viewed content in this timeframe from events
+      let viewResults: any[] = [];
+      
+      if (startDate || endDate || contentType) {
+        // Try querying the event database if createQueryBuilder is fully mockable/available
+        try {
+          const viewsQuery = this.viewAnalyticsRepository
+            .createQueryBuilder("analytics")
+            .select("analytics.contentId", "contentId")
+            .addSelect("analytics.contentType", "contentType")
+            .addSelect("analytics.contentTitle", "title")
+            .addSelect("COUNT(*)", "viewCount")
+            .where("analytics.actionType = :action", { action: ActionType.VIEW });
+
+          if (startDate) {
+            viewsQuery.andWhere("analytics.createdAt >= :startDate", { startDate });
+          }
+          if (endDate) {
+            const nextDay = new Date(endDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+            viewsQuery.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
+          }
+          if (contentType) {
+            viewsQuery.andWhere("analytics.contentType = :contentType", { contentType });
+          }
+
+          viewResults = await viewsQuery
+            .groupBy("analytics.contentId, analytics.contentType, analytics.contentTitle")
+            .orderBy("COUNT(*)", "DESC")
+            .limit(limit)
+            .getRawMany();
+        } catch (dbError) {
+          this.logger.warn(`Failed to aggregate popular content dynamically: ${dbError.message}. Falling back to static table statistics.`);
+          viewResults = [];
+        }
+      }
+
+      // If no dynamic view events are found (or query failed), fallback to static aggregate tables
+      if (!viewResults || viewResults.length === 0) {
+        if (contentType === ViewContentType.MOVIE) {
+          const movieQuery = this.movieRepository.createQueryBuilder("movie")
+            .where("movie.isBlocked = :isBlocked", { isBlocked: false });
+          const movies = await movieQuery.orderBy("movie.viewCount", "DESC").limit(limit).getMany();
+          const movieFavCounts = await Promise.all(
+            movies.map(async (m) => {
+              const count = await this.favoriteRepository.count({
+                where: { contentId: String(m.tmdbId), contentType: "movie" },
+              });
+              return { tmdbId: m.tmdbId, favoriteCount: count };
+            })
+          );
+          const movieFavMap = new Map(movieFavCounts.map(f => [f.tmdbId, f.favoriteCount]));
+          return movies.map(m => ({
+            tmdbId: m.tmdbId,
+            title: m.title,
+            contentType: "movie" as const,
+            viewCount: m.viewCount || 0,
+            clickCount: m.clickCount || 0,
+            favoriteCount: movieFavMap.get(m.tmdbId) || 0,
+            posterPath: m.posterPath || null,
+          }));
+        } else if (contentType === ViewContentType.TV_SERIES) {
+          const tvQuery = this.tvRepository.createQueryBuilder("tv")
+            .where("tv.isBlocked = :isBlocked", { isBlocked: false });
+          const tvs = await tvQuery.orderBy("tv.viewCount", "DESC").limit(limit).getMany();
+          const tvFavCounts = await Promise.all(
+            tvs.map(async (tv) => {
+              const count = await this.favoriteRepository.count({
+                where: { contentId: String(tv.tmdbId), contentType: "tv" },
+              });
+              return { tmdbId: tv.tmdbId, favoriteCount: count };
+            })
+          );
+          const tvFavMap = new Map(tvFavCounts.map(f => [f.tmdbId, f.favoriteCount]));
+          return tvs.map(tv => ({
+            tmdbId: tv.tmdbId,
+            title: tv.title,
+            contentType: "tv" as const,
+            viewCount: tv.viewCount || 0,
+            clickCount: tv.clickCount || 0,
+            favoriteCount: tvFavMap.get(tv.tmdbId) || 0,
+            posterPath: tv.posterPath || null,
+          }));
+        } else {
+          // Standard combined path (default behavior before)
+          const movies = await this.movieRepository.find({
+            where: { isBlocked: false },
+            order: { viewCount: "DESC" },
+            take: limit,
+          });
+
+          const tvSeries = await this.tvRepository.find({
+            where: { isBlocked: false },
+            order: { viewCount: "DESC" },
+            take: limit,
+          });
+
+          const movieFavCounts = await Promise.all(
+            movies.map(async (m) => {
+              const count = await this.favoriteRepository.count({
+                where: { contentId: String(m.tmdbId), contentType: "movie" },
+              });
+              return { tmdbId: m.tmdbId, favoriteCount: count };
+            })
+          );
+
+          const tvFavCounts = await Promise.all(
+            tvSeries.map(async (tv) => {
+              const count = await this.favoriteRepository.count({
+                where: { contentId: String(tv.tmdbId), contentType: "tv" },
+              });
+              return { tmdbId: tv.tmdbId, favoriteCount: count };
+            })
+          );
+
+          const movieFavMap = new Map(movieFavCounts.map(f => [f.tmdbId, f.favoriteCount]));
+          const tvFavMap = new Map(tvFavCounts.map(f => [f.tmdbId, f.favoriteCount]));
+
+          const allContent = [
+            ...movies.map((m) => ({
+              tmdbId: m.tmdbId,
+              title: m.title,
+              contentType: "movie" as const,
+              viewCount: m.viewCount || 0,
+              clickCount: m.clickCount || 0,
+              favoriteCount: movieFavMap.get(m.tmdbId) || 0,
+              posterPath: m.posterPath || null,
+            })),
+            ...tvSeries.map((tv) => ({
+              tmdbId: tv.tmdbId,
+              title: tv.title,
+              contentType: "tv" as const,
+              viewCount: tv.viewCount || 0,
+              clickCount: tv.clickCount || 0,
+              favoriteCount: tvFavMap.get(tv.tmdbId) || 0,
+              posterPath: tv.posterPath || null,
+            })),
+          ];
+
+          return allContent
+            .sort((a, b) => b.viewCount - a.viewCount)
+            .slice(0, limit);
+        }
+      }
+
+      // If we have viewResults in the timeframe:
+      // Aggregate clickCount and favoriteCount for the viewResults within the same date range
+      const contentIds = viewResults.map(r => String(r.contentId));
+      
+      // Fetch clicks for these contentIds in the timeframe
+      const clicksQuery = this.viewAnalyticsRepository
+        .createQueryBuilder("analytics")
+        .select("analytics.contentId", "contentId")
+        .addSelect("analytics.contentType", "contentType")
+        .addSelect("COUNT(*)", "clickCount")
+        .where("analytics.actionType = :action", { action: ActionType.CLICK })
+        .andWhere("analytics.contentId IN (:...contentIds)", { contentIds });
+
+      if (startDate) {
+        clicksQuery.andWhere("analytics.createdAt >= :startDate", { startDate });
+      }
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        clicksQuery.andWhere("analytics.createdAt < :endDate", { endDate: nextDay });
+      }
+      const clickResults = await clicksQuery
+        .groupBy("analytics.contentId, analytics.contentType")
+        .getRawMany();
+
+      const clickMap = new Map<string, number>();
+      clickResults.forEach(c => {
+        clickMap.set(`${c.contentType}:${c.contentId}`, parseInt(c.clickCount));
       });
 
-      const tvSeries = await this.tvRepository.find({
-        where: { isBlocked: false },
-        order: { viewCount: "DESC" },
-        take: limit,
+      // Fetch favorites for these contentIds in the timeframe
+      const favQuery = this.favoriteRepository
+        .createQueryBuilder("favorite")
+        .select("favorite.contentId", "contentId")
+        .addSelect("favorite.contentType", "contentType")
+        .addSelect("COUNT(*)", "favoriteCount")
+        .where("favorite.contentId IN (:...contentIds)", { contentIds });
+
+      if (startDate) {
+        favQuery.andWhere("favorite.createdAt >= :startDate", { startDate });
+      }
+      if (endDate) {
+        const nextDay = new Date(endDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        favQuery.andWhere("favorite.createdAt < :endDate", { endDate: nextDay });
+      }
+      const favResults = await favQuery
+        .groupBy("favorite.contentId, favorite.contentType")
+        .getRawMany();
+
+      const favMap = new Map<string, number>();
+      favResults.forEach(f => {
+        // Map favorite.contentType ('movie' or 'tv') to viewAnalytics.contentType ('movie' or 'tv_series')
+        const mappedType = f.contentType === "tv" ? ViewContentType.TV_SERIES : ViewContentType.MOVIE;
+        favMap.set(`${mappedType}:${f.contentId}`, parseInt(f.favoriteCount));
       });
 
-      // Get favorite counts for each content
-      const movieFavCounts = await Promise.all(
-        movies.map(async (m) => {
-          const count = await this.favoriteRepository.count({
-            where: { contentId: String(m.tmdbId), contentType: "movie" },
-          });
-          return { tmdbId: m.tmdbId, favoriteCount: count };
-        })
-      );
+      // Fetch poster paths for these items
+      const movieIds = viewResults
+        .filter(r => r.contentType === ViewContentType.MOVIE)
+        .map(r => parseInt(r.contentId));
+      const tvIds = viewResults
+        .filter(r => r.contentType === ViewContentType.TV_SERIES)
+        .map(r => parseInt(r.contentId));
 
-      const tvFavCounts = await Promise.all(
-        tvSeries.map(async (tv) => {
-          const count = await this.favoriteRepository.count({
-            where: { contentId: String(tv.tmdbId), contentType: "tv" },
-          });
-          return { tmdbId: tv.tmdbId, favoriteCount: count };
-        })
-      );
+      const [moviePosters, tvPosters] = await Promise.all([
+        movieIds.length > 0
+          ? this.movieRepository
+              .createQueryBuilder("movie")
+              .select(["movie.tmdbId", "movie.posterPath"])
+              .where("movie.tmdbId IN (:...ids)", { ids: movieIds })
+              .getMany()
+          : [],
+        tvIds.length > 0
+          ? this.tvRepository
+              .createQueryBuilder("tv")
+              .select(["tv.tmdbId", "tv.posterPath"])
+              .where("tv.tmdbId IN (:...ids)", { ids: tvIds })
+              .getMany()
+          : [],
+      ]);
 
-      // Create lookup maps
-      const movieFavMap = new Map(movieFavCounts.map(f => [f.tmdbId, f.favoriteCount]));
-      const tvFavMap = new Map(tvFavCounts.map(f => [f.tmdbId, f.favoriteCount]));
+      const moviePosterMap = new Map<number, string | null>();
+      moviePosters.forEach(m => {
+        moviePosterMap.set(m.tmdbId, m.posterPath);
+      });
 
-      // Combine all results into a single array with proper field names
-      const allContent = [
-        ...movies.map((m) => ({
-          tmdbId: m.tmdbId,
-          title: m.title,
-          contentType: "movie" as const,
-          viewCount: m.viewCount || 0,
-          clickCount: m.clickCount || 0,
-          favoriteCount: movieFavMap.get(m.tmdbId) || 0,
-          posterPath: m.posterPath || null,
-        })),
-        ...tvSeries.map((tv) => ({
-          tmdbId: tv.tmdbId,
-          title: tv.title,
-          contentType: "tv" as const,
-          viewCount: tv.viewCount || 0,
-          clickCount: tv.clickCount || 0,
-          favoriteCount: tvFavMap.get(tv.tmdbId) || 0,
-          posterPath: tv.posterPath || null,
-        })),
-      ];
+      const tvPosterMap = new Map<number, string | null>();
+      tvPosters.forEach(tv => {
+        tvPosterMap.set(tv.tmdbId, tv.posterPath);
+      });
 
-      // Sort by viewCount and return top items
-      return allContent
-        .sort((a, b) => b.viewCount - a.viewCount)
-        .slice(0, limit);
+      return viewResults.map((r) => {
+        const tmdbId = parseInt(r.contentId);
+        const mapKey = `${r.contentType}:${r.contentId}`;
+        const posterPath = r.contentType === ViewContentType.MOVIE
+          ? moviePosterMap.get(tmdbId)
+          : tvPosterMap.get(tmdbId);
+
+        return {
+          tmdbId,
+          title: r.title,
+          contentType: r.contentType === ViewContentType.TV_SERIES ? ("tv" as const) : ("movie" as const),
+          viewCount: parseInt(r.viewCount) || 0,
+          clickCount: clickMap.get(mapKey) || 0,
+          favoriteCount: favMap.get(mapKey) || 0,
+          posterPath: posterPath || null,
+        };
+      });
     } catch (error) {
       this.logger.error("Error getting popular content:", error);
       throw error;

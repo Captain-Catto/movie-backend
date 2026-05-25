@@ -171,6 +171,8 @@ describe('AdminAnalyticsController', () => {
       expect(result.data).toEqual(mockData);
       expect(adminAnalyticsService.getMostViewedContent).toHaveBeenCalledWith(
         20,
+        undefined,
+        undefined,
         undefined
       );
     });
@@ -183,6 +185,8 @@ describe('AdminAnalyticsController', () => {
       expect(result.success).toBe(true);
       expect(adminAnalyticsService.getMostViewedContent).toHaveBeenCalledWith(
         10,
+        undefined,
+        undefined,
         undefined
       );
     });
@@ -195,7 +199,9 @@ describe('AdminAnalyticsController', () => {
       expect(result.success).toBe(true);
       expect(adminAnalyticsService.getMostViewedContent).toHaveBeenCalledWith(
         20,
-        ContentType.MOVIE
+        ContentType.MOVIE,
+        undefined,
+        undefined
       );
     });
 
@@ -207,7 +213,9 @@ describe('AdminAnalyticsController', () => {
       expect(result.success).toBe(true);
       expect(adminAnalyticsService.getMostViewedContent).toHaveBeenCalledWith(
         20,
-        ContentType.TV_SERIES
+        ContentType.TV_SERIES,
+        undefined,
+        undefined
       );
     });
 
@@ -304,6 +312,8 @@ describe('AdminAnalyticsController', () => {
       expect(result.message).toBe('Favorite statistics retrieved successfully');
       expect(result.data).toEqual(mockData);
       expect(adminAnalyticsService.getFavoriteStats).toHaveBeenCalledWith(
+        undefined,
+        undefined,
         undefined
       );
     });
@@ -314,7 +324,9 @@ describe('AdminAnalyticsController', () => {
       await controller.getFavoriteStats('movie');
 
       expect(adminAnalyticsService.getFavoriteStats).toHaveBeenCalledWith(
-        ContentType.MOVIE
+        ContentType.MOVIE,
+        undefined,
+        undefined
       );
     });
 
@@ -324,7 +336,9 @@ describe('AdminAnalyticsController', () => {
       await controller.getFavoriteStats('tv');
 
       expect(adminAnalyticsService.getFavoriteStats).toHaveBeenCalledWith(
-        ContentType.TV_SERIES
+        ContentType.TV_SERIES,
+        undefined,
+        undefined
       );
     });
 
@@ -354,7 +368,7 @@ describe('AdminAnalyticsController', () => {
       expect(result.success).toBe(true);
       expect(result.message).toBe('Popular content retrieved successfully');
       expect(result.data).toEqual(mockData);
-      expect(adminAnalyticsService.getPopularContent).toHaveBeenCalledWith(20);
+      expect(adminAnalyticsService.getPopularContent).toHaveBeenCalledWith(20, undefined, undefined, undefined);
     });
 
     it('should get popular content with custom limit', async () => {
@@ -363,7 +377,7 @@ describe('AdminAnalyticsController', () => {
       const result = await controller.getPopularContent(10);
 
       expect(result.success).toBe(true);
-      expect(adminAnalyticsService.getPopularContent).toHaveBeenCalledWith(10);
+      expect(adminAnalyticsService.getPopularContent).toHaveBeenCalledWith(10, undefined, undefined, undefined);
     });
 
     it('should handle errors', async () => {
