@@ -68,7 +68,8 @@ export class AdminAnalyticsGateway
 
       if (
         payload.role !== UserRole.ADMIN &&
-        payload.role !== UserRole.SUPER_ADMIN
+        payload.role !== UserRole.SUPER_ADMIN &&
+        payload.role !== UserRole.VIEWER
       ) {
         client.emit("auth:error", {
           message: "Admin privileges are required",

@@ -8,6 +8,7 @@ import {
   Query,
   Request,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -17,11 +18,13 @@ import { ChatModerationStatus, UserRole } from "../entities";
 import { RolesGuard } from "../guards/roles.guard";
 import { ChatService } from "../services/chat.service";
 import { ApiStandardErrors, ApiSuccess } from "../swagger/api-response.decorators";
+import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
 
 @ApiTags("Admin - Chat")
 @ApiBearerAuth("JWT")
 @Controller("admin/chat")
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UseInterceptors(ViewerReadOnlyInterceptor)
 @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.VIEWER)
 export class AdminChatController {
   constructor(private readonly chatService: ChatService) {}
