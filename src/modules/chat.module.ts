@@ -20,11 +20,13 @@ import {
 import { RolesGuard } from "../guards/roles.guard";
 import { AuthModule } from "./auth.module";
 import { ChatService } from "../services/chat.service";
+import { ViewerAuditModule } from "./viewer-audit.module";
 
 @Module({
   imports: [
     ConfigModule,
     AuthModule,
+    ViewerAuditModule,
     TypeOrmModule.forFeature([
       ChatSession,
       ChatMessage,
