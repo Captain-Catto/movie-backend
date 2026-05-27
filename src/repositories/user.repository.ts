@@ -86,4 +86,8 @@ export class UserRepository {
       throw error;
     }
   }
+
+  async findByResetToken(hashedToken: string): Promise<User | null> {
+    return this.repository.findOne({ where: { resetPasswordToken: hashedToken } });
+  }
 }

@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { ConfigModule, ConfigService } from "@nestjs/config";
@@ -14,6 +14,8 @@ import { RefreshTokenRepository } from "../repositories/refresh-token.repository
 import { JwtStrategy } from "../auth/jwt.strategy";
 import { UserActivityLoggerService } from "../services/user-activity-logger.service";
 import { SettingsModule } from "./settings.module";
+import { EmailService } from "../services/email.service";
+import { NotificationModule } from "./notification.module";
 
 const DEFAULT_JWT_EXPIRES_IN: StringValue = "15m";
 
@@ -33,6 +35,7 @@ const resolveJwtExpiresIn = (
     TypeOrmModule.forFeature([User, RefreshToken, UserLog]),
     PassportModule.register({ defaultStrategy: "jwt" }),
     SettingsModule,
+    forwardRef(() => NotificationModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -47,7 +50,7 @@ const resolveJwtExpiresIn = (
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy, UserActivityLoggerService],
-  exports: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy, UserActivityLoggerService],
+  providers: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy, UserActivityLoggerService, EmailService],
+  exports: [AuthService, UserRepository, RefreshTokenRepository, JwtStrategy, UserActivityLoggerService, EmailService],
 })
 export class AuthModule {}

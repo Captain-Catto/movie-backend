@@ -5,6 +5,8 @@ import {
   BadRequestException,
   NotFoundException,
   Logger,
+  Inject,
+  forwardRef,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UserRepository } from "../repositories/user.repository";
@@ -15,6 +17,9 @@ import { UserResponse } from "../interfaces/user.interface";
 import { AdminSettingsService } from "./admin-settings.service";
 import { UpdateProfileDto } from "../dto/profile.dto";
 import * as bcrypt from "bcrypt";
+import * as crypto from "crypto";
+import { EmailService } from "./email.service";
+import { NotificationService } from "./notification.service";
 
 interface RequestMetadata {
   ipAddress?: string;
@@ -30,7 +35,10 @@ export class AuthService {
     private userRepository: UserRepository,
     private jwtService: JwtService,
     private refreshTokenRepository: RefreshTokenRepository,
-    private adminSettingsService: AdminSettingsService
+    private adminSettingsService: AdminSettingsService,
+    private emailService: EmailService,
+    @Inject(forwardRef(() => NotificationService))
+    private notificationService: NotificationService
   ) {}
 
   private buildLoginMetadata(metadata?: RequestMetadata): Partial<User> {
@@ -385,5 +393,71 @@ export class AuthService {
     const saved = await this.userRepository.update(user.id, user);
     const { password: _, ...rest } = saved;
     return rest as UserResponse;
+  }
+
+  async forgotPassword(email: string): Promise<boolean> {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      this.logger.debug(`[forgotPassword] Email not found but returning success: ${email}`);
+      return true; // Return true to prevent email enumeration attacks
+    }
+
+    if (!user.isActive) {
+      this.logger.debug(`[forgotPassword] User is inactive: ${email}`);
+      return true; // Do not send email to inactive users
+    }
+
+    // Generate secure random token
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    
+    // Hash token using SHA-256 to store in database (more secure than raw)
+    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const tokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+
+    await this.userRepository.update(user.id, {
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: tokenExpiry,
+    });
+
+    this.logger.debug(`[forgotPassword] Generated reset token for ${email}`);
+    
+    // Send email using rawToken
+    return this.emailService.sendPasswordResetEmail(email, rawToken);
+  }
+
+  async resetPassword(resetDto: { token: string; newPassword: string }): Promise<boolean> {
+    const { token, newPassword } = resetDto;
+    
+    // Hash incoming raw token to match the database
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    // Query user by resetPasswordToken
+    const user = await this.userRepository.findByResetToken(hashedToken);
+
+    if (!user || !user.resetPasswordExpires || new Date(user.resetPasswordExpires) < new Date()) {
+      throw new BadRequestException(
+        "Mã khôi phục không hợp lệ hoặc đã hết hạn. Vui lòng thử lại."
+      );
+    }
+
+    // Hash new password using bcrypt
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    await this.userRepository.update(user.id, {
+      password: hashedPassword,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+    });
+
+    this.logger.log(`✅ Password successfully reset for user ID: ${user.id}`);
+
+    // Trigger an in-app system notification
+    try {
+      await this.notificationService.sendPasswordResetNotification(user.id);
+    } catch (err) {
+      this.logger.error(`Failed to send in-app password reset notification: ${err.message}`);
+    }
+
+    return true;
   }
 }

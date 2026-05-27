@@ -25,3 +25,19 @@ export class LoginDto {
   @IsString()
   password: string;
 }
+
+export class ForgotPasswordDto {
+  @ApiProperty({ example: "user@example.com" })
+  @IsEmail()
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ example: "abcdef1234567890abcdef" })
+  @IsString()
+  token: string;
+
+  @ApiProperty({ example: "newpassword123" })
+  @IsString()
+  newPassword: string;
+}

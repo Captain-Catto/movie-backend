@@ -11,7 +11,7 @@ import {
 } from "@nestjs/common";
 import { AuthService } from "../services/auth.service";
 import { UserActivityLoggerService } from "../services/user-activity-logger.service";
-import { RegisterDto, LoginDto } from "../dto/auth.dto";
+import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from "../dto/auth.dto";
 import { ApiResponse } from "../interfaces/api.interface";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { IsEmail, IsString, IsOptional } from "class-validator";
@@ -335,6 +335,58 @@ export class AuthController {
       message: "Logged out successfully",
       data: null,
     };
+  }
+
+  @Post("forgot-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Send password reset instructions via email",
+    dataType: "boolean",
+  })
+  @ApiStandardErrors()
+  async forgotPassword(
+    @Body() forgotPasswordDto: ForgotPasswordDto
+  ): Promise<ApiResponse> {
+    try {
+      const result = await this.authService.forgotPassword(forgotPasswordDto.email);
+      return {
+        success: true,
+        message: "Nếu tài khoản tồn tại và đang hoạt động, hướng dẫn khôi phục mật khẩu đã được gửi đến email của bạn.",
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: "Gửi yêu cầu thất bại. Vui lòng thử lại sau.",
+        error: error.message,
+      };
+    }
+  }
+
+  @Post("reset-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiSuccess({
+    summary: "Reset user password using recovery token",
+    dataType: "boolean",
+  })
+  @ApiStandardErrors()
+  async resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto
+  ): Promise<ApiResponse> {
+    try {
+      const result = await this.authService.resetPassword(resetPasswordDto);
+      return {
+        success: true,
+        message: "Đặt lại mật khẩu thành công!",
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Đặt lại mật khẩu thất bại. Vui lòng thử lại sau.",
+        error: error.message,
+      };
+    }
   }
 
   private extractRequestMetadata(req: any) {
