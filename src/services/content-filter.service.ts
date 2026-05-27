@@ -36,7 +36,7 @@ export class ContentFilterService {
     // Check each banned word
     for (const bannedWord of this.bannedWordsCache) {
       const regex = new RegExp(
-        `\\b${this.escapeRegex(bannedWord.word)}\\b`,
+        this.escapeRegex(bannedWord.word),
         "gi"
       );
 
