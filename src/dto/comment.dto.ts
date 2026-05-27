@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsNumber, IsEnum } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { ReportReason } from "../entities/comment.entity";
+import { ReportReason, BannedWordSeverity, BannedWordAction } from "../entities/comment.entity";
 
 export class CreateCommentDto {
   @ApiProperty({ example: "Great movie!" })
@@ -67,4 +67,18 @@ export class ReportCommentDto {
   @IsOptional()
   @IsString()
   description?: string;
+}
+
+export class CreateBannedWordDto {
+  @ApiProperty({ example: "spamword", description: "The word to ban" })
+  @IsString()
+  word: string;
+
+  @ApiProperty({ enum: BannedWordSeverity, example: BannedWordSeverity.MEDIUM })
+  @IsEnum(BannedWordSeverity)
+  severity: BannedWordSeverity;
+
+  @ApiProperty({ enum: BannedWordAction, example: BannedWordAction.FILTER })
+  @IsEnum(BannedWordAction)
+  action: BannedWordAction;
 }

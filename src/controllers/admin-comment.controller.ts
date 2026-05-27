@@ -26,6 +26,7 @@ import {
   BannedWordAction,
 } from "../entities/comment.entity";
 import { ViewerReadOnlyInterceptor } from "../interceptors/viewer-read-only.interceptor";
+import { CreateBannedWordDto } from "../dto/comment.dto";
 import { ApiBody, ApiExcludeEndpoint, ApiQuery, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import {
   ApiIdParam,
@@ -304,23 +305,14 @@ export class AdminCommentController {
   @Post("banned-words")
   @HttpCode(HttpStatus.CREATED)
   @ApiSuccess({ summary: "Add banned word", dataType: "Banned word", status: HttpStatus.CREATED })
-  @ApiBody({
-    schema: {
-      example: {
-        word: "spamword",
-        severity: "medium",
-        action: "flag",
-      },
-    },
-  })
+  @ApiBody({ type: CreateBannedWordDto })
   @ApiStandardErrors({ unauthorized: true, forbidden: true })
   async addBannedWord(
     @Request() req,
-    @Body("word") word: string,
-    @Body("severity") severity: BannedWordSeverity,
-    @Body("action") action: BannedWordAction
+    @Body() body: CreateBannedWordDto
   ): Promise<ApiResponse> {
     try {
+      const { word, severity, action } = body;
       if (!word || !severity || !action) {
         return {
           success: false,
