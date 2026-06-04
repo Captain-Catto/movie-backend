@@ -5,6 +5,8 @@ import { TMDBMovie, TMDBTVSeries } from "../interfaces/tmdb-api.interface";
 import { MovieRepository } from "../repositories/movie.repository";
 import { TVSeriesRepository } from "../repositories/tv-series.repository";
 import { ContentTranslationRepository } from "../repositories/content-translation.repository";
+import { CatalogCleanupService } from "./catalog-cleanup.service";
+import { SyncSettingsService } from "./sync-settings.service";
 import { parseOptionalDate } from "../utils/date.util";
 import { Movie } from "../entities/movie.entity";
 import { TVSeries } from "../entities/tv-series.entity";
@@ -35,7 +37,9 @@ export class DailySyncService {
     private tmdbService: TMDBService,
     private movieRepository: MovieRepository,
     private tvSeriesRepository: TVSeriesRepository,
-    private translationRepository: ContentTranslationRepository
+    private translationRepository: ContentTranslationRepository,
+    private catalogCleanupService: CatalogCleanupService,
+    private syncSettingsService: SyncSettingsService
   ) {}
 
   private isTranslationSyncEnabled(): boolean {
@@ -249,7 +253,8 @@ export class DailySyncService {
   async syncMoviesFromDailyExport(
     date: Date = new Date(),
     batchSize: number = 100,
-    startFromBatch: number = 0
+    startFromBatch: number = 0,
+    enforceCatalogLimit: boolean = true
   ): Promise<void> {
     try {
       // Find available export date
@@ -342,6 +347,10 @@ export class DailySyncService {
       this.logger.log(
         `✅ Movie sync completed: ${syncedCount}/${processedCount} movies synced`
       );
+
+      if (enforceCatalogLimit) {
+        await this.runMovieCleanup();
+      }
     } catch (error) {
       this.logger.error("❌ Error syncing movies:", error);
       throw error;
@@ -354,7 +363,8 @@ export class DailySyncService {
   async syncTVFromDailyExport(
     date: Date = new Date(),
     batchSize: number = 100,
-    startFromBatch: number = 0
+    startFromBatch: number = 0,
+    enforceCatalogLimit: boolean = true
   ): Promise<void> {
     try {
       // Find available export date
@@ -444,6 +454,10 @@ export class DailySyncService {
       this.logger.log(
         `✅ TV series sync completed: ${syncedCount}/${processedCount} TV series synced`
       );
+
+      if (enforceCatalogLimit) {
+        await this.runTVCleanup();
+      }
     } catch (error) {
       this.logger.error("❌ Error syncing TV series:", error);
       throw error;
@@ -460,8 +474,9 @@ export class DailySyncService {
 
     try {
       // Run movie and TV sync sequentially to avoid doubling TMDB rate limits
-      await this.syncMoviesFromDailyExport(date);
-      await this.syncTVFromDailyExport(date);
+      await this.syncMoviesFromDailyExport(date, 100, 0, false);
+      await this.syncTVFromDailyExport(date, 100, 0, false);
+      await this.runCatalogCleanup();
 
       const duration = Date.now() - startTime;
       this.logger.log(
@@ -550,6 +565,49 @@ export class DailySyncService {
    */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async runMovieCleanup(): Promise<void> {
+    try {
+      const { movieLimit } = await this.syncSettingsService.getCatalogLimits();
+
+      if (Number.isFinite(movieLimit) && movieLimit > 0) {
+        await this.catalogCleanupService.trimMovies(movieLimit);
+        this.logger.log("🧹 Movie catalog cleanup completed after daily sync");
+      }
+    } catch (cleanupError) {
+      this.logger.error("❌ Movie catalog cleanup failed", cleanupError);
+    }
+  }
+
+  private async runTVCleanup(): Promise<void> {
+    try {
+      const { tvLimit } = await this.syncSettingsService.getCatalogLimits();
+
+      if (Number.isFinite(tvLimit) && tvLimit > 0) {
+        await this.catalogCleanupService.trimTvSeries(tvLimit);
+        this.logger.log("🧹 TV catalog cleanup completed after daily sync");
+      }
+    } catch (cleanupError) {
+      this.logger.error("❌ TV catalog cleanup failed", cleanupError);
+    }
+  }
+
+  private async runCatalogCleanup(): Promise<void> {
+    try {
+      const { movieLimit, tvLimit } =
+        await this.syncSettingsService.getCatalogLimits();
+
+      if (Number.isFinite(movieLimit) && movieLimit > 0) {
+        await this.catalogCleanupService.trimMovies(movieLimit);
+      }
+      if (Number.isFinite(tvLimit) && tvLimit > 0) {
+        await this.catalogCleanupService.trimTvSeries(tvLimit);
+      }
+      this.logger.log("🧹 Catalog cleanup completed after daily sync");
+    } catch (cleanupError) {
+      this.logger.error("❌ Catalog cleanup failed after daily sync", cleanupError);
+    }
   }
 
   /**
